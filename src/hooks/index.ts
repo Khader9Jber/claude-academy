@@ -3,3 +3,4 @@
 // and is re-exported from src/lib/index.ts.
 
 export { useSyncedProgress } from "./use-synced-progress";
+export { useAdmin } from "./use-admin";

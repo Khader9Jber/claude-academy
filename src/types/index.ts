@@ -72,3 +72,10 @@ export type {
   Challenge,
   EvaluationCriterion,
 } from "./exercise";
+export type {
+  ManagedContent,
+  SiteSettings,
+  Announcement,
+  AnalyticsEvent,
+  AdminStats,
+} from "./admin";

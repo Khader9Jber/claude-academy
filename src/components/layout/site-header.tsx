@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
-import { Search, Menu, X, LogIn, User, BarChart3, LogOut, Trophy } from "lucide-react";
+import { Search, Menu, X, LogIn, User, BarChart3, LogOut, Trophy, Shield } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { SearchDialog } from "@/components/search/search-dialog";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useAdmin } from "@/hooks/use-admin";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -21,6 +22,7 @@ export function SiteHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close user menu on outside click
@@ -73,6 +75,21 @@ export function SiteHeader() {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              data-testid="nav-admin"
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium",
+                "text-accent hover:text-foreground hover:bg-accent/10",
+                "border border-accent/20 bg-accent/5",
+                "transition-colors duration-200"
+              )}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Right side actions */}
@@ -173,6 +190,20 @@ export function SiteHeader() {
                         <Trophy className="h-4 w-4" />
                         Leaderboard
                       </Link>
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          data-testid="auth-menu-admin"
+                          onClick={() => setUserMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 text-sm text-accent",
+                            "hover:bg-accent/10 transition-colors"
+                          )}
+                        >
+                          <Shield className="h-4 w-4" />
+                          Admin Dashboard
+                        </Link>
+                      )}
                       <div className="border-t border-border mt-1 pt-1">
                         <button
                           data-testid="auth-signout-btn"
@@ -249,6 +280,22 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                data-testid="nav-admin-mobile"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium",
+                  "text-accent hover:bg-accent/10",
+                  "border border-accent/20 bg-accent/5",
+                  "transition-colors duration-200"
+                )}
+              >
+                <Shield className="h-3.5 w-3.5" />
+                Admin
+              </Link>
+            )}
             {!loading && !user && (
               <Link
                 href="/auth/login"

@@ -1,38 +1,41 @@
 import { test, expect } from '@playwright/test';
+import { PromptLabPage } from './pages';
 
 test.describe('Prompt Lab', () => {
   test('prompt lab page loads with heading', async ({ page }) => {
-    await page.goto('/prompt-lab');
-    await expect(page.getByTestId('prompt-lab-heading')).toBeVisible();
+    const promptLab = new PromptLabPage(page);
+    await promptLab.navigateTo('/prompt-lab');
+    await expect(promptLab.heading).toBeVisible();
   });
 
   test('template library shows template cards', async ({ page }) => {
-    await page.goto('/prompt-lab');
-    const templateCards = page.getByTestId('template-card');
-    await expect(templateCards).not.toHaveCount(0);
+    const promptLab = new PromptLabPage(page);
+    await promptLab.navigateTo('/prompt-lab');
+    await expect(promptLab.templateCards).not.toHaveCount(0);
   });
 
   test('category filter buttons work', async ({ page }) => {
-    await page.goto('/prompt-lab');
+    const promptLab = new PromptLabPage(page);
+    await promptLab.navigateTo('/prompt-lab');
     // Click the Coding filter
-    await page.getByTestId('filter-coding').click();
+    await promptLab.filterByCategory('coding');
     // Should still have template cards visible (filtered to coding)
-    const templateCards = page.getByTestId('template-card');
-    await expect(templateCards).not.toHaveCount(0);
+    await expect(promptLab.templateCards).not.toHaveCount(0);
   });
 
   test('All filter shows all templates', async ({ page }) => {
-    await page.goto('/prompt-lab');
+    const promptLab = new PromptLabPage(page);
+    await promptLab.navigateTo('/prompt-lab');
     // Click a specific filter first
-    await page.getByTestId('filter-coding').click();
+    await promptLab.filterByCategory('coding');
     // Then click All
-    await page.getByTestId('filter-all').click();
-    const templateCards = page.getByTestId('template-card');
-    await expect(templateCards).not.toHaveCount(0);
+    await promptLab.filterByCategory('all');
+    await expect(promptLab.templateCards).not.toHaveCount(0);
   });
 
   test('before/after examples are visible', async ({ page }) => {
-    await page.goto('/prompt-lab');
+    const promptLab = new PromptLabPage(page);
+    await promptLab.navigateTo('/prompt-lab');
     // Scroll to before/after section
     const beforeAfter = page.locator('text=Before');
     if (await beforeAfter.count() > 0) {

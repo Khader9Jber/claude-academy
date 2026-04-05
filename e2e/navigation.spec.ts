@@ -1,92 +1,106 @@
 import { test, expect } from '@playwright/test';
+import { LandingPage, CurriculumPage, ModulePage, LessonPage } from './pages';
 
 test.describe('Site Navigation', () => {
   test('landing page loads with hero section', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('hero-heading')).toBeVisible();
-    await expect(page.getByTestId('start-learning-btn').first()).toBeVisible();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await expect(landing.heroHeading).toBeVisible();
+    await expect(landing.startLearningBtn).toBeVisible();
   });
 
   test('landing page shows arc cards section', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('arc-cards')).toBeVisible();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await expect(landing.arcCards).toBeVisible();
   });
 
   test('landing page shows stats bar', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('stats-bar')).toBeVisible();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await expect(landing.statsBar).toBeVisible();
   });
 
   test('Start Learning button navigates to curriculum', async ({ page }) => {
-    await page.goto('/');
-    await page.getByTestId('start-learning-btn').first().click();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await landing.clickStartLearning();
     await expect(page).toHaveURL(/curriculum/);
   });
 
   test('curriculum page shows module cards', async ({ page }) => {
-    await page.goto('/curriculum');
-    await expect(page.getByTestId('module-card-claude-fundamentals')).toBeVisible();
-    await expect(page.getByTestId('module-card-prompt-engineering')).toBeVisible();
-    await expect(page.getByTestId('module-card-claude-code-basics')).toBeVisible();
+    const curriculum = new CurriculumPage(page);
+    await curriculum.navigateTo('/curriculum');
+    await expect(curriculum.moduleCard('claude-fundamentals')).toBeVisible();
+    await expect(curriculum.moduleCard('prompt-engineering')).toBeVisible();
+    await expect(curriculum.moduleCard('claude-code-basics')).toBeVisible();
   });
 
   test('curriculum page shows arc sections', async ({ page }) => {
-    await page.goto('/curriculum');
-    await expect(page.getByTestId('arc-foundation')).toBeVisible();
-    await expect(page.getByTestId('arc-practitioner')).toBeVisible();
+    const curriculum = new CurriculumPage(page);
+    await curriculum.navigateTo('/curriculum');
+    await expect(curriculum.arcSection('foundation')).toBeVisible();
+    await expect(curriculum.arcSection('practitioner')).toBeVisible();
   });
 
   test('clicking a module navigates to module page', async ({ page }) => {
-    await page.goto('/curriculum');
-    await page.getByTestId('module-card-claude-fundamentals').click();
+    const curriculum = new CurriculumPage(page);
+    await curriculum.navigateTo('/curriculum');
+    await curriculum.clickModule('claude-fundamentals');
     await expect(page).toHaveURL(/curriculum\/claude-fundamentals/);
   });
 
   test('module page shows title and lessons', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals');
-    await expect(page.getByTestId('module-title')).toBeVisible();
-    await expect(page.getByTestId('lesson-item-what-is-claude')).toBeVisible();
+    const modulePage = new ModulePage(page);
+    await modulePage.navigateTo('/curriculum/claude-fundamentals');
+    await expect(modulePage.moduleTitle).toBeVisible();
+    await expect(modulePage.lessonItem('what-is-claude')).toBeVisible();
   });
 
   test('clicking a lesson navigates to lesson page', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals');
-    await page.getByTestId('lesson-item-what-is-claude').click();
+    const modulePage = new ModulePage(page);
+    await modulePage.navigateTo('/curriculum/claude-fundamentals');
+    await modulePage.clickLesson('what-is-claude');
     await expect(page).toHaveURL(/curriculum\/claude-fundamentals\/what-is-claude/);
   });
 
   test('lesson page shows title', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals/what-is-claude');
-    await expect(page.getByTestId('lesson-title')).toBeVisible();
+    const lesson = new LessonPage(page);
+    await lesson.navigateTo('/curriculum/claude-fundamentals/what-is-claude');
+    await expect(lesson.lessonTitle).toBeVisible();
   });
 
-  test('header navigation links work (desktop)', async ({ page, browserName }, testInfo) => {
+  test('header navigation links work (desktop)', async ({ page }, testInfo) => {
     // Skip on mobile — nav links are behind hamburger menu
     test.skip(testInfo.project.name === 'mobile', 'Nav links hidden on mobile');
 
-    await page.goto('/');
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
 
-    await page.getByTestId('nav-prompt-lab').click();
+    await landing.goToPromptLab();
     await expect(page).toHaveURL(/prompt-lab/);
 
-    await page.getByTestId('nav-cheatsheet').click();
+    await landing.goToCheatsheet();
     await expect(page).toHaveURL(/cheatsheet/);
 
-    await page.getByTestId('nav-templates').click();
+    await landing.goToTemplates();
     await expect(page).toHaveURL(/templates/);
 
-    await page.getByTestId('nav-curriculum').click();
+    await landing.goToCurriculum();
     await expect(page).toHaveURL(/curriculum/);
   });
 
   test('header and logo are visible', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('site-header')).toBeVisible();
-    await expect(page.getByTestId('site-logo')).toBeVisible();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await expect(landing.header).toBeVisible();
+    await expect(landing.logo).toBeVisible();
   });
 
   test('footer shows credit text', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.getByTestId('site-footer')).toBeVisible();
-    await expect(page.getByTestId('footer-credit')).toBeVisible();
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    await expect(landing.footer).toBeVisible();
+    await expect(landing.footerCredit).toBeVisible();
   });
 });

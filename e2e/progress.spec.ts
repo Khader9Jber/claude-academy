@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { LessonPage, ProgressPage } from './pages';
 
 test.describe('Progress Tracking', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,45 +9,51 @@ test.describe('Progress Tracking', () => {
   });
 
   test('lesson shows Mark as Complete button', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals/what-is-claude');
-    await expect(page.getByTestId('mark-complete-btn')).toBeVisible();
+    const lesson = new LessonPage(page);
+    await lesson.navigateTo('/curriculum/claude-fundamentals/what-is-claude');
+    await expect(lesson.markCompleteBtn).toBeVisible();
   });
 
   test('clicking Mark as Complete changes button state', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals/what-is-claude');
-    await page.getByTestId('mark-complete-btn').click();
+    const lesson = new LessonPage(page);
+    await lesson.navigateTo('/curriculum/claude-fundamentals/what-is-claude');
+    await lesson.markAsComplete();
     // Should show completed state
-    await expect(page.getByTestId('lesson-completed')).toBeVisible();
+    await expect(lesson.completedIndicator).toBeVisible();
   });
 
   test('completed lesson persists after page reload', async ({ page }) => {
-    await page.goto('/curriculum/claude-fundamentals/what-is-claude');
-    await page.getByTestId('mark-complete-btn').click();
-    await expect(page.getByTestId('lesson-completed')).toBeVisible();
+    const lesson = new LessonPage(page);
+    await lesson.navigateTo('/curriculum/claude-fundamentals/what-is-claude');
+    await lesson.markAsComplete();
+    await expect(lesson.completedIndicator).toBeVisible();
 
     // Reload the page
     await page.reload();
     // Should still show completed
-    await expect(page.getByTestId('lesson-completed')).toBeVisible();
+    await expect(lesson.completedIndicator).toBeVisible();
   });
 
   test('progress page loads with heading', async ({ page }) => {
-    await page.goto('/progress');
-    await expect(page.getByTestId('progress-heading')).toBeVisible();
+    const progress = new ProgressPage(page);
+    await progress.navigateTo('/progress');
+    await expect(progress.heading).toBeVisible();
   });
 
   test('progress dashboard shows stats', async ({ page }) => {
-    await page.goto('/progress');
-    await expect(page.getByTestId('stat-lessons')).toBeVisible();
-    await expect(page.getByTestId('stat-quizzes')).toBeVisible();
-    await expect(page.getByTestId('stat-streak')).toBeVisible();
-    await expect(page.getByTestId('stat-achievements')).toBeVisible();
+    const progress = new ProgressPage(page);
+    await progress.navigateTo('/progress');
+    await expect(progress.statLessons).toBeVisible();
+    await expect(progress.statQuizzes).toBeVisible();
+    await expect(progress.statStreak).toBeVisible();
+    await expect(progress.statAchievements).toBeVisible();
   });
 
   test('reset progress button exists with confirmation', async ({ page }) => {
-    await page.goto('/progress');
-    await page.getByTestId('reset-progress-btn').click();
+    const progress = new ProgressPage(page);
+    await progress.navigateTo('/progress');
+    await progress.clickReset();
     // Should show confirmation
-    await expect(page.getByTestId('confirm-reset-btn')).toBeVisible();
+    await expect(progress.confirmResetBtn).toBeVisible();
   });
 });

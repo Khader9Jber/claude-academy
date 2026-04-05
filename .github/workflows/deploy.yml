@@ -71,7 +71,10 @@ jobs:
       - run: npm ci
       - name: Deploy to Vercel
         run: |
-          npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org --yes
+          DEPLOY_URL=$(npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org --yes 2>&1 | grep -o 'https://[^ ]*\.vercel\.app' | tail -1)
+          echo "Deployed to: $DEPLOY_URL"
+          npx vercel alias set "$DEPLOY_URL" claude-academy-course.vercel.app --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org
+          echo "Alias updated: https://claude-academy-course.vercel.app"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

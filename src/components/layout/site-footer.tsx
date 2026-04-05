@@ -12,7 +12,7 @@ export function SiteFooter() {
               {SITE_NAME}
             </span>
             <p className="text-xs text-muted">
-              Built with <span className="text-red">&#9829;</span> by KK
+              Built with <span className="text-green">&#9829;</span> by KK
             </p>
           </div>
 

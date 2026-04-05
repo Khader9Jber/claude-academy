@@ -8,6 +8,8 @@ A personal refresher for when you come back to this project after a break.
 
 Claude Academy is a complete interactive learning website for mastering Claude and Claude Code. It has 74 lessons across 13 modules organized in 4 skill arcs (Foundation, Practitioner, Power User, Expert), 294 quiz questions, interactive exercises, light/dark mode (dark default), and it's deployed to 2 platforms. It has an optional Supabase backend for authentication (email, Google, GitHub), cross-device progress sync, a public leaderboard, and completion certificates. The site works fully without a backend -- Supabase adds user accounts and sync on top.
 
+It also has a full admin dashboard at `/admin` (admin-only, protected by `app_metadata.role === 'admin'`) with 6 sections: Dashboard (overview stats), Content (create/edit/delete lessons with markdown editor and quiz builder), Users (list, search, view details, manage roles), Analytics (page views, completion rates, quiz performance, user growth charts), Announcements (type badges and scheduling), and Settings (configurable site options). The admin system added 4 new database tables (`managed_content`, `site_settings`, `announcements`, `analytics_events`) via `supabase/migrations/002_admin.sql`, an `is_admin()` SQL function, a `useAdmin()` React hook, and an `AdminGuard` component. You can make a user admin with: `SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/make-admin.ts user@email.com`.
+
 ---
 
 ## How It Works
@@ -62,11 +64,12 @@ cp .env.example .env.local
 ## Project Stats
 
 - 74 lessons, 294 quiz questions, 13 modules, 4 arcs
-- 46 unit tests, 36 E2E tests, 97% statement coverage, 100% function coverage
+- 77 unit tests, 36 E2E tests, 97% statement coverage, 100% function coverage
 - 4 CI/CD workflows, triple deployment (Netlify + GitHub Pages + Vercel backup)
 - 7 project docs (SRS, Test Plan, Test Suites, Architecture, Implementation Plan, Glossary, Changelog)
 - QA reports: content validation, build report, completeness audit
-- Supabase backend: 7 database tables with RLS, 3 auth providers (email, Google, GitHub)
+- Supabase backend: 11 database tables with RLS, 3 auth providers (email, Google, GitHub)
+- Admin dashboard: 6 sections (Dashboard, Content, Users, Analytics, Announcements, Settings)
 - Light/dark theme support (dark default)
 
 ---
@@ -91,7 +94,12 @@ cp .env.example .env.local
 | Leaderboard | `src/app/leaderboard/` |
 | Certificates | `src/app/certificate/` |
 | Auth components | `src/components/auth/` |
-| DB migrations | `supabase/migrations/001_initial.sql` |
+| DB migrations | `supabase/migrations/001_initial.sql` + `002_admin.sql` |
+| Admin pages | `src/app/admin/` (dashboard, content, users, analytics, announcements, settings) |
+| Admin components | `src/components/admin/` |
+| Admin helpers | `src/lib/admin.ts` |
+| useAdmin hook | `src/hooks/useAdmin.ts` |
+| Make admin script | `scripts/make-admin.ts` |
 | CI pipeline | `.github/workflows/{ci,security,deploy,pr-preview}.yml` |
 | Vitest config | `vitest.config.ts` |
 | Playwright config | `playwright.config.ts` |
@@ -178,7 +186,7 @@ cp .env.example .env.local
 - [ ] Mobile app (React Native)
 - [ ] Podcast/video embeds in lessons
 - [ ] Multi-language support beyond Arabic
-- [ ] Admin dashboard for content management
+- [x] ~~Admin dashboard for content management~~ -- DONE (v0.3.0, full admin with 6 sections)
 
 ---
 
@@ -258,3 +266,4 @@ git push --force              # Push revert (destructive — use with caution)
 |-----|-------------|
 | `v0.1.0` | Static site, no backend, dark mode only |
 | `v0.2.0` | Supabase backend + light/dark mode support |
+| `v0.3.0` | Admin dashboard with 6 sections |

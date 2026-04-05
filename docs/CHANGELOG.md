@@ -17,6 +17,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.3.0] - 2026-04-05
+
+### Added
+
+- Admin dashboard with 6 sections (Dashboard, Content, Users, Analytics, Announcements, Settings)
+- Content management: create/edit/delete lessons from browser with markdown editor and quiz builder
+- User management: list, search, view details, manage roles
+- Analytics: page views, completion rates, quiz performance, user growth charts
+- Announcements system with type badges and scheduling
+- Site settings page with configurable options
+- Database migration 002_admin.sql (4 new tables + RLS)
+- Admin auth: is_admin() function, useAdmin() hook, AdminGuard component
+- make-admin.ts CLI script
+- Admin link in site header (admin-only)
+- Content preview modal with markdown rendering
+
+---
+
 ## [0.2.1] - 2026-04-04
 
 ### Changed

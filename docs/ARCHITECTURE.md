@@ -24,6 +24,7 @@
 12. [Authentication Architecture](#12-authentication-architecture)
 13. [Database Architecture](#13-database-architecture)
 14. [Progress Sync Architecture](#14-progress-sync-architecture)
+15. [Admin Dashboard Architecture](#15-admin-dashboard-architecture)
 
 ---
 
@@ -1126,3 +1127,93 @@ The `useProgressSync` hook handles the dual-write logic:
 | Vercel (backup) | SSR | Full (email, Google, GitHub) | localStorage + Supabase |
 
 The `next.config.ts` conditionally applies `output: 'export'` when `DEPLOY_TARGET=github-pages`. On Netlify (and Vercel), it runs as a standard Next.js SSR app with full auth support.
+
+---
+
+## 15. Admin Dashboard Architecture
+
+### 15.1 Overview
+
+The admin dashboard (`/admin`) provides a browser-based interface for managing content, users, analytics, announcements, and site settings. It is protected by role-based access control: only users with `app_metadata.role === 'admin'` can access admin pages.
+
+### 15.2 Access Control Flow
+
+```
+User navigates to /admin
+    │
+    ▼
+AdminGuard component checks auth
+    │
+    ├── Not logged in → Redirect to /auth/login
+    │
+    ├── Logged in, not admin → Show "Access Denied"
+    │
+    └── Logged in, is admin → Render admin page
+        │
+        └── useAdmin() hook provides:
+            ├── isAdmin: boolean
+            ├── isLoading: boolean
+            └── Admin-specific data fetching helpers
+```
+
+### 15.3 Admin Auth Chain
+
+```
+Supabase Auth (JWT)
+    │
+    ▼
+app_metadata.role === 'admin'     ← Set via service role key only
+    │                                  (not modifiable by client SDK)
+    ▼
+is_admin() SQL function           ← Used in RLS policies for admin tables
+    │
+    ▼
+useAdmin() React hook             ← Client-side check, reads from session
+    │
+    ▼
+AdminGuard component              ← Wraps all /admin/* pages
+```
+
+### 15.4 Admin Sections
+
+| Section | Route | Purpose |
+|---------|-------|---------|
+| Dashboard | `/admin` | Overview stats: total users, lessons, completion rates, recent activity |
+| Content | `/admin/content` | Create, edit, delete lessons with markdown editor and quiz builder |
+| Users | `/admin/users` | List, search, view user details, manage roles |
+| Analytics | `/admin/analytics` | Page views, completion rates, quiz performance, user growth charts |
+| Announcements | `/admin/announcements` | Create/edit announcements with type badges and scheduling |
+| Settings | `/admin/settings` | Configurable site options |
+
+### 15.5 Database Tables (Admin)
+
+Added via `supabase/migrations/002_admin.sql`:
+
+| Table | Purpose | RLS |
+|-------|---------|-----|
+| `managed_content` | Lessons created/edited via admin dashboard | Admin write, public read |
+| `site_settings` | Key-value site configuration | Admin write, public read |
+| `announcements` | Scheduled announcements with type and visibility | Admin write, public read |
+| `analytics_events` | Page views, interactions, and custom events | Admin read/write, insert by any authenticated user |
+
+### 15.6 Key Files
+
+| What | Where |
+|------|-------|
+| Admin pages | `src/app/admin/` (page.tsx + sub-routes for each section) |
+| Admin components | `src/components/admin/` |
+| Admin helpers | `src/lib/admin.ts` (data fetching, CRUD operations) |
+| useAdmin hook | `src/hooks/useAdmin.ts` |
+| AdminGuard | `src/components/admin/AdminGuard.tsx` |
+| Make admin script | `scripts/make-admin.ts` |
+| Admin migration | `supabase/migrations/002_admin.sql` |
+
+### 15.7 Making a User Admin
+
+Admin role is set via Supabase `app_metadata`, which can only be modified using the service role key (not the client anon key). This prevents privilege escalation from the browser.
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=your-secret-key npx tsx scripts/make-admin.ts user@email.com
+```
+
+The script calls `supabase.auth.admin.updateUserById()` to set `app_metadata.role = 'admin'`.

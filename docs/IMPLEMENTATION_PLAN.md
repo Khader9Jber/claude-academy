@@ -35,8 +35,9 @@
 | 11 | Supabase Backend | DONE | 1 week |
 | 12 | Light/Dark Mode | DONE | 0.5 weeks |
 | 13 | Netlify Migration | DONE | 0.5 weeks |
+| 14 | Admin Dashboard | DONE | 1 week |
 
-**Total timeline:** ~14 weeks from project start. All phases complete.
+**Total timeline:** ~15 weeks from project start. All phases complete.
 
 ---
 
@@ -557,6 +558,57 @@ src/components/progress/progress-dashboard.tsx
 - Vercel backup still accessible at `https://claude-academy-course.vercel.app`
 - Deploy pipeline runs all three deployments on push to main
 - PR previews deploy to Netlify and comment the preview URL
+
+---
+
+### Phase 14: Admin Dashboard (DONE)
+
+**Objective:** Build a complete admin dashboard for managing content, users, analytics, announcements, and site settings from the browser.
+
+**Deliverables:**
+
+- Admin dashboard at `/admin` with 6 sections:
+  - **Dashboard**: Overview stats (total users, lessons, completion rates, recent activity)
+  - **Content**: Create, edit, delete lessons with markdown editor, frontmatter fields, and quiz builder. Content preview modal with rendered markdown.
+  - **Users**: List, search, view user details (profile, progress, scores), manage roles (promote/revoke admin)
+  - **Analytics**: Page view counts, lesson completion rates, quiz performance averages, user growth charts
+  - **Announcements**: Create/edit/delete announcements with type badges (info, warning, success, error) and scheduling (start/end dates)
+  - **Settings**: Configurable site options as key-value pairs, changes take effect immediately
+- Admin auth chain: `app_metadata.role === 'admin'` → `is_admin()` SQL function → `useAdmin()` React hook → `AdminGuard` component
+- Database migration `002_admin.sql` adding 4 tables: `managed_content`, `site_settings`, `announcements`, `analytics_events` with RLS policies
+- CLI script `scripts/make-admin.ts` for promoting users to admin via service role key
+- Admin link in site header (visible only to admin users)
+- Content preview modal with markdown rendering
+
+**Files Created:**
+
+```
+src/app/admin/page.tsx
+src/app/admin/content/page.tsx
+src/app/admin/users/page.tsx
+src/app/admin/analytics/page.tsx
+src/app/admin/announcements/page.tsx
+src/app/admin/settings/page.tsx
+src/components/admin/AdminGuard.tsx
+src/components/admin/ (admin-specific components)
+src/lib/admin.ts
+src/hooks/useAdmin.ts
+scripts/make-admin.ts
+supabase/migrations/002_admin.sql
+```
+
+**Acceptance Criteria:**
+
+- Admin dashboard accessible at `/admin` only by users with admin role
+- Non-admin users see "Access Denied", unauthenticated users redirect to login
+- Content CRUD operations work: create, edit, delete lessons with preview
+- User list displays with search, role management works (promote/revoke)
+- Analytics charts render with real data from `analytics_events` table
+- Announcements can be created with type badges and scheduling
+- Settings page saves and loads key-value pairs
+- `make-admin.ts` script successfully promotes a user to admin
+- All 4 admin tables have proper RLS policies
+- Admin link appears in header only for admin users
 
 ---
 

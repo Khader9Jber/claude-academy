@@ -226,6 +226,22 @@ All user classes share the same interface. Content difficulty is indicated by ba
 | **FR-53** | The system shall make all content accessible without authentication. Lessons, quizzes, cheatsheet, templates, and prompt lab shall function identically for guest users and authenticated users. Authentication only enables progress sync, leaderboard, certificates, and user profile. | P1 |
 | **FR-54** | The system shall support a light mode / dark mode toggle with dark mode as the default. Theme switching uses class-based toggling via next-themes. Code blocks and terminal components shall remain dark-themed in both modes for readability. The theme preference persists across sessions. | P1 |
 
+#### FR-55 to FR-65: Admin Dashboard
+
+| ID | Requirement | Priority |
+|----|------------|----------|
+| **FR-55** | The system shall provide an admin dashboard at `/admin` accessible only to users with `app_metadata.role === 'admin'`. Non-admin users shall see an "Access Denied" message. Unauthenticated users shall be redirected to the login page. The admin check uses the `useAdmin()` hook and `AdminGuard` component. | P1 |
+| **FR-56** | The admin dashboard overview page shall display summary statistics: total users, total lessons, overall completion rate, and recent activity feed. Data is fetched from Supabase using admin helper functions in `src/lib/admin.ts`. | P2 |
+| **FR-57** | The admin content management section (`/admin/content`) shall allow admins to create new lessons with a markdown editor, edit existing lessons, and delete lessons. Lesson data is stored in the `managed_content` Supabase table. The editor shall support frontmatter fields (title, slug, difficulty, duration, tags, objectives) and a quiz builder for adding quiz questions. | P1 |
+| **FR-58** | The admin content section shall include a content preview modal that renders the markdown content as it would appear to learners, allowing admins to verify formatting before saving. | P2 |
+| **FR-59** | The admin user management section (`/admin/users`) shall display a list of all registered users with search and filtering capabilities. Admins shall be able to view user details (profile, progress, quiz scores) and manage user roles (promote to admin or revoke admin). | P1 |
+| **FR-60** | The admin analytics section (`/admin/analytics`) shall display charts and metrics including: page view counts, lesson completion rates, quiz performance averages, and user growth over time. Analytics data is stored in the `analytics_events` table and aggregated for display. | P2 |
+| **FR-61** | The admin announcements section (`/admin/announcements`) shall allow admins to create, edit, and delete announcements. Each announcement has a type (info, warning, success, error) displayed as a badge, a message body, and optional scheduling (start date, end date). Announcements are stored in the `announcements` table. | P2 |
+| **FR-62** | The admin settings section (`/admin/settings`) shall provide configurable site options stored as key-value pairs in the `site_settings` table. Settings changes take effect immediately without requiring a redeployment. | P3 |
+| **FR-63** | The system shall provide an admin link in the site header that is visible only to authenticated users with admin role. The link navigates to `/admin`. | P1 |
+| **FR-64** | The system shall provide a CLI script (`scripts/make-admin.ts`) to promote a user to admin role. The script requires the `SUPABASE_SERVICE_ROLE_KEY` environment variable and accepts an email address as argument. It sets `app_metadata.role = 'admin'` using the Supabase admin API. | P1 |
+| **FR-65** | The admin database migration (`supabase/migrations/002_admin.sql`) shall create 4 tables (`managed_content`, `site_settings`, `announcements`, `analytics_events`) with Row Level Security policies. Admin tables shall allow admin write access and public read access. The migration shall also create an `is_admin()` SQL function used in RLS policies. | P1 |
+
 ### 3.2 Non-Functional Requirements
 
 | ID | Category | Requirement | Metric |

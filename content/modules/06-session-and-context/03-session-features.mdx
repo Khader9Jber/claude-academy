@@ -1,0 +1,269 @@
+---
+title: "Session Naming, Forking, and Time Travel"
+slug: "session-features"
+order: 3
+difficulty: "intermediate"
+duration: 14
+tags: ["sessions", "fork", "rewind", "resume", "workflow"]
+objectives:
+  - "Name sessions for easy identification"
+  - "Fork sessions for safe experiments"
+  - "Use rewind (Esc Esc) to undo changes"
+  - "Resume previous sessions and transfer from web to CLI"
+quiz:
+  - id: "session-feat-1"
+    question: "How do you name a Claude Code session at startup?"
+    type: "multiple-choice"
+    options:
+      - "claude --session my-task"
+      - "claude -n \"task-name\""
+      - "claude name \"task-name\""
+      - "claude --label task-name"
+    correct: 1
+    explanation: "Use claude -n \"task-name\" to name a session when starting it. Named sessions are easier to find when browsing history or using /resume. For example, claude -n \"auth-refactor\" clearly identifies what the session was about."
+  - id: "session-feat-2"
+    question: "What does /fork do?"
+    type: "multiple-choice"
+    options:
+      - "Creates a Git fork of the repository"
+      - "Creates a parallel copy of the current session for safe experimentation"
+      - "Splits the terminal window"
+      - "Duplicates a file"
+    correct: 1
+    explanation: "/fork creates a copy of the current session at the current point. You can experiment freely in the fork — try risky changes, test alternative approaches — without affecting the original session. If the experiment fails, return to the original. If it succeeds, continue in the fork."
+  - id: "session-feat-3"
+    question: "What does pressing Esc Esc (double Escape) do?"
+    type: "multiple-choice"
+    options:
+      - "Exits Claude Code"
+      - "Rewinds the last change — undo for both code changes and conversation"
+      - "Clears the screen"
+      - "Switches models"
+    correct: 1
+    explanation: "Double Escape triggers the rewind feature. It undoes the last change Claude made. You can choose to rewind code changes only (files revert but conversation stays) or both code and conversation (as if the last exchange never happened)."
+  - id: "session-feat-4"
+    question: "What does /teleport do?"
+    type: "multiple-choice"
+    options:
+      - "Moves files between directories"
+      - "Transfers a conversation from the web interface (claude.ai) to the CLI"
+      - "Teleports to a different branch"
+      - "Copies a session to a teammate"
+    correct: 1
+    explanation: "/teleport transfers a conversation from the web interface (claude.ai) to your CLI session. This is useful when you start planning a feature on claude.ai and then want to switch to Claude Code for implementation — your full conversation context comes with you."
+---
+
+## Sessions Are Your Workspace
+
+Every time you run `claude`, you create a **session**. Sessions track your conversation history, the files Claude has read, and the changes it's made. They're your workspace for a task.
+
+Claude Code gives you powerful tools for managing sessions — naming them, branching them, undoing changes, and even transferring them between interfaces. Let's walk through each one.
+
+## Naming Sessions
+
+By default, sessions get auto-generated identifiers. That's fine for quick tasks, but when you're working on multiple things throughout the day, named sessions make it easy to find and resume specific work.
+
+### Name at Startup
+
+```bash
+claude -n "auth-token-refresh-bug"
+claude -n "order-cancellation-feature"
+claude -n "database-migration-v2"
+```
+
+The `-n` flag assigns a human-readable name. This name shows up in your session list when you use `/resume`.
+
+### Rename During a Session
+
+Already in a session and want to name it?
+
+```bash
+/rename payment-webhook-handler
+```
+
+This renames the current session without interrupting your work.
+
+## Forking Sessions
+
+**Forking** creates a parallel copy of your session. The original session is preserved — you can try something risky in the fork, and if it doesn't work out, go back to the original.
+
+```bash
+/fork experiment-redis-cache
+```
+
+This creates a new session that starts with the exact same conversation history and context as the current session. From this point forward, the fork and the original diverge independently.
+
+### When to Fork
+
+Forking is perfect for:
+
+- **Testing alternative approaches**: "Should we use a cache or a queue? Let me try both."
+- **Risky refactoring**: "I want to try restructuring this module — let me fork in case it doesn't work."
+- **Debugging hypotheses**: "I think the bug is in auth. Let me fork and explore that theory without losing my progress on the other theory."
+
+```bash
+# Working on a feature, but want to try a different approach
+/fork approach-b-event-driven
+
+# In the fork, try the alternative
+"Let's try an event-driven approach instead of the polling we discussed"
+
+# If it works → keep the fork
+# If it doesn't → go back to the original with /resume
+```
+
+### Fork vs. New Session
+
+| Feature | Fork | New Session |
+|---|---|---|
+| Keeps conversation history | Yes | No |
+| Shares starting context | Yes | Fresh context |
+| Independent from that point | Yes | Yes |
+| Best for | Experiments, what-ifs | New tasks |
+
+Fork when you want to preserve context and try a different direction. Start a new session when you're beginning an entirely different task.
+
+## Rewind: Esc Esc
+
+**Rewind** is Claude Code's undo system. Press **Esc twice** (Esc Esc) to undo the last change.
+
+When you rewind, Claude Code offers two options:
+
+### Code-Only Rewind
+
+Reverts file changes but keeps the conversation. Claude's last message stays in the conversation, but the actual code changes are undone.
+
+This is useful when Claude's approach was conceptually right but the implementation had issues. You can say "try again with a different approach" and Claude still has the context of the previous attempt.
+
+### Full Rewind
+
+Reverts both file changes and the conversation. It's as if the last exchange never happened. Your message is removed, Claude's response is removed, and all file changes are undone.
+
+This is useful when you asked the wrong question or went down the wrong path entirely.
+
+### Rewind in Practice
+
+```bash
+# Claude makes a change you don't like
+"Refactor the auth middleware to use async/await"
+# Claude rewrites the file... but it's worse than before
+
+# Press Esc Esc
+# Choose: "Rewind code only" or "Rewind code and conversation"
+
+# If code only: "That approach broke the tests. Try using the existing 
+# callback pattern but just fix the error handling"
+
+# If full rewind: Start fresh, as if you never asked
+```
+
+Rewind is non-destructive — your git history isn't affected. It only reverts in-memory changes Claude made during the session.
+
+## Resuming Sessions
+
+Every session is saved automatically. To resume a previous session:
+
+```bash
+/resume
+```
+
+This opens a visual session picker showing your recent sessions with:
+- Session name (if named)
+- Branch name
+- Timestamp
+- Model used
+
+Navigate with arrow keys and press Enter to resume.
+
+You can also resume directly:
+
+```bash
+# Resume the most recent session
+claude --resume
+
+# Resume a specific session by name
+claude --resume "auth-token-refresh-bug"
+```
+
+### When to Resume vs. Start Fresh
+
+Resume when:
+- You were interrupted and want to continue where you left off
+- You need the context from a previous session
+- You're working on a multi-day task
+
+Start fresh when:
+- The previous task is complete
+- You're switching to a different area of the codebase
+- The old context would be more confusing than helpful
+
+## Teleport: Web to CLI
+
+**Teleport** transfers a conversation from the web interface (claude.ai) to your CLI session.
+
+This workflow is common:
+
+1. Start planning a feature on **claude.ai** (browser) — discuss architecture, explore options
+2. Reach the point where you want to start coding
+3. Use `/teleport` to bring the full conversation into **Claude Code** (CLI) where you have file access and tool execution
+
+```bash
+# In Claude Code CLI
+/teleport
+# Follow the instructions to link your web conversation
+```
+
+The transferred conversation becomes your session context. All the planning discussion, decisions, and context from the web are now available in your CLI session where Claude can actually read and write files.
+
+## Session Metadata
+
+Every session tracks metadata you can inspect:
+
+```bash
+/status
+```
+
+This shows:
+- **Session name**: Your custom name or auto-generated ID
+- **Branch**: The Git branch you're on
+- **Model**: Which Claude model is active
+- **Context usage**: Current token consumption
+- **Duration**: How long the session has been active
+- **Authentication**: Subscription type and status
+
+## Combining Session Features
+
+Here's a real workflow using multiple session features:
+
+```bash
+# Start a named session for a complex task
+claude -n "migrate-to-prisma-5"
+
+# Work through the migration (20 messages)
+"Analyze our current Prisma 4 schema and plan the v5 migration..."
+
+# Want to try two migration strategies
+/fork strategy-incremental
+"Try migrating one model at a time, starting with User..."
+
+# Strategy didn't work well — go back
+/resume
+# Select the original "migrate-to-prisma-5" session
+
+# Try the other strategy
+/fork strategy-big-bang  
+"Migrate all models at once with a single migration file..."
+
+# This works! Continue in this fork
+# ...
+
+# Claude makes a change that breaks tests
+# Esc Esc → rewind code only
+"The relationship syntax was wrong. Use the new Prisma 5 relation syntax..."
+```
+
+Named session, two forks to test strategies, rewind when something goes wrong. Each feature serves a specific purpose in the workflow.
+
+## Key Takeaway
+
+Sessions are your workspace in Claude Code. Name them with `claude -n` for easy identification. Fork with `/fork` for safe experimentation. Rewind with Esc Esc to undo changes. Resume with `/resume` to pick up where you left off. Transfer from web to CLI with `/teleport`. These features let you work confidently — experiment freely, undo mistakes, and maintain organized workspaces for different tasks.

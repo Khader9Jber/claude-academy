@@ -1,0 +1,12 @@
+{
+  "title": "Agents & Skills",
+  "slug": "agents-and-skills",
+  "description": "Build and use Claude Code agents and skills. Learn about sub-agents, custom skills, the agent loop, tool orchestration, and multi-agent architectures.",
+  "arc": "power-user",
+  "order": 10,
+  "icon": "bot",
+  "color": "#a07ed6",
+  "estimatedHours": 5,
+  "prerequisites": ["hooks-and-automation"],
+  "lessonCount": 7
+}

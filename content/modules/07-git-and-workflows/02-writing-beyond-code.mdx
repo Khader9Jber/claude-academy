@@ -1,0 +1,230 @@
+---
+title: "Claude Code for Writing: Beyond Just Code"
+slug: "writing-beyond-code"
+order: 2
+difficulty: "intermediate"
+duration: 13
+tags: ["writing", "documentation", "technical-writing", "workflows"]
+objectives:
+  - "Use Claude Code for documentation, blog posts, and technical specs"
+  - "Process and transform text with pipe workflows"
+  - "Generate changelogs from git history"
+  - "Build technical writing workflows"
+quiz:
+  - id: "writing-1"
+    question: "How can you pipe a file to Claude for processing?"
+    type: "multiple-choice"
+    options:
+      - "Upload it through a web interface"
+      - "cat draft.md | claude -p 'improve this'"
+      - "Copy-paste it manually"
+      - "Use the /upload command"
+    correct: 1
+    explanation: "You can pipe any file to Claude using stdin: cat draft.md | claude -p 'improve this'. The -p flag runs Claude in headless mode — it processes the input, outputs the result, and exits. This makes Claude a powerful text processing tool in unix pipelines."
+  - id: "writing-2"
+    question: "What's the benefit of using Claude Code for documentation over the web interface?"
+    type: "multiple-choice"
+    options:
+      - "It's cheaper"
+      - "Claude can read your actual codebase for context, ensuring docs match the real implementation"
+      - "The web interface can't handle text"
+      - "Claude Code has a better spell checker"
+    correct: 1
+    explanation: "When Claude Code writes documentation, it can read the actual source files for context. This means the docs accurately reflect the current implementation, with correct function signatures, parameter names, and behaviors — something that's impossible when writing docs without code access."
+  - id: "writing-3"
+    question: "How do you generate a changelog from git history?"
+    type: "multiple-choice"
+    options:
+      - "Manually read each commit"
+      - "git log --oneline -20 | claude -p 'create a changelog from these commits'"
+      - "Use a changelog plugin"
+      - "Copy commits from GitHub"
+    correct: 1
+    explanation: "Pipe your git log to Claude: git log --oneline -20 | claude -p 'create a changelog'. Claude reads the commit messages, groups them by type (features, fixes, etc.), and produces a formatted changelog. You can customize the format with your instructions."
+---
+
+## More Than a Code Generator
+
+Most people think of Claude Code as a coding tool. But its combination of file access, terminal integration, and language capability makes it a powerful **writing tool** for any text-based work in your project.
+
+Documentation, README files, API docs, technical specs, blog posts, emails, changelogs — Claude Code handles all of these, and it does it better than the web interface because it has direct access to your codebase for context.
+
+## Documentation Workflows
+
+### Generating API Documentation
+
+Claude can read your route files and generate accurate API documentation:
+
+```bash
+"Read all the route files in src/routes/ and generate comprehensive 
+API documentation in OpenAPI/Swagger format. Include:
+- All endpoints with HTTP methods
+- Request body schemas (from the Zod validators)
+- Response schemas
+- Authentication requirements
+- Example requests and responses"
+```
+
+Because Claude reads the actual code, the documentation matches the real implementation — correct paths, parameter names, types, and validation rules.
+
+### README Generation
+
+```bash
+"Read package.json, CLAUDE.md, and the main entry point. 
+Generate a professional README.md that covers:
+- What the project does
+- How to install and run it
+- Configuration options
+- API overview
+- Contributing guidelines"
+```
+
+### Code Comments and JSDoc
+
+```bash
+"Add JSDoc comments to all public functions in src/services/order-service.ts.
+Include parameter types, return types, and brief descriptions.
+Use the actual function behavior — read the implementation, don't guess."
+```
+
+Claude reads each function, understands what it does, and writes accurate documentation — not generic placeholders.
+
+## Technical Specs
+
+Writing technical specs with Claude Code is powerful because it can validate the spec against the current codebase:
+
+```bash
+"Write a technical specification for adding WebSocket support to the 
+notification service. Read the current notification service code and 
+the Fastify configuration to ensure the spec is compatible with our 
+existing architecture. Include:
+- System design
+- API contract
+- Database changes
+- Migration plan
+- Testing strategy"
+```
+
+Claude reads your existing code, understands your architecture, and writes a spec that fits your actual system — not a generic WebSocket guide.
+
+## Pipe Processing
+
+Claude Code's headless mode (`-p`) turns it into a text processing tool you can use in unix pipelines:
+
+### Improving Drafts
+
+```bash
+cat docs/api-guide-draft.md | claude -p "Improve this API guide: 
+fix grammar, add code examples for each endpoint, and make the 
+tone more professional"
+```
+
+### Summarizing Long Documents
+
+```bash
+cat docs/architecture-decisions.md | claude -p "Summarize the key 
+decisions and their rationale in bullet points"
+```
+
+### Translating Content
+
+```bash
+cat README.md | claude -p "Translate to French, maintaining all 
+code examples and technical terms in English"
+```
+
+### Processing Multiple Files
+
+```bash
+# Process all markdown files in a directory
+for file in docs/*.md; do
+  cat "$file" | claude -p "Check for broken links, outdated 
+  information, and grammar issues. Output a report." > "reports/$(basename $file .md)-review.md"
+done
+```
+
+## Changelog Generation
+
+One of the most useful writing workflows — generating changelogs from git history:
+
+```bash
+# Simple changelog from recent commits
+git log --oneline -30 | claude -p "Create a changelog grouped by:
+- Features (feat: commits)
+- Bug Fixes (fix: commits)
+- Other Changes
+Format as markdown. Use past tense."
+```
+
+Output:
+
+```markdown
+## Changelog
+
+### Features
+- Added webhook retry logic with exponential backoff
+- Added order cancellation endpoint with refund integration
+- Added real-time inventory tracking via WebSocket
+
+### Bug Fixes
+- Fixed race condition in payment queue handler
+- Fixed JWT token refresh failing silently on timeout
+- Fixed N+1 query in order listing endpoint
+
+### Other Changes
+- Refactored auth middleware for better testability
+- Updated Prisma to v5.10
+- Improved error messages for validation failures
+```
+
+### Release Notes
+
+```bash
+git log v2.2.0..HEAD --oneline | claude -p "Write release notes 
+for v2.3.0. Include a summary paragraph, then list changes grouped 
+by category. Highlight breaking changes prominently. 
+Tone: professional, addressed to end users, not developers."
+```
+
+## Email and Communication
+
+```bash
+"Draft a technical email to the platform team explaining:
+- The auth service migration is complete
+- Breaking changes: JWT format changed (read src/lib/jwt.ts for details)
+- Migration steps for downstream services
+- Timeline: 2 weeks before old format is deprecated
+Tone: professional, clear, actionable"
+```
+
+Claude reads the actual JWT code to ensure the breaking changes described in the email are accurate.
+
+## Blog Posts and Content
+
+```bash
+"Write a technical blog post about our migration from REST to GraphQL.
+Read the old REST routes in src/routes/ and the new GraphQL schema in 
+src/graphql/ to understand what changed. Include:
+- Why we migrated
+- How we approached it
+- Code examples (before/after)
+- Lessons learned
+Target audience: other backend engineers considering the same migration."
+```
+
+## The @file Advantage
+
+The key advantage of writing in Claude Code vs. the web interface is **@file references**:
+
+```bash
+"Update docs/architecture.md based on the current state of the codebase.
+Read @src/services/ for the service layer, @src/routes/ for the API layer,
+and @prisma/schema.prisma for the data model. Make sure the docs reflect
+what's actually implemented, not what was planned."
+```
+
+Claude reads the real code and writes documentation that matches. No guessing, no outdated information.
+
+## Key Takeaway
+
+Claude Code isn't just for writing code — it's a powerful tool for any text-based work in your project. Documentation, technical specs, changelogs, emails, and blog posts all benefit from Claude's ability to read your actual codebase for context. Use pipe processing (`cat file | claude -p "instructions"`) for batch text operations, and always leverage @file references to ensure written content accurately reflects your real implementation.

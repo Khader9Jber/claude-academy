@@ -1,0 +1,274 @@
+---
+title: "Plan Mode and Debugging Strategies"
+slug: "plan-mode-debugging"
+order: 6
+difficulty: "advanced"
+duration: 15
+tags: ["plan-mode", "debugging", "strategies", "workflow"]
+objectives:
+  - "Use /plan for read-only architecture analysis"
+  - "Execute plans with /execute"
+  - "Use /fork for parallel debugging hypotheses"
+  - "Apply the systematic debugging approach"
+quiz:
+  - id: "plan-debug-1"
+    question: "What does /plan mode do?"
+    type: "multiple-choice"
+    options:
+      - "Creates a project plan document"
+      - "Puts Claude in read-only mode — it can analyze and plan but cannot make any edits"
+      - "Plans a meeting"
+      - "Schedules tasks"
+    correct: 1
+    explanation: "/plan puts Claude in read-only mode. It can read files, analyze code, and create detailed plans — but it cannot write files, run commands, or make changes. This is perfect for architecture review and planning before committing to an approach."
+  - id: "plan-debug-2"
+    question: "How do you apply a plan created in /plan mode?"
+    type: "multiple-choice"
+    options:
+      - "Copy-paste it manually"
+      - "Type /execute to switch from plan mode to execution mode"
+      - "Create a new session"
+      - "Plans can't be executed"
+    correct: 1
+    explanation: "/execute switches from plan mode to execution mode. Claude now has full tool access and applies the plan it just created. The plan context remains — Claude knows exactly what to do because it just finished planning it."
+  - id: "plan-debug-3"
+    question: "How do you test parallel debugging hypotheses?"
+    type: "multiple-choice"
+    options:
+      - "Try them one at a time"
+      - "Use /fork to create parallel sessions — each fork tests a different hypothesis"
+      - "Ask Claude to test all at once"
+      - "Write a test suite"
+    correct: 1
+    explanation: "/fork creates a copy of the current session. Fork once for hypothesis A, go back and fork again for hypothesis B. Each fork explores independently. When you find the answer, continue in the successful fork and discard the others."
+  - id: "plan-debug-4"
+    question: "What is the systematic debugging approach?"
+    type: "multiple-choice"
+    options:
+      - "Try random fixes until it works"
+      - "Reproduce → Isolate → Diagnose → Fix → Verify"
+      - "Delete and rewrite"
+      - "Ask ChatGPT"
+    correct: 1
+    explanation: "The systematic approach is: Reproduce (confirm the bug), Isolate (narrow to specific code), Diagnose (understand root cause), Fix (implement the solution), Verify (confirm the fix works and doesn't break other things). Claude follows this approach when you give it structured debugging tasks."
+---
+
+## Plan Before You Build
+
+The most common mistake developers make with Claude Code is jumping straight to implementation. "Build me a payment service" produces mediocre results. "Let's plan the payment service first, then build it" produces excellent results.
+
+Plan mode gives you a structured way to think before you code.
+
+## /plan Mode
+
+Type `/plan` during a session to enter plan mode:
+
+```bash
+/plan
+```
+
+In plan mode, Claude:
+- **Can**: Read files, analyze code, search the codebase, run read-only commands
+- **Cannot**: Write files, modify code, run destructive commands
+
+This is deliberately limiting. The constraint forces Claude to think, not act.
+
+### Using Plan Mode
+
+```bash
+/plan
+
+"I need to add order cancellation with refund processing to our API.
+Read the existing order service, payment service, and database schema.
+Then create a detailed plan covering:
+1. Database changes needed
+2. New service methods
+3. API endpoint design
+4. Integration with existing payment processing
+5. Test strategy
+6. Migration plan"
+```
+
+Claude reads the codebase, understands the existing architecture, and produces a thorough plan — without touching any files.
+
+### Reviewing the Plan
+
+Claude's plan might look like:
+
+```markdown
+## Order Cancellation Plan
+
+### Database Changes
+- Add `canceled_at` and `cancellation_reason` columns to orders table
+- Add `refund_id` column to link cancellation to refund
+- New migration: 20260404_add_order_cancellation.sql
+
+### Service Layer
+- OrderService.cancelOrder(orderId, reason): 
+  - Validates order is in cancellable state
+  - Creates refund via PaymentService
+  - Updates order status to 'canceled'
+  - Emits OrderCanceled event
+
+### API Endpoint
+- POST /api/v1/orders/:id/cancel
+- Body: { reason: string }
+- Response: { order: Order, refund: Refund }
+- Auth: requires order owner or admin
+
+### Test Strategy
+- Unit: cancelOrder service method (happy path, already canceled, 
+  non-cancellable status, refund failure)
+- Integration: full endpoint test with database
+- Edge: concurrent cancellation attempts
+```
+
+You can review, ask questions, and refine the plan before any code is written.
+
+### Executing the Plan
+
+When you're satisfied with the plan:
+
+```bash
+/execute
+```
+
+Claude switches to full mode and implements the plan. It has the complete plan in context, so it follows the architecture, naming, and patterns you agreed on.
+
+## Starting in Plan Mode
+
+You can start a session directly in plan mode:
+
+```bash
+claude --permission-mode plan
+```
+
+This is useful when you know you want to analyze before acting — like reviewing a new codebase or planning a large refactoring.
+
+## The /debug Skill
+
+Claude Code has a built-in debugging skill that provides guided troubleshooting:
+
+```bash
+/debug
+```
+
+This activates a structured debugging workflow where Claude:
+
+1. Asks you to describe the symptoms
+2. Reads relevant code and logs
+3. Forms hypotheses
+4. Tests each hypothesis systematically
+5. Identifies the root cause
+6. Proposes and implements a fix
+
+## Parallel Debugging with /fork
+
+When you're debugging and have multiple theories about the root cause, use `/fork` to test them in parallel:
+
+```bash
+# In a debugging session
+"I think the timeout is either in the database query or the Redis connection"
+
+# Fork to test database theory
+/fork theory-database
+"Let's check the database query. Read the order-repo.ts query 
+and check for slow operations..."
+
+# Go back to the original session
+/resume
+# Select the pre-fork session
+
+# Fork to test Redis theory  
+/fork theory-redis
+"Let's check the Redis connection. Read the cache service 
+and check for connection timeouts..."
+```
+
+Each fork explores independently. When you find the answer, continue in the successful fork.
+
+## The Systematic Debugging Approach
+
+When debugging with Claude, follow this structure:
+
+### Step 1: Reproduce
+
+```bash
+"The bug: users report seeing 'null' for their order total. 
+Here's the error log: @logs/api-errors-2026-04-04.log
+Can you reproduce this by finding the code path?"
+```
+
+Claude traces the code path to understand how the bug manifests.
+
+### Step 2: Isolate
+
+```bash
+"Narrow it down. Is the null coming from:
+a) The database (stored as null)
+b) The service layer (calculation error)
+c) The API serialization (formatting issue)"
+```
+
+Claude reads each layer and isolates where the null originates.
+
+### Step 3: Diagnose
+
+```bash
+"We've isolated it to the service layer. The calculateTotal function
+returns null when the order has no items. Read the function and explain
+why — what's the root cause?"
+```
+
+Claude analyzes the specific function and identifies the root cause.
+
+### Step 4: Fix
+
+```bash
+"Fix it. The calculateTotal function should return 0 for empty orders, 
+not null. Also add a test that catches this case."
+```
+
+Claude implements the fix and writes the test.
+
+### Step 5: Verify
+
+```bash
+"Run the tests. Also check if there are other places in the codebase 
+where we make the same mistake — returning null instead of a default 
+value for calculations."
+```
+
+Claude runs tests and searches for similar issues.
+
+## Combining Strategies
+
+The most effective debugging sessions combine multiple strategies:
+
+```bash
+# Start in plan mode to understand the problem
+/plan
+"Analyze the payment processing code and identify all places where
+a timeout could occur. Don't fix anything yet — just map the risks."
+
+# Review the analysis
+# ...
+
+# Switch to execution with a clear target
+/execute
+"Fix the timeout in the webhook handler — add a 30-second timeout 
+with retry logic"
+
+# Fork to test the fix safely
+/fork test-fix
+"Apply the fix and run the payment service test suite"
+
+# If tests pass, continue in the fork
+# If tests fail, go back and try a different approach
+```
+
+Plan → Execute → Fork → Verify. Each tool serves a specific purpose in the workflow.
+
+## Key Takeaway
+
+Plan mode (`/plan`) gives Claude read-only access for analysis and planning before making changes. Use `/execute` to apply the plan. Use `/fork` to test multiple debugging hypotheses in parallel. The systematic debugging approach — reproduce, isolate, diagnose, fix, verify — gives Claude the structure it needs to find root causes efficiently. Always plan complex changes before implementing them, and fork for risky experiments.

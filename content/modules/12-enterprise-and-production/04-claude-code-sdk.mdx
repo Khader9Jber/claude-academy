@@ -1,0 +1,299 @@
+---
+title: "Claude Code SDK: Building Custom Tools"
+slug: "claude-code-sdk"
+order: 4
+difficulty: "expert"
+duration: 15
+tags: ["sdk", "automation", "structured-output", "tooling"]
+objectives:
+  - "Use claude -p with structured JSON output"
+  - "Build custom CLI tools powered by Claude Code"
+  - "Define output schemas for consistent results"
+  - "Create programmatic automation patterns"
+quiz:
+  - id: "sdk-1"
+    question: "How do you get structured JSON output from Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Ask nicely for JSON"
+      - "Use --output-format json for structured response metadata and --json-schema for custom output schemas"
+      - "Parse text output manually"
+      - "Use a JSON library"
+    correct: 1
+    explanation: "--output-format json returns Claude's response as structured JSON with metadata (cost, tokens, errors). --json-schema goes further, letting you define the exact shape of Claude's response — ensuring consistent, parseable output for automation."
+  - id: "sdk-2"
+    question: "What does --json-schema do?"
+    type: "multiple-choice"
+    options:
+      - "Validates JSON files"
+      - "Forces Claude's response to conform to a specific JSON schema you define"
+      - "Creates a database schema"
+      - "Formats JSON output"
+    correct: 1
+    explanation: "--json-schema provides a JSON Schema that Claude must follow when generating its response. If you define a schema with fields like {severity: string, file: string, issue: string}, Claude's response will always have exactly those fields — making it reliably parseable by your automation scripts."
+  - id: "sdk-3"
+    question: "What does --input-format do?"
+    type: "multiple-choice"
+    options:
+      - "Changes the input language"
+      - "Specifies how piped input should be interpreted (e.g., as JSON, text, or code)"
+      - "Changes the keyboard layout"
+      - "Formats input files"
+    correct: 1
+    explanation: "--input-format tells Claude how to interpret piped input. When you pipe JSON data, --input-format json tells Claude the input is structured JSON data, not arbitrary text. This helps Claude process the input correctly."
+  - id: "sdk-4"
+    question: "What's the benefit of building custom CLI tools with Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "They're faster"
+      - "You create domain-specific automation tools that your team uses without knowing Claude Code"
+      - "They use fewer tokens"
+      - "They work offline"
+    correct: 1
+    explanation: "Custom CLI tools wrap Claude Code behind a familiar interface. Your team runs 'my-tool analyze src/' without knowing Claude Code powers it. This democratizes AI-powered automation — non-Claude-experts get the benefits through tools they already understand."
+---
+
+## Claude Code as a Building Block
+
+Everything we've covered so far uses Claude Code as an interactive tool or a simple headless processor. But Claude Code can also be used as a **building block** inside larger tools.
+
+Using `claude -p` with structured output, you can build custom CLI tools, automation pipelines, and processing systems that use Claude's intelligence behind the scenes.
+
+## Structured Output with --output-format json
+
+The basic JSON output:
+
+```bash
+result=$(claude -p "What is 2+2?" --output-format json)
+echo "$result" | jq .
+```
+
+```json
+{
+  "type": "result",
+  "subtype": "success",
+  "result": "2 + 2 = 4",
+  "session_id": "sess_abc123",
+  "cost_usd": 0.001,
+  "is_error": false,
+  "total_turns": 1,
+  "duration_ms": 1234,
+  "duration_api_ms": 987
+}
+```
+
+### Parsing in Scripts
+
+```bash
+#!/bin/bash
+result=$(claude -p "Analyze @src/services/auth.ts for security issues" \
+  --output-format json \
+  --max-turns 10)
+
+is_error=$(echo "$result" | jq -r '.is_error')
+response=$(echo "$result" | jq -r '.result')
+cost=$(echo "$result" | jq -r '.cost_usd')
+
+if [ "$is_error" = "true" ]; then
+  echo "Analysis failed: $response"
+  exit 1
+fi
+
+echo "Analysis complete (cost: \$$cost):"
+echo "$response"
+```
+
+## Custom Output Schemas with --json-schema
+
+Force Claude's response to match a specific structure:
+
+```bash
+claude -p "Analyze @src/services/auth.ts for security issues" \
+  --output-format json \
+  --json-schema '{
+    "type": "object",
+    "properties": {
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "severity": { "type": "string", "enum": ["critical", "high", "medium", "low"] },
+            "file": { "type": "string" },
+            "line": { "type": "number" },
+            "issue": { "type": "string" },
+            "fix": { "type": "string" }
+          },
+          "required": ["severity", "file", "issue"]
+        }
+      },
+      "summary": { "type": "string" },
+      "risk_score": { "type": "number" }
+    },
+    "required": ["findings", "summary", "risk_score"]
+  }'
+```
+
+Claude's response is forced into this exact shape:
+
+```json
+{
+  "findings": [
+    {
+      "severity": "high",
+      "file": "src/services/auth.ts",
+      "line": 47,
+      "issue": "JWT secret loaded from environment without fallback",
+      "fix": "Add validation that JWT_SECRET is set at startup"
+    }
+  ],
+  "summary": "One high-severity finding related to configuration security",
+  "risk_score": 6.5
+}
+```
+
+This is reliable enough for automation — your scripts know exactly what fields to expect.
+
+## Building Custom CLI Tools
+
+### Security Scanner
+
+Create a reusable security scanner:
+
+```bash
+#!/bin/bash
+# security-scan.sh — Scan a file or directory for security issues
+
+target="${1:-.}"
+schema='{
+  "type": "object",
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": { "type": "string" },
+          "file": { "type": "string" },
+          "line": { "type": "number" },
+          "category": { "type": "string" },
+          "description": { "type": "string" },
+          "recommendation": { "type": "string" }
+        },
+        "required": ["severity", "file", "category", "description"]
+      }
+    },
+    "total_files_scanned": { "type": "number" },
+    "critical_count": { "type": "number" },
+    "high_count": { "type": "number" }
+  },
+  "required": ["findings", "total_files_scanned", "critical_count", "high_count"]
+}'
+
+result=$(claude -p "Scan $target for security vulnerabilities. Check for: \
+  SQL injection, XSS, auth bypass, data exposure, input validation gaps. \
+  Be thorough." \
+  --output-format json \
+  --json-schema "$schema" \
+  --max-turns 20)
+
+# Parse results
+critical=$(echo "$result" | jq -r '.result | fromjson | .critical_count')
+high=$(echo "$result" | jq -r '.result | fromjson | .high_count')
+
+echo "Security Scan Results for $target"
+echo "Critical: $critical | High: $high"
+
+if [ "$critical" -gt 0 ]; then
+  echo "CRITICAL ISSUES FOUND — review required"
+  echo "$result" | jq -r '.result | fromjson | .findings[] | select(.severity=="critical")'
+  exit 2
+fi
+```
+
+Usage:
+
+```bash
+./security-scan.sh src/services/
+# No Claude Code knowledge needed to use this tool
+```
+
+### Code Complexity Analyzer
+
+```bash
+#!/bin/bash
+# complexity-report.sh — Generate a complexity report
+
+schema='{
+  "type": "object",
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "complexity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "loc": { "type": "number" },
+          "functions": { "type": "number" },
+          "concerns": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "overall_health": { "type": "string" }
+  }
+}'
+
+claude -p "Analyze complexity of all files in src/services/. \
+  For each file, assess: lines of code, number of functions, \
+  cyclomatic complexity, and specific concerns." \
+  --output-format json \
+  --json-schema "$schema" \
+  --max-turns 15 | jq '.result | fromjson'
+```
+
+## Programmatic Usage Patterns
+
+### Pipeline Processing
+
+```bash
+# Process each service file and collect results
+results="[]"
+for file in src/services/*.ts; do
+  analysis=$(claude -p "Analyze @$file" \
+    --output-format json \
+    --max-turns 5)
+  results=$(echo "$results" | jq --arg file "$file" --arg analysis "$analysis" \
+    '. + [{"file": $file, "analysis": ($analysis | fromjson | .result)}]')
+done
+echo "$results" | jq '.'
+```
+
+### Conditional Processing
+
+```bash
+# Only fix files that have issues
+result=$(claude -p "Check @$file for type errors" \
+  --output-format json \
+  --max-turns 3)
+
+has_errors=$(echo "$result" | jq -r '.result | test("error")')
+if [ "$has_errors" = "true" ]; then
+  claude -p "Fix the type errors in @$file" --max-turns 10
+fi
+```
+
+### Aggregation
+
+```bash
+# Scan all files, aggregate results
+find src -name "*.ts" | while read file; do
+  claude -p "Rate security of $file: 1-10" \
+    --output-format json \
+    --max-turns 3
+done | jq -s '[.[] | .result | tonumber] | {average: (add / length), min: min, max: max}'
+```
+
+## Key Takeaway
+
+The Claude Code SDK pattern uses `claude -p` with `--output-format json` and `--json-schema` to build custom tools powered by Claude's intelligence. Define output schemas for consistent, parseable results. Wrap Claude Code behind simple CLI interfaces that your team uses without needing Claude expertise. This turns Claude from a tool you use into a building block you build with — security scanners, complexity analyzers, migration tools, and any domain-specific automation you need.

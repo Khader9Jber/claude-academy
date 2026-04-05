@@ -1,0 +1,387 @@
+---
+title: "Prompt Templates You'll Use Every Day"
+slug: "prompt-templates"
+order: 7
+difficulty: "beginner"
+duration: 20
+tags: ["prompt-engineering", "templates", "reference", "practical"]
+objectives:
+  - "Have a library of 15+ ready-to-use prompt templates"
+  - "Know which template to reach for in common development situations"
+  - "Understand how to customize templates for your specific codebase"
+  - "Build the habit of using structured prompts instead of ad-hoc ones"
+quiz:
+  - id: "templates-1"
+    question: "Why should you use prompt templates instead of ad-hoc prompts?"
+    type: "multiple-choice"
+    options:
+      - "Claude requires templates to work"
+      - "Templates are faster, produce consistent results, and encode best practices"
+      - "Ad-hoc prompts are forbidden by Anthropic"
+      - "Templates use fewer tokens"
+    correct: 1
+    explanation: "Templates encode the lessons of prompt engineering (role, context, format, constraints) into reusable patterns. They save you from reinventing the wheel every time and produce consistently good results."
+  - id: "templates-2"
+    question: "What should you customize in a template before using it?"
+    type: "multiple-choice"
+    options:
+      - "Nothing — templates work perfectly as-is"
+      - "The bracketed placeholders ([file], [error], etc.) with your actual values"
+      - "The model name"
+      - "The API version"
+    correct: 1
+    explanation: "Templates use bracketed placeholders like [file], [error message], and [requirements] that you replace with your specific values. The structure stays the same; the content changes for each use."
+  - id: "templates-3"
+    question: "Which template would you use when you get an error you don't understand?"
+    type: "multiple-choice"
+    options:
+      - "Code Review template"
+      - "Debug This Error template"
+      - "Write Documentation template"
+      - "Create a Plan template"
+    correct: 1
+    explanation: "The Debug This Error template is specifically designed for error diagnosis — it asks Claude to explain the error, identify the root cause, provide the fix, and explain how to prevent similar errors."
+---
+
+## Your Prompt Toolkit
+
+What follows are 15 ready-to-use prompt templates organized by category. These aren't theoretical — they're the prompts working developers actually use daily with Claude Code.
+
+Each template uses `[brackets]` for values you replace with your specifics. Copy them, customize them, and build muscle memory around reaching for the right template at the right time.
+
+---
+
+## Debugging Templates
+
+### 1. Debug This Error
+
+```
+I'm getting this error:
+
+[paste the full error message and stack trace]
+
+The error occurs when [describe what you were doing].
+The relevant code is in @[file path].
+
+1. Explain what this error means in plain language
+2. Identify the root cause
+3. Provide the fix (show the exact code change)
+4. Explain how to prevent similar errors
+```
+
+### 2. Fix a Failing Test
+
+```
+This test is failing:
+
+```
+[paste test output with assertion error]
+```
+
+The test file: @[test file path]
+The implementation: @[source file path]
+
+Determine whether the bug is in the test or the implementation.
+Show the fix with a before/after diff.
+```
+
+### 3. Performance Investigation
+
+```
+[Endpoint/Function] is slow — taking [X]ms when it should take [Y]ms.
+
+I've confirmed:
+- [What you've ruled out, e.g., "database query runs in <50ms"]
+- [What you've observed, e.g., "CPU spikes to 100% during the call"]
+
+Profile @[file path] and identify the bottleneck. Suggest a fix
+with expected performance improvement.
+```
+
+---
+
+## Code Quality Templates
+
+### 4. Code Review
+
+```
+Review @[file or directory] for:
+1. Bugs and logic errors
+2. Security vulnerabilities
+3. Performance issues
+4. Code quality and maintainability
+
+For each issue found:
+- **File**: path
+- **Line**: number
+- **Severity**: Critical / High / Medium / Low
+- **Issue**: description
+- **Fix**: suggested code change
+
+Be thorough — I'd rather fix issues now than find them in production.
+```
+
+### 5. Refactor This Function
+
+```
+Refactor @[file path] function `[function name]`.
+
+Goals:
+- [e.g., "Reduce complexity — current cyclomatic complexity is too high"]
+- [e.g., "Extract repeated logic into helper functions"]
+- [e.g., "Replace callbacks with async/await"]
+
+Constraints:
+- Do NOT change the function signature or return type
+- Do NOT change the external behavior (same inputs → same outputs)
+- Keep the function in the same file
+- Add JSDoc if missing
+```
+
+### 6. Write Tests
+
+```
+Write comprehensive tests for @[file path].
+
+Test framework: [Jest/Vitest/Mocha/pytest/etc.]
+Test file location: @[test file path or where to create it]
+
+Cover:
+- Happy path for each public function
+- Edge cases: empty input, null/undefined, boundary values
+- Error cases: invalid input, network failures, timeouts
+- [Any specific scenarios relevant to your code]
+
+Follow the test patterns in @[existing test file for reference].
+```
+
+---
+
+## Code Generation Templates
+
+### 7. Explain This Code
+
+```
+Explain @[file path] to me as if I'm a [junior developer / new
+team member / non-technical stakeholder].
+
+Structure:
+1. **Purpose**: What does this code do? (2-3 sentences)
+2. **Flow**: Step-by-step walkthrough of the logic
+3. **Key decisions**: Why was it written this way? What are the tradeoffs?
+4. **Dependencies**: What does it depend on? What depends on it?
+5. **Gotchas**: Anything surprising or non-obvious?
+```
+
+### 8. Write Documentation
+
+```
+Write documentation for @[file or directory].
+
+Output format: [JSDoc comments / README section / API docs / inline comments]
+
+Include:
+- Purpose and overview
+- All public functions with @param, @returns, @throws, @example
+- Configuration options and defaults
+- Usage examples (at least 2)
+- Known limitations or caveats
+
+Tone: [Technical but clear / Beginner-friendly / Reference-style]
+```
+
+### 9. Generate API Endpoints
+
+```
+Generate REST API endpoints for [resource/feature].
+
+Stack: [Express + TypeScript / Next.js API routes / FastAPI / etc.]
+Database: [Prisma + PostgreSQL / Mongoose + MongoDB / etc.]
+
+Endpoints needed:
+- [e.g., "CRUD for projects (list, get, create, update, delete)"]
+- [e.g., "Add/remove members from a project"]
+- [e.g., "Search projects by name with pagination"]
+
+Requirements:
+- Authentication via Bearer token (middleware already exists at @[path])
+- Input validation with [Zod / Joi / class-validator]
+- Proper HTTP status codes (201 for create, 204 for delete, etc.)
+- Cursor-based pagination for list endpoints
+- Follow the patterns in @[existing route file for reference]
+```
+
+---
+
+## Analysis Templates
+
+### 10. Compare Options
+
+```
+Compare [Option A] vs [Option B] for [our use case].
+
+Context:
+- [Team size, experience level]
+- [Scale requirements]
+- [Timeline constraints]
+- [Existing tech stack]
+
+Analyze across these dimensions:
+| Dimension | [Option A] | [Option B] |
+|-----------|-----------|-----------|
+| Performance | | |
+| Developer experience | | |
+| Learning curve | | |
+| Ecosystem/community | | |
+| Cost | | |
+| Scalability | | |
+| [Custom dimension] | | |
+
+Conclude with a clear recommendation and the reasoning behind it.
+```
+
+### 11. Analyze This Data
+
+```
+Analyze this [data/output/log]:
+
+```
+[paste data]
+```
+
+Questions:
+1. [Specific question about the data]
+2. [Another question]
+3. [Pattern or anomaly to identify]
+
+Present findings as:
+- **Key insight** (1-2 sentences)
+- **Supporting evidence** (specific data points)
+- **Recommended action** (what to do about it)
+```
+
+### 12. Create a Plan
+
+```
+Create an implementation plan for: [feature/project description]
+
+Context:
+- Current codebase: @[relevant files or directories]
+- Timeline: [days/weeks available]
+- Team: [who's working on this]
+- Dependencies: [external services, other teams, etc.]
+
+Output:
+1. **Architecture overview** (how it fits into the existing system)
+2. **Task breakdown** (numbered steps, each completable in <4 hours)
+3. **Risk assessment** (what could go wrong, mitigation strategies)
+4. **Testing strategy** (what to test and how)
+5. **Rollout plan** (feature flags? gradual rollout? big bang?)
+```
+
+---
+
+## Security & DevOps Templates
+
+### 13. Review for Security
+
+```
+Perform a security audit on @[file or directory].
+
+Check for:
+- [ ] Injection vulnerabilities (SQL, NoSQL, command, LDAP)
+- [ ] Authentication/authorization bypasses
+- [ ] Sensitive data exposure (API keys, passwords in logs/responses)
+- [ ] CSRF/XSS vectors
+- [ ] Insecure deserialization
+- [ ] Missing rate limiting
+- [ ] Improper error handling (stack traces leaked to client)
+
+For each finding:
+- **Vulnerability**: name and CWE number if applicable
+- **Location**: file and line
+- **Severity**: Critical / High / Medium / Low
+- **Exploit scenario**: how an attacker would use this
+- **Fix**: exact code change
+```
+
+### 14. Write SQL Query
+
+```
+Write a [PostgreSQL / MySQL / SQLite] query for:
+[describe what data you need]
+
+Schema context:
+```sql
+[paste relevant CREATE TABLE statements or describe the schema]
+```
+
+Requirements:
+- [Performance constraint, e.g., "must use indexes, no full table scans"]
+- [Format: "return columns: id, name, email, total_orders"]
+- [Ordering/pagination: "ordered by created_at DESC, limit 20"]
+
+Also provide the EXPLAIN plan analysis and suggest any needed indexes.
+```
+
+---
+
+## Configuration Templates
+
+### 15. Create CLAUDE.md
+
+```
+Analyze this project and generate a CLAUDE.md file that includes:
+
+1. **Project overview** — what it is and what it does
+2. **Tech stack** — frameworks, languages, key dependencies
+3. **Project structure** — directory layout with descriptions
+4. **Build commands** — install, dev, build, test, lint
+5. **Code conventions** — naming, patterns, file organization
+6. **Testing** — framework, location, how to run, patterns to follow
+7. **Common tasks** — how to add a route, create a component, run migrations
+
+Base this on the actual codebase:
+@package.json
+@tsconfig.json
+@src/
+```
+
+### 16. System Prompt Template
+
+```
+Write a system prompt for a [chatbot/assistant/agent] that:
+
+Purpose: [What the system does]
+Audience: [Who interacts with it]
+Tone: [Professional / Friendly / Technical / etc.]
+
+Must include:
+- Clear identity statement
+- Capability boundaries (what it can and cannot do)
+- Response formatting rules
+- Error handling instructions (what to say when it can't help)
+- [Domain-specific instructions]
+
+Must NOT:
+- [Things to explicitly prohibit]
+- [Common failure modes to prevent]
+
+Optimize for: [accuracy / speed / helpfulness / safety]
+```
+
+---
+
+## How to Use These Templates
+
+1. **Identify your task category** — debugging, code quality, generation, analysis, or security.
+2. **Pick the closest template** — even if it's not a perfect match.
+3. **Replace the `[brackets]`** with your specific values.
+4. **Add or remove sections** as needed for your situation.
+5. **Iterate** — if the first response isn't quite right, refine.
+
+Over time, you'll customize these templates for your specific stack and coding conventions. Consider storing your personalized versions in your project's CLAUDE.md or in a shared team document.
+
+## Key Takeaway
+
+Prompt templates encode best practices into reusable patterns. Instead of writing ad-hoc prompts from scratch, start with a template that already has the right structure — role, context, format, and constraints — and customize it for your situation. These 15+ templates cover the tasks you'll encounter daily: debugging, code review, testing, documentation, security audits, and planning.

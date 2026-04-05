@@ -1,0 +1,12 @@
+{
+  "title": "Commands & Navigation",
+  "slug": "commands-and-navigation",
+  "description": "Learn every slash command, keyboard shortcut, and navigation pattern in Claude Code. Move fast and get things done efficiently in the terminal.",
+  "arc": "foundation",
+  "order": 4,
+  "icon": "command",
+  "color": "#5cb870",
+  "estimatedHours": 2,
+  "prerequisites": ["claude-code-basics"],
+  "lessonCount": 5
+}

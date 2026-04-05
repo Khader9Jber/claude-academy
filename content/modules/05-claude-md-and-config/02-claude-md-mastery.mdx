@@ -1,0 +1,274 @@
+---
+title: "CLAUDE.md Mastery: Production-Quality Files"
+slug: "claude-md-mastery"
+order: 2
+difficulty: "intermediate"
+duration: 18
+tags: ["claude-md", "configuration", "production", "best-practices"]
+objectives:
+  - "Write production-grade CLAUDE.md files"
+  - "Define architecture rules that Claude enforces consistently"
+  - "Include agent team rules for multi-agent workflows"
+  - "Avoid common CLAUDE.md mistakes"
+quiz:
+  - id: "claude-md-mastery-1"
+    question: "Why should architecture rules in CLAUDE.md be prescriptive rather than descriptive?"
+    type: "multiple-choice"
+    options:
+      - "Claude can't understand descriptions"
+      - "Prescriptive rules ('always do X, never do Y') are unambiguous and enforceable"
+      - "Descriptive rules use more tokens"
+      - "There's no difference"
+    correct: 1
+    explanation: "Prescriptive rules like 'always HMAC-verify webhooks' and 'never query the database outside repositories' give Claude clear, enforceable instructions. Descriptive rules like 'we generally prefer...' are ambiguous and Claude may interpret them differently each session."
+  - id: "claude-md-mastery-2"
+    question: "What's the ideal length for a production CLAUDE.md?"
+    type: "multiple-choice"
+    options:
+      - "As long as possible — include everything"
+      - "Under 10 lines"
+      - "50-150 lines — focused and actionable, not a novel"
+      - "Exactly 100 lines"
+    correct: 2
+    explanation: "50-150 lines is the sweet spot. Long enough to cover stack, conventions, architecture, and commands. Short enough that it doesn't eat excessive context tokens every session. Every line should earn its place by influencing Claude's coding decisions."
+  - id: "claude-md-mastery-3"
+    question: "Which of these is a well-written CLAUDE.md rule?"
+    type: "multiple-choice"
+    options:
+      - "We like to use good error handling"
+      - "Error handling is important in this project"
+      - "All errors must be thrown as AppError from src/lib/errors.ts with an HTTP status code and machine-readable error code"
+      - "Try to handle errors properly"
+    correct: 2
+    explanation: "The best CLAUDE.md rules are specific, prescriptive, and include the exact file path or pattern to follow. 'All errors must be thrown as AppError from src/lib/errors.ts with an HTTP status code and machine-readable error code' leaves no room for interpretation."
+  - id: "claude-md-mastery-4"
+    question: "What should the 'Agent Team Rules' section contain?"
+    type: "multiple-choice"
+    options:
+      - "A list of all available AI models"
+      - "Instructions for how sub-agents should behave, what they should avoid, and coordination rules"
+      - "Marketing copy about your product"
+      - "Your company's org chart"
+    correct: 1
+    explanation: "Agent Team Rules tell sub-agents how to behave — what tools to use, what to avoid, how to coordinate with other agents, and what boundaries to respect. This prevents agents from overstepping or conflicting with each other."
+---
+
+## From Good to Production-Grade
+
+In the previous lesson you wrote your first CLAUDE.md. It worked — Claude knew your stack and conventions. But production CLAUDE.md files go further. They handle edge cases, prevent common mistakes, define security rules, and scale to multi-agent workflows.
+
+The difference between a good CLAUDE.md and a great one is the same as the difference between a good onboarding doc and a great one: the great one anticipates problems before they happen.
+
+## The Production CLAUDE.md Template
+
+Here's the structure of a production-quality CLAUDE.md, section by section:
+
+### Project Identity
+
+Start with a one-liner so Claude immediately understands what it's working on:
+
+```markdown
+# ShipFast — E-commerce Fulfillment API
+
+Multi-tenant SaaS API handling order fulfillment, inventory management,
+and carrier integrations for 200+ merchants.
+```
+
+This context shapes every decision Claude makes. An e-commerce API needs different patterns than a CLI tool or a static site.
+
+### Stack (Be Precise)
+
+```markdown
+## Stack
+
+- **Runtime**: Node.js 20.11 LTS + TypeScript 5.4 (strict: true, exactOptionalPropertyTypes: true)
+- **Framework**: Fastify 4.26 with @fastify/autoload, @fastify/cors, @fastify/rate-limit
+- **ORM**: Prisma 5.10 with PostgreSQL 16 (connection pooling via PgBouncer)
+- **Cache**: Redis 7.2 via ioredis (cluster mode in production)
+- **Queue**: BullMQ 5.x for async jobs (email, webhook delivery, inventory sync)
+- **Auth**: JWT via @fastify/jwt + API keys for merchant auth
+- **Validation**: Zod 3.22 for all request/response schemas
+- **Testing**: Vitest 1.3 + Supertest (unit + integration), Playwright (E2E)
+- **CI/CD**: GitHub Actions → Docker → AWS ECS Fargate
+- **Monorepo**: Turborepo with pnpm workspaces
+```
+
+Notice the version numbers. When Claude knows you're on Prisma 5.10, it won't suggest Prisma 4 syntax. When it knows you use pnpm workspaces, it won't generate npm scripts.
+
+### Architecture Rules (Prescriptive)
+
+This is where production CLAUDE.md files shine. Use **prescriptive rules** — "always" and "never" — not vague descriptions:
+
+```markdown
+## Architecture Rules
+
+### Request Flow
+Routes → Handlers → Services → Repositories → Database
+- Route files define paths and attach handlers (no logic)
+- Handlers parse input via Zod, call services, format responses
+- Services contain ALL business logic
+- Repositories wrap ALL database queries (never raw Prisma in services)
+
+### Security (Non-Negotiable)
+- HMAC-verify ALL incoming webhooks before processing (see src/lib/hmac.ts)
+- Rate-limit ALL public endpoints (default: 100 req/min/IP)
+- Sanitize ALL user input before database storage
+- NEVER log PII (emails, names, addresses) — use merchant IDs only
+- NEVER return internal error details to API consumers
+- ALL endpoints require authentication except /health and /docs
+
+### Data
+- Every table has: id (cuid), createdAt, updatedAt, deletedAt (soft delete)
+- Multi-tenancy via merchantId column — EVERY query must filter by merchantId
+- NEVER use raw SQL — always go through Prisma
+- Transactions for any multi-step write operations
+
+### Error Handling
+- ALL errors must be AppError (src/lib/errors.ts)
+- AppError requires: statusCode, errorCode (machine-readable), message
+- NEVER throw raw Error — Claude should always use AppError.badRequest(), 
+  AppError.notFound(), AppError.unauthorized(), etc.
+- Unhandled errors are caught by global error handler (src/plugins/error-handler.ts)
+```
+
+Each rule is specific and enforceable. Claude can check its own output against these rules. Compare "HMAC-verify ALL incoming webhooks" with "make sure webhooks are secure" — the first one tells Claude exactly what to do.
+
+### Conventions
+
+```markdown
+## Conventions
+
+### Code Style
+- Functional style — no classes except Prisma models
+- Named exports only — no default exports anywhere
+- Explicit return types on all async functions
+- Prefer const over let, never var
+- Destructure function parameters for readability
+- One function per concern — if a function does two things, split it
+
+### Naming
+- Files: kebab-case (user-service.ts, create-order.handler.ts)
+- Types/Interfaces: PascalCase with suffix (CreateOrderDto, OrderResponse)
+- Functions: camelCase verbs (createOrder, findByMerchantId)
+- Constants: UPPER_SNAKE_CASE
+- Database tables: snake_case plural (merchant_orders, inventory_items)
+
+### Testing
+- Test files: *.test.ts co-located with source
+- Use describe/it blocks with human-readable descriptions
+- Test the behavior, not the implementation
+- Integration tests hit real database (test container)
+- Minimum 80% coverage for services, 100% for critical paths (payments, auth)
+```
+
+### Common Commands
+
+```markdown
+## Commands
+
+- `pnpm dev` — start dev server with hot reload (port 3000)
+- `pnpm test` — run all unit and integration tests
+- `pnpm test:e2e` — run Playwright E2E tests
+- `pnpm test:cov` — run tests with coverage report
+- `pnpm lint` — ESLint + Prettier check
+- `pnpm lint:fix` — auto-fix lint issues
+- `pnpm db:migrate` — run Prisma migrations
+- `pnpm db:generate` — regenerate Prisma client
+- `pnpm db:seed` — seed development database
+- `pnpm build` — production build
+- `pnpm typecheck` — TypeScript type checking only
+```
+
+### Agent Team Rules
+
+If you use sub-agents (covered in Module 10), include rules for them:
+
+```markdown
+## Agent Team Rules
+
+- Security Reviewer agent: focus only on auth, input validation, and data exposure.
+  Do not suggest performance optimizations — that's a separate review.
+- When multiple agents work on the same service, coordinate via PR comments.
+- Sub-agents must run `pnpm test` before committing any changes.
+- Sub-agents must not modify package.json or prisma/schema.prisma
+  without explicit approval from the lead agent.
+- All agent-generated code must follow the conventions above — no exceptions.
+```
+
+## A Complete Production CLAUDE.md
+
+Putting it all together:
+
+```markdown
+# ShipFast — E-commerce Fulfillment API
+
+Multi-tenant SaaS handling order fulfillment for 200+ merchants.
+
+## Stack
+- Node.js 20 + TypeScript 5.4 (strict mode)
+- Fastify 4.x + Prisma 5.x + PostgreSQL 16
+- Redis 7 (ioredis) + BullMQ
+- Zod for validation, Vitest for testing
+- pnpm workspaces, Docker, AWS ECS
+
+## Architecture
+- Flow: Routes → Handlers → Services → Repositories
+- ALL business logic in services, ALL queries in repositories
+- HMAC-verify all webhooks (src/lib/hmac.ts)
+- Multi-tenancy: every query filters by merchantId
+- Soft delete everywhere (deletedAt column)
+- AppError for all errors (src/lib/errors.ts)
+
+## Conventions
+- Functional, no classes. Named exports only.
+- kebab-case files, PascalCase types, camelCase functions
+- Explicit return types on async functions
+- Tests co-located, 80% min coverage
+
+## Commands
+- pnpm dev / pnpm test / pnpm lint / pnpm build
+- pnpm db:migrate / pnpm db:seed
+
+## Agent Rules
+- Sub-agents run pnpm test before committing
+- No modifications to package.json without approval
+```
+
+This is about 35 lines. It fits in one screen, costs minimal tokens, and gives Claude everything it needs.
+
+## Common CLAUDE.md Mistakes
+
+### Mistake 1: Too Long
+
+A 500-line CLAUDE.md eats tokens every session. If most lines aren't influencing Claude's coding decisions, they're wasting context. Aim for 50-150 lines.
+
+### Mistake 2: Too Vague
+
+"We prefer clean code" means nothing actionable. "All functions must have a single responsibility, explicit return types, and JSDoc comments for public APIs" is actionable.
+
+### Mistake 3: Documenting the Obvious
+
+Claude knows what React, TypeScript, and PostgreSQL are. Don't explain technologies — just state which ones you use and how.
+
+### Mistake 4: Including Secrets
+
+CLAUDE.md is typically committed to git. Never put API keys, database URLs, or other secrets in it.
+
+### Mistake 5: Never Updating
+
+Your CLAUDE.md should evolve with your project. When you adopt a new convention, add it. When you deprecate a pattern, update the file. Stale rules lead to stale code.
+
+## Iterating on Your CLAUDE.md
+
+The best CLAUDE.md files are written iteratively:
+
+1. **Start with stack + conventions** — the bare minimum
+2. **Notice when Claude gets something wrong** — add a rule to prevent it
+3. **After each sprint**, review and update
+4. **When onboarding a new library**, add it to the stack section
+
+Over time, your CLAUDE.md becomes a living document that captures your team's collective coding standards. It's also one of the most useful artifacts for onboarding human developers — if Claude can understand your project from CLAUDE.md, so can a new hire.
+
+## Key Takeaway
+
+Production-quality CLAUDE.md files are prescriptive, specific, and focused. Use "always" and "never" instead of "prefer" and "try to." Cover stack, architecture rules, conventions, commands, and agent team rules. Keep it under 150 lines — every line costs tokens, so each one should directly influence Claude's coding decisions. Update it as your project evolves.

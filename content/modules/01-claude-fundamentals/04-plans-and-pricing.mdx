@@ -1,0 +1,237 @@
+---
+title: "Claude Plans and Pricing: Which One Is Worth It?"
+slug: "plans-and-pricing"
+order: 4
+difficulty: "beginner"
+duration: 14
+tags: ["pricing", "plans", "pro", "max", "subscription"]
+objectives:
+  - "Understand the differences between Free, Pro, Max 5x, and Max 20x plans"
+  - "Learn how the rolling 5-hour usage window works"
+  - "Calculate the real-world value of each subscription tier"
+  - "Know how Claude Code and claude.ai share the same usage budget"
+quiz:
+  - id: "pricing-1"
+    question: "How much does the Max 5x plan cost per month?"
+    type: "multiple-choice"
+    options:
+      - "$20"
+      - "$50"
+      - "$100"
+      - "$200"
+    correct: 2
+    explanation: "The Max 5x plan costs $100/month and includes approximately 5x the usage of Pro, 1M token context windows, full Opus access, and features like agent teams."
+  - id: "pricing-2"
+    question: "What happens when you hit your usage limit on a Max plan?"
+    type: "multiple-choice"
+    options:
+      - "Your account is suspended"
+      - "You're charged overage fees at API rates"
+      - "You can continue at reduced speed and capacity, or enable extra usage at API rates"
+      - "You must wait 24 hours"
+    correct: 2
+    explanation: "When you hit limits on Max, you can either wait for your rolling window to refresh, or enable extra usage overflow which bills at standard API rates for continued access."
+  - id: "pricing-3"
+    question: "How is the usage budget shared?"
+    type: "multiple-choice"
+    options:
+      - "Claude Code and claude.ai have separate budgets"
+      - "Claude Code and claude.ai share the same rolling 5-hour budget"
+      - "Only Claude Code uses the budget; claude.ai is unlimited"
+      - "Each device gets its own budget"
+    correct: 1
+    explanation: "Claude Code and claude.ai share the same rolling 5-hour usage budget. Heavy use on the web interface directly reduces your available capacity in Claude Code, and vice versa."
+  - id: "pricing-4"
+    question: "What is the approximate message equivalent for Max 20x in a 5-hour window?"
+    type: "multiple-choice"
+    options:
+      - "~45 messages"
+      - "~225 messages"
+      - "~900 messages"
+      - "Unlimited messages"
+    correct: 2
+    explanation: "Max 20x provides approximately 900 Sonnet-equivalent messages per 5-hour rolling window, making it suitable for professional developers who use Claude as their primary coding tool throughout the day."
+---
+
+## The Plan Landscape
+
+Anthropic offers four tiers for accessing Claude. Choosing the right one depends on how heavily you use Claude Code, whether you need Opus, and how much that 1M context window matters to your workflow.
+
+Let's break down each tier honestly — what you get, what you don't, and who each plan is actually for.
+
+## Free Tier
+
+**Cost:** $0
+
+The free tier exists so you can try Claude before committing money. Here's what you get:
+
+- Access to Claude Sonnet on claude.ai
+- Limited message allowance (varies, roughly 10-20 messages per day)
+- 200K context window
+- No Claude Code access (requires Pro or higher, or an API key)
+- No Opus access
+
+**Who it's for:** People evaluating whether Claude is useful for their work. It's a trial, not a workflow tool.
+
+**Verdict:** Good for testing. Not viable for actual development work.
+
+## Pro — $20/month
+
+**Cost:** $20/month
+
+Pro is the entry point for serious Claude usage:
+
+- **~45 Sonnet messages per 5-hour rolling window** (token-based, not literal message count)
+- **200K token context window**
+- **Limited Opus access** — you can use it, but you'll hit Opus-specific rate limits quickly
+- Access to Claude Code via browser authentication
+- Access to all features on claude.ai (projects, artifacts, etc.)
+- Research mode and web search
+
+**The 45-message estimate:** This assumes average-length Sonnet messages. Short prompts with short responses will let you send more. Long prompts with file references and extended responses will burn through the budget faster. The real unit is tokens, not messages.
+
+**Who it's for:** Developers who use Claude a few times per day for focused tasks — debugging a specific issue, writing a function, getting code reviewed. If Claude is a tool you reach for occasionally, Pro is plenty.
+
+**Limitations:** 200K context means you can't feed Claude an entire large codebase at once. Limited Opus means you can't rely on it for heavy architecture work. And 45 messages per 5 hours can feel tight if you're in a deep flow state with Claude Code.
+
+## Max 5x — $100/month
+
+**Cost:** $100/month
+
+Max 5x is where Claude transforms from a useful tool into a genuine development partner:
+
+- **~225 Sonnet messages per 5-hour rolling window** (5x Pro)
+- **1M token context window** — this is the game-changer
+- **Full Opus access** — no separate Opus rate limits beyond your overall budget
+- **Agent teams** — Claude can spawn sub-agents that work in parallel
+- **Remote control** — connect to Claude Code sessions remotely
+- All Pro features included
+
+**The 1M context window matters more than you think.** With 200K tokens, you can reference maybe 30-50 source files before you run out of room. With 1M tokens, you can load an entire application — hundreds of files across dozens of directories — and Claude can reason about cross-cutting concerns, trace data flow across modules, and understand your full architecture.
+
+**Agent teams** let Claude spawn specialized sub-agents that work in parallel. One agent can be running tests while another is refactoring code while a third is writing documentation. This is a Max-only feature.
+
+**Who it's for:** Professional developers who use Claude Code as a daily driver. If you're spending 2+ hours per day coding with Claude, Max 5x pays for itself almost immediately.
+
+## Max 20x — $200/month
+
+**Cost:** $200/month
+
+Max 20x is the ceiling. Everything Max 5x offers, turned up:
+
+- **~900 Sonnet messages per 5-hour rolling window** (20x Pro)
+- **1M token context window**
+- **Priority Opus access** — maximum inference priority, your requests are processed first
+- **Maximum inference priority** across all models
+- **First access to new features** — beta features land on Max 20x first
+- All Max 5x features included
+
+**Priority inference** means your requests don't wait in queue behind other users during peak hours. If you've ever had Claude Code feel sluggish at 2pm on a Tuesday when half the world's developers are online, Max 20x eliminates that.
+
+**~900 messages per 5 hours** is roughly one message every 20 seconds sustained for 5 hours straight. In practice, this is nearly unlimited for human-speed interaction. You'd have to be running automated agent loops to exhaust this.
+
+**Who it's for:** Developers who live in Claude Code all day, run agent teams, or need guaranteed fast responses. Also people who want bleeding-edge features first.
+
+## The Rolling 5-Hour Window Explained
+
+All plans use a **rolling 5-hour window** for usage limits, not a daily or monthly cap. Here's how it works:
+
+```
+Timeline:
+  10:00 AM — You send 50 messages (heavy debugging session)
+  11:00 AM — You send 30 messages (writing tests)
+  12:00 PM — You take a lunch break
+   1:00 PM — You send 20 messages (code review)
+   2:00 PM — You want to send more messages
+
+Your budget at 2:00 PM:
+  ✓ The 50 messages from 10:00 AM are still counting (within 5 hours)
+  ✓ The 30 from 11:00 AM are still counting
+  ✓ The 20 from 1:00 PM are still counting
+  = 100 messages used in the current 5-hour lookback
+
+At 3:01 PM:
+  ✗ The 50 messages from 10:00 AM drop off (older than 5 hours)
+  ✓ 30 from 11:00 still counting
+  ✓ 20 from 1:00 still counting
+  = 50 messages used — you've freed up capacity!
+```
+
+The key insight: **usage rolls off gradually**, not all at once. You don't have to wait for a full reset. Every minute, old tokens age out of the window and free up space.
+
+### Token-Based, Not Message-Based
+
+The "~45 messages" and "~225 messages" figures are estimates based on average message sizes. The actual limit is measured in **tokens processed**. This means:
+
+- A short prompt with a short response might count as "0.3 messages"
+- A prompt with 5 file references and a long Claude response might count as "3 messages"
+- An Opus response costs ~1.7x the tokens of a Sonnet response for the same question
+- Extended thinking consumes additional tokens
+
+This is why model switching matters for budget management. Haiku conversations are cheap; Opus conversations are expensive.
+
+## Shared Budget: claude.ai + Claude Code
+
+Here's a critical detail many people miss: **your usage budget is shared between claude.ai (the web interface) and Claude Code (the terminal)**. They draw from the same pool.
+
+If you spend your morning having a long research conversation on claude.ai, you'll have less budget available for Claude Code in the afternoon. Plan accordingly:
+
+- Use claude.ai for research, brainstorming, and document work
+- Use Claude Code for coding tasks
+- Don't leave long idle conversations open on claude.ai — they don't consume tokens, but if you come back and send a message, the full history gets processed
+
+## Extra Usage Overflow
+
+When you hit your rolling window limit, you have two options:
+
+1. **Wait** — old usage will roll off within the next few hours
+2. **Enable extra usage** — continue working at standard API rates
+
+Extra usage bills at Anthropic's API pricing:
+
+```
+Sonnet: $3 / $15 per 1M tokens (input/output)
+Opus:   $5 / $25 per 1M tokens (input/output)
+Haiku:  $1 / $5  per 1M tokens (input/output)
+```
+
+This is metered billing on top of your subscription. It's there as a safety net for heavy days, not as a primary usage mode.
+
+## The Value Calculation
+
+Let's do the math on Max 20x ($200/month) vs. raw API access:
+
+A heavy Claude Code day might involve:
+
+- 500K input tokens (reading files, history, system prompts)
+- 100K output tokens (Claude's responses, code generation)
+- Mix of 60% Sonnet, 30% Opus, 10% Haiku
+
+**API cost for one heavy day:**
+- Sonnet: 300K in × $3/1M + 60K out × $15/1M = $0.90 + $0.90 = $1.80
+- Opus: 150K in × $5/1M + 30K out × $25/1M = $0.75 + $0.75 = $1.50
+- Haiku: 50K in × $1/1M + 10K out × $5/1M = $0.05 + $0.05 = $0.10
+
+**Daily API cost: ~$3.40**
+
+Over 22 working days: **~$74.80/month** for moderate usage.
+
+But heavy users who keep Claude running all day, use agent teams, and do extended thinking sessions can easily hit $15-25/day on the API. That's **$330-550/month** — making the $200 Max 20x plan a significant discount.
+
+The break-even point for Max 20x vs. API is roughly **$200 worth of API usage per month**, which a full-time Claude Code user will exceed in the first two weeks.
+
+## Which Plan Should You Choose?
+
+| Your Usage Pattern | Recommended Plan |
+|---|---|
+| Trying Claude for the first time | Free |
+| Use Claude a few times daily for focused tasks | Pro ($20) |
+| Claude Code is part of your daily workflow | Max 5x ($100) |
+| Claude Code is your primary development tool | Max 20x ($200) |
+| Building automated pipelines or apps | API (pay-as-you-go) |
+
+If you're taking this course seriously and plan to use Claude Code regularly, **Max 5x is the sweet spot**. The 1M context window alone justifies the upgrade from Pro. If you find yourself hitting limits on 5x, upgrading to 20x is an easy decision.
+
+## Key Takeaway
+
+Claude's pricing is built around a rolling 5-hour token window shared between claude.ai and Claude Code. Pro ($20) is fine for occasional use, Max 5x ($100) unlocks the 1M context window and full Opus that make Claude Code truly powerful, and Max 20x ($200) is for developers who've made Claude their primary coding partner. The subscription model offers significant savings over API pricing for anyone using Claude more than a few hours per week.

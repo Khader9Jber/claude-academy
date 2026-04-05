@@ -1,0 +1,12 @@
+{
+  "title": "Capstone Project",
+  "slug": "capstone",
+  "description": "Put all your knowledge to the test. Plan, build, and ship a real project end-to-end using Claude Code, demonstrating mastery of every concept in the curriculum.",
+  "arc": "expert",
+  "order": 13,
+  "icon": "trophy",
+  "color": "#d4a053",
+  "estimatedHours": 8,
+  "prerequisites": ["enterprise-and-production"],
+  "lessonCount": 4
+}

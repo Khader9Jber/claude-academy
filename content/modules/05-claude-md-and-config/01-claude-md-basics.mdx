@@ -1,0 +1,232 @@
+---
+title: "CLAUDE.md Basics: Your Project's Brain"
+slug: "claude-md-basics"
+order: 1
+difficulty: "intermediate"
+duration: 15
+tags: ["claude-md", "configuration", "project-setup", "conventions"]
+objectives:
+  - "Understand what CLAUDE.md is and why it matters"
+  - "Know what goes into a CLAUDE.md file"
+  - "Write your first production CLAUDE.md"
+  - "Understand how CLAUDE.md persists across sessions"
+quiz:
+  - id: "claude-md-basics-1"
+    question: "When does Claude Code read the CLAUDE.md file?"
+    type: "multiple-choice"
+    options:
+      - "Only when you explicitly ask it to"
+      - "At the start of every session, and it survives /clear and /compact"
+      - "Once during installation"
+      - "Only when you run /config reload"
+    correct: 1
+    explanation: "CLAUDE.md is loaded automatically at the start of every session. Its content persists through /clear, /compact, and new sessions — making it the most reliable way to give Claude persistent project context."
+  - id: "claude-md-basics-2"
+    question: "What is the primary purpose of CLAUDE.md?"
+    type: "multiple-choice"
+    options:
+      - "To document your project for other developers"
+      - "To give Claude persistent project context, conventions, and instructions"
+      - "To configure Claude Code's permissions"
+      - "To store environment variables"
+    correct: 1
+    explanation: "CLAUDE.md is Claude's persistent memory for your project — it tells Claude what your stack is, what conventions to follow, and how to behave. Unlike README.md (for humans), CLAUDE.md is specifically for Claude."
+  - id: "claude-md-basics-3"
+    question: "Which of these should go in CLAUDE.md?"
+    type: "multiple-choice"
+    options:
+      - "Your API keys and secrets"
+      - "Stack definition, coding conventions, and architecture rules"
+      - "Your personal to-do list"
+      - "Full source code of your application"
+    correct: 1
+    explanation: "CLAUDE.md should contain your stack definition, coding conventions, architecture rules, and anything Claude needs to know to work effectively in your project. Never put secrets in it — it's typically committed to git."
+  - id: "claude-md-basics-4"
+    question: "What happens if you don't have a CLAUDE.md file?"
+    type: "multiple-choice"
+    options:
+      - "Claude Code won't start"
+      - "Claude starts every session with zero project context and may produce inconsistent code"
+      - "Claude reads your README.md instead"
+      - "Claude automatically generates one"
+    correct: 1
+    explanation: "Without CLAUDE.md, Claude starts every session with no knowledge of your project's conventions, stack, or rules. It will still work, but it may use different patterns, libraries, or conventions each time — leading to inconsistent code."
+---
+
+## The Problem CLAUDE.md Solves
+
+Every time you start a new Claude Code session, Claude has no memory of previous conversations. It doesn't know your project uses TypeScript with strict mode, that you prefer functional components over class components, or that your API follows a specific error handling pattern.
+
+Without CLAUDE.md, you end up repeating yourself:
+
+```
+"Remember, we use Fastify, not Express."
+"Use pnpm, not npm."
+"Follow our error handling convention — always use AppError."
+"Don't use classes. We use functional style with hooks."
+```
+
+This wastes tokens, wastes your time, and eventually you forget to mention something — leading to code that doesn't match your project's conventions.
+
+**CLAUDE.md fixes this entirely.** It's a file that Claude reads at the start of every session, giving it persistent knowledge about your project. Think of it as a briefing document that turns Claude from a generic coding assistant into a team member who understands your codebase.
+
+## What Is CLAUDE.md?
+
+CLAUDE.md is a plain Markdown file that sits in your project root. Claude Code automatically detects it and loads its contents into context at session start. The content survives `/clear`, `/compact`, and new sessions — it's always there.
+
+Unlike README.md (which is for human developers), CLAUDE.md is specifically for Claude. You write it in natural language, telling Claude everything it needs to know to work effectively in your project.
+
+Here's the mental model: **README.md is onboarding documentation for new engineers. CLAUDE.md is onboarding documentation for Claude.**
+
+## What Goes in CLAUDE.md
+
+A good CLAUDE.md covers four categories:
+
+### 1. Stack Definition
+
+Tell Claude exactly what technologies you use. Be specific — versions matter:
+
+```markdown
+## Stack
+
+- Runtime: Node.js 20 with TypeScript 5.4 (strict mode)
+- Framework: Fastify 4.x with @fastify/autoload
+- Database: PostgreSQL 16 via Prisma 5.x
+- Cache: Redis 7 via ioredis
+- Queue: BullMQ
+- Testing: Vitest + Supertest
+- Package manager: pnpm (not npm, not yarn)
+- Deployment: Docker → AWS ECS
+```
+
+Why this matters: Without this, Claude might suggest Express instead of Fastify, use npm commands, or reach for a different ORM. The stack definition eliminates these mismatches.
+
+### 2. Coding Conventions
+
+Define your project's style rules:
+
+```markdown
+## Conventions
+
+- Functional style with hooks — no class components, no class-based services
+- Named exports only — no default exports
+- Error handling: always throw AppError (from src/lib/errors.ts), never raw Error
+- All async functions must have explicit return types
+- Use zod for all input validation, never manual checks
+- File naming: kebab-case for files, PascalCase for components
+- Prefer const over let, never use var
+- All database queries go through repository files (src/repos/), never inline
+```
+
+These rules prevent the kind of inconsistency that makes codebases messy over time.
+
+### 3. Architecture Rules
+
+Describe how your system is structured:
+
+```markdown
+## Architecture
+
+- Clean architecture: routes → handlers → services → repositories
+- All business logic lives in src/services/, never in route handlers
+- Route handlers only parse input, call services, and format responses
+- Every service method takes a DTO, returns a DTO — never raw Prisma types
+- HMAC-verify all incoming webhooks before processing
+- Rate limit all public endpoints via @fastify/rate-limit
+```
+
+### 4. Common Commands
+
+Tell Claude how to build, test, and run your project:
+
+```markdown
+## Commands
+
+- `pnpm dev` — start development server (port 3000)
+- `pnpm test` — run all tests with Vitest
+- `pnpm test:e2e` — run end-to-end tests
+- `pnpm lint` — run ESLint + Prettier check
+- `pnpm db:migrate` — run Prisma migrations
+- `pnpm db:seed` — seed development database
+```
+
+## Your First CLAUDE.md
+
+Here's a complete, minimal CLAUDE.md you can adapt:
+
+```markdown
+# Project: TaskFlow API
+
+## Stack
+- Node.js 20 + TypeScript 5.4 (strict mode)
+- Fastify 4.x with @fastify/autoload
+- PostgreSQL 16 via Prisma 5.x
+- Vitest for testing
+- pnpm as package manager
+
+## Conventions
+- Functional style — no classes
+- Named exports only
+- Throw AppError (src/lib/errors.ts) for all error handling
+- Zod for input validation
+- kebab-case files, PascalCase types
+
+## Architecture
+- Routes → Handlers → Services → Repositories
+- Business logic in src/services/ only
+- Database queries in src/repos/ only
+- DTOs for all service boundaries
+
+## Commands
+- pnpm dev — start dev server
+- pnpm test — run tests
+- pnpm lint — lint and format check
+- pnpm db:migrate — run migrations
+```
+
+This is about 30 lines, takes 5 minutes to write, and transforms every Claude session in this project.
+
+## How CLAUDE.md Gets Loaded
+
+When you start Claude Code in a directory, it automatically searches for CLAUDE.md files. The loading behavior is important to understand:
+
+1. **Session start**: Claude reads CLAUDE.md immediately when a session begins
+2. **Survives /clear**: When you clear chat history, CLAUDE.md stays loaded
+3. **Survives /compact**: When the context is compacted, CLAUDE.md is preserved
+4. **New sessions**: Every new `claude` invocation reads it fresh
+5. **Token cost**: The file consumes tokens from your context window — keep it focused
+
+That last point is worth emphasizing. A 500-line CLAUDE.md eats significant context every session. Write what's necessary, not everything possible. If Claude doesn't need it to make coding decisions, it doesn't belong in CLAUDE.md.
+
+## What NOT to Put in CLAUDE.md
+
+Knowing what to exclude is as important as knowing what to include:
+
+- **Secrets or API keys** — CLAUDE.md is typically committed to git
+- **Full documentation** — Link to docs instead of pasting them
+- **Obvious things** — Claude knows what TypeScript is; you don't need to explain it
+- **Rarely-relevant details** — Put those in subdirectory CLAUDE.md files instead
+- **Personal preferences** — Those go in `~/.claude/CLAUDE.md` (your global file)
+
+## Testing Your CLAUDE.md
+
+After writing your CLAUDE.md, test it by starting a new session and asking Claude to do something that requires knowledge from the file:
+
+```bash
+claude
+
+# Test: Does Claude know your stack?
+"What framework does this project use?"
+
+# Test: Does Claude follow your conventions?
+"Write a new service method for user registration"
+
+# Test: Does Claude know your commands?
+"How do I run the tests?"
+```
+
+If Claude answers correctly — using Fastify, writing functional code, and telling you `pnpm test` — your CLAUDE.md is working.
+
+## Key Takeaway
+
+CLAUDE.md is the single most impactful thing you can add to a project. It gives Claude persistent knowledge of your stack, conventions, architecture, and commands that survives across sessions, clears, and compactions. Spend 10 minutes writing a good one and you'll save hours of repeated corrections. Keep it focused — every line costs tokens, so include only what Claude needs to make good coding decisions.

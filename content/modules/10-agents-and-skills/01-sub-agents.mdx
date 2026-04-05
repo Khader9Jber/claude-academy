@@ -1,0 +1,279 @@
+---
+title: "Sub-Agents: Your AI Team Members"
+slug: "sub-agents"
+order: 1
+difficulty: "advanced"
+duration: 17
+tags: ["agents", "sub-agents", "automation", "architecture"]
+objectives:
+  - "Understand what sub-agents are and how they work"
+  - "Create custom agents with markdown files"
+  - "Know the built-in agent types"
+  - "Build a security reviewer agent from scratch"
+quiz:
+  - id: "agents-1"
+    question: "Where do custom agent definitions go?"
+    type: "multiple-choice"
+    options:
+      - "In CLAUDE.md"
+      - ".claude/agents/agent-name.md"
+      - "In settings.json"
+      - "In package.json"
+    correct: 1
+    explanation: "Custom agents are defined as markdown files in .claude/agents/. Each file defines one agent with frontmatter (configuration) and body (instructions). For example, .claude/agents/security-reviewer.md defines a security review agent."
+  - id: "agents-2"
+    question: "What happens when Claude routes a task to a sub-agent?"
+    type: "multiple-choice"
+    options:
+      - "The sub-agent replaces Claude"
+      - "The sub-agent gets its own context window and works independently"
+      - "Nothing different happens"
+      - "The sub-agent uses the same context"
+    correct: 1
+    explanation: "Each sub-agent gets its own independent context window. It receives the task description, relevant files, and its instructions — but not the full conversation history. This means sub-agents have focused context without the noise of unrelated conversation."
+  - id: "agents-3"
+    question: "What are the built-in agent types in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Only one default agent"
+      - "Explore (read-only, Haiku), Plan (architecture), General (full tools), Bash (terminal)"
+      - "Reader, Writer, Tester"
+      - "Frontend, Backend, DevOps"
+    correct: 1
+    explanation: "Claude Code has four built-in agents: Explore (read-only, uses Haiku for fast code navigation), Plan (architecture analysis and planning), General (full tool access for implementation), and Bash (terminal-focused operations). Claude auto-routes tasks to the appropriate agent."
+  - id: "agents-4"
+    question: "What does the 'isolation: worktree' setting do for an agent?"
+    type: "multiple-choice"
+    options:
+      - "Isolates the agent from the internet"
+      - "Gives the agent its own git worktree so its changes don't affect the main working directory"
+      - "Runs the agent in a container"
+      - "Prevents the agent from reading files"
+    correct: 1
+    explanation: "isolation: worktree creates a separate git worktree for the agent. The agent works in its own copy of the code — its changes, branches, and commits are isolated from the main working directory. If the agent's work is good, it can be merged back. If not, the worktree is cleaned up with no impact."
+---
+
+## What Are Sub-Agents?
+
+A **sub-agent** is a specialized Claude instance with its own context window, instructions, and potentially its own model. When Claude encounters a task that matches a sub-agent's specialty, it can delegate the work.
+
+Think of sub-agents as team members with different specializations. You have a security expert, a performance expert, a testing expert — each knows their domain and focuses exclusively on it.
+
+## How Sub-Agents Work
+
+```
+You: "Review this PR for security issues"
+  ↓
+Claude (Lead): Recognizes this as a security task
+  ↓
+Claude (Lead): Routes to security-reviewer sub-agent
+  ↓
+Security Reviewer Agent:
+  - Gets its own context window
+  - Receives the task + relevant files
+  - Follows its specialized instructions
+  - Returns findings to the lead
+  ↓
+Claude (Lead): Presents the security review to you
+```
+
+Each agent is independent — it has its own context, its own instructions, and potentially its own model (Opus for complex analysis, Sonnet for standard tasks, Haiku for simple lookups).
+
+## Built-In Agents
+
+Claude Code comes with four built-in agents:
+
+### Explore Agent
+
+- **Model**: Haiku (fast, cheap)
+- **Tools**: Read only
+- **Purpose**: Quick code navigation and exploration
+- **When it's used**: "What does this function do?" "Find where X is defined"
+
+### Plan Agent
+
+- **Model**: Opus
+- **Tools**: Read only
+- **Purpose**: Architecture analysis and planning
+- **When it's used**: "How should we restructure the auth module?" "Plan the migration"
+
+### General Agent
+
+- **Model**: Sonnet
+- **Tools**: All tools
+- **Purpose**: Standard implementation tasks
+- **When it's used**: "Implement this feature" "Write tests" "Fix this bug"
+
+### Bash Agent
+
+- **Model**: Sonnet
+- **Tools**: Bash primarily
+- **Purpose**: Terminal operations
+- **When it's used**: "Run the tests" "Check the build" "Deploy to staging"
+
+Claude auto-routes tasks to the most appropriate built-in agent. You can also invoke them explicitly.
+
+## Creating Custom Agents
+
+Custom agents are markdown files in `.claude/agents/`:
+
+### Security Reviewer
+
+Create `.claude/agents/security-reviewer.md`:
+
+```markdown
+---
+name: Security Reviewer
+description: Reviews code for security vulnerabilities
+model: opus
+isolation: worktree
+---
+
+You are a security reviewer. Your job is to find security vulnerabilities
+in code changes.
+
+## What to Check
+
+1. **Injection Attacks**: SQL injection, XSS, command injection, LDAP injection
+2. **Authentication/Authorization**: Missing auth checks, privilege escalation,
+   broken access control
+3. **Data Exposure**: PII leaks, sensitive data in logs, verbose error messages
+4. **Input Validation**: Missing validation, improper sanitization, buffer overflows
+5. **Cryptography**: Weak algorithms, hardcoded secrets, improper key management
+6. **Race Conditions**: TOCTOU, double-spend, concurrent modification
+7. **Dependencies**: Known CVEs, typosquatting, abandoned packages
+
+## How to Report
+
+For each finding:
+- **Severity**: Critical / High / Medium / Low
+- **Location**: File and line number
+- **Description**: What the vulnerability is
+- **Impact**: What an attacker could do
+- **Fix**: Specific code change to resolve it
+
+## Rules
+
+- ONLY report actual vulnerabilities, not style issues
+- Don't suggest performance optimizations — that's not your job
+- Be specific — "possible injection" is useless; "SQL injection via unsanitized 
+  user input in query parameter on line 47" is actionable
+- If you find zero vulnerabilities, say so explicitly
+```
+
+### Usage
+
+When you ask Claude to do a security review, it routes to this agent:
+
+```bash
+"Run a security review on the changes in this PR"
+```
+
+Or invoke it directly:
+
+```bash
+"@security-reviewer Review @src/services/payment.ts"
+```
+
+## Agent Configuration Options
+
+The frontmatter in an agent file configures its behavior:
+
+```yaml
+---
+name: Agent Display Name
+description: What this agent does (used for routing)
+model: opus          # opus, sonnet, haiku
+isolation: worktree  # Separate git worktree
+---
+```
+
+We'll cover the full set of options in the next lesson.
+
+## More Agent Examples
+
+### Test Writer
+
+`.claude/agents/test-writer.md`:
+
+```markdown
+---
+name: Test Writer
+description: Generates comprehensive tests for source files
+model: sonnet
+---
+
+You write tests. Given a source file, generate comprehensive tests that cover:
+
+1. Happy path — normal usage
+2. Edge cases — empty inputs, boundaries, nulls
+3. Error cases — invalid inputs, failures, timeouts
+4. Integration — how this code interacts with dependencies
+
+## Rules
+
+- Place test files next to the source file with .test.ts extension
+- Use describe/it blocks with human-readable descriptions
+- Follow the project's testing conventions from CLAUDE.md
+- Mock external dependencies, don't mock the unit under test
+- Aim for 90%+ line coverage of the source file
+```
+
+### Documentation Writer
+
+`.claude/agents/doc-writer.md`:
+
+```markdown
+---
+name: Documentation Writer
+description: Generates and updates technical documentation
+model: sonnet
+---
+
+You write technical documentation. Given a file or module, generate
+clear, accurate documentation that covers:
+
+1. What it does (purpose)
+2. How to use it (API reference)
+3. Configuration options
+4. Examples
+5. Gotchas and common mistakes
+
+## Rules
+
+- Read the actual code — don't guess
+- Use code examples from the real codebase
+- Keep language concise and scannable
+- Use tables for configuration options
+- Include a "Quick Start" section for every module doc
+```
+
+## When to Create Custom Agents
+
+Create a custom agent when:
+
+- You have a **recurring specialized task** (security review, performance audit)
+- The task benefits from **focused instructions** (testing patterns, doc formats)
+- You want **isolation** (agent works in its own worktree, no risk to your code)
+- Different tasks need **different models** (Opus for architecture, Haiku for lookups)
+
+Don't create an agent when:
+- A simple prompt or custom command would suffice
+- The task is a one-off
+- The task doesn't need specialized instructions
+
+## Agents vs. Commands
+
+| Feature | Custom Agent | Custom Command |
+|---|---|---|
+| Own context window | Yes | No (shares session context) |
+| Model override | Yes | Yes |
+| Isolation (worktree) | Yes | No |
+| Specialized instructions | Detailed role definition | Task instructions |
+| Best for | Recurring specialized roles | Repeatable task sequences |
+
+Use agents for roles (security reviewer, test writer). Use commands for tasks (fix issue, deploy, review).
+
+## Key Takeaway
+
+Sub-agents are specialized Claude instances with their own context, instructions, and optionally their own model and git worktree. Define them as markdown files in `.claude/agents/`. The built-in agents (Explore, Plan, General, Bash) handle common routing automatically. Create custom agents for recurring specialized roles — security review, test writing, documentation — where focused instructions and isolation produce better results than a general-purpose session.

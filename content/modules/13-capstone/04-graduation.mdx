@@ -1,0 +1,228 @@
+---
+title: "Your Claude Mastery Graduation"
+slug: "graduation"
+order: 4
+difficulty: "expert"
+duration: 12
+tags: ["graduation", "recap", "mastery", "next-steps"]
+objectives:
+  - "Recap the complete Claude Code skill tree"
+  - "Have a graduation checklist of mastery milestones"
+  - "Know what to build next"
+  - "Understand your place in the Claude Code ecosystem"
+quiz:
+  - id: "grad-1"
+    question: "What is the single most impactful file you can add to a project?"
+    type: "multiple-choice"
+    options:
+      - "README.md"
+      - "CLAUDE.md — persistent project context that survives across sessions"
+      - ".gitignore"
+      - "package.json"
+    correct: 1
+    explanation: "CLAUDE.md is the single most impactful addition. It gives Claude persistent knowledge of your stack, conventions, architecture, and commands. Every session starts informed. Without it, you repeat yourself constantly and get inconsistent results."
+  - id: "grad-2"
+    question: "What's the best token optimization strategy?"
+    type: "multiple-choice"
+    options:
+      - "Use the cheapest model"
+      - "Enable LSP + one task per session + disconnect unused MCP + match effort to task"
+      - "Keep sessions short"
+      - "Avoid using Claude"
+    correct: 1
+    explanation: "The four pillars of token optimization: Enable LSP (biggest single win — saves thousands of tokens per session), one task per session (clean context), disconnect unused MCP servers (eliminate passive token cost), and match effort/model to task (don't use Opus for renaming). Together, these improve both efficiency and result quality."
+  - id: "grad-3"
+    question: "What makes you a 'Claude Code Expert' versus a 'Claude Code User'?"
+    type: "multiple-choice"
+    options:
+      - "Using Claude more hours per day"
+      - "Building systems: custom agents, skills, hooks, MCP integrations, and automation pipelines that multiply your team's effectiveness"
+      - "Knowing all keyboard shortcuts"
+      - "Having an Opus model"
+    correct: 1
+    explanation: "The leap from user to expert is the leap from using Claude to building systems with Claude. An expert creates custom agents for specialized roles, skills for reusable knowledge, hooks for quality gates, MCP integrations for tool access, and automation pipelines that the whole team benefits from."
+  - id: "grad-4"
+    question: "What should you build first after completing this course?"
+    type: "multiple-choice"
+    options:
+      - "The most complex agent team possible"
+      - "Start with your existing project: add CLAUDE.md, settings.json, and 2-3 custom commands. Build from there."
+      - "A brand new project from scratch"
+      - "A custom MCP server"
+    correct: 1
+    explanation: "Start where you already work. Add CLAUDE.md to your existing project (5 minutes), configure settings.json (10 minutes), and create 2-3 custom commands for your most common workflows (15 minutes). You'll see immediate benefits. Then gradually add agents, skills, and hooks as patterns emerge."
+---
+
+## You Made It
+
+Thirteen modules. From "What is Claude?" to designing multi-agent systems and building cloud automation. Let's take stock of everything you've learned.
+
+## The Complete Skill Tree
+
+### Foundation Arc (Modules 1-4)
+
+You started here — understanding what Claude is, how tokens work, how to install Claude Code, and how to navigate the interface.
+
+**Key skills acquired**:
+- Understanding Claude's model family (Opus, Sonnet, Haiku)
+- Installing and authenticating Claude Code
+- Using slash commands (/help, /model, /effort, /compact)
+- Keyboard shortcuts and session navigation
+- Effort levels and extended thinking
+
+### Practitioner Arc (Modules 5-8)
+
+You leveled up — configuring Claude for real projects, managing context like a professional, integrating Git workflows, and connecting external tools.
+
+**Key skills acquired**:
+- Writing production CLAUDE.md files
+- The 5-level CLAUDE.md hierarchy
+- Three layers of settings.json
+- Tool permissions with glob patterns
+- Context window management (80% compaction rule)
+- Session naming, forking, and rewind
+- Environment variables (LSP, thinking tokens, brief mode)
+- Auto-memory management
+- Git workflows (/commit, --from-pr, /install-github-app)
+- Custom slash commands with $ARGUMENTS
+- Advanced commands with shell injection
+- Headless mode (claude -p)
+- Pipe processing with stdin/stdout
+- MCP protocol fundamentals
+- GitHub, database, and multi-server MCP setups
+- Transport types and configuration scopes
+
+### Power User Arc (Modules 9-11)
+
+You went deep — automating workflows, building agent systems, and mastering advanced features.
+
+**Key skills acquired**:
+- All 11 hook events
+- Auto-format and notification hooks
+- CI/CD integration with GitHub Actions
+- Quality gate pipelines
+- Sub-agents with custom frontmatter
+- Agent permission modes and isolation
+- Skills with progressive disclosure
+- PR review skill construction
+- Agent teams with multi-agent orchestration
+- Plan mode and debugging strategies
+- Git worktrees for parallel isolation
+- /batch for codebase-wide migrations
+- /simplify for 3-agent code review
+- /loop for background monitoring
+- Remote Control for mobile workflows
+- Channels for Discord/Telegram
+- Token optimization mastery
+- IDE, GitHub, and Connector integrations
+
+### Expert Arc (Modules 12-13)
+
+You reached the summit — building custom integrations, scaling for enterprise, designing agentic systems, and automating in the cloud.
+
+**Key skills acquired**:
+- Building custom MCP servers
+- MCP authentication and security
+- MCP elicitation for interactive workflows
+- Claude Code SDK for custom tools
+- Headless pipelines at scale
+- Enterprise policies and team standardization
+- Monitoring and observability
+- Agentic system design patterns
+- Production deployment case study
+- Cloud automation with /schedule
+
+## The Graduation Checklist
+
+Can you do these? Check each one:
+
+### Essentials
+
+- [ ] Write a CLAUDE.md that makes Claude productive in your project
+- [ ] Configure settings.json with appropriate permissions
+- [ ] Manage context effectively (compact, one task per session)
+- [ ] Use /commit for well-messaged commits
+- [ ] Switch models and effort levels by task
+
+### Practitioner
+
+- [ ] Create 3+ custom slash commands
+- [ ] Set up at least one MCP server
+- [ ] Use headless mode in a script
+- [ ] Process data through pipes
+- [ ] Enable and use LSP
+
+### Power User
+
+- [ ] Build a PostToolUse auto-format hook
+- [ ] Create a PreToolUse safety guard
+- [ ] Set up notification hooks
+- [ ] Define a custom sub-agent
+- [ ] Create a reusable skill
+- [ ] Use /plan before complex implementations
+- [ ] Use /fork for parallel debugging
+
+### Expert
+
+- [ ] Integrate Claude Code in CI/CD
+- [ ] Build a custom MCP server
+- [ ] Design a multi-agent workflow
+- [ ] Set up /schedule for recurring automation
+- [ ] Build a custom CLI tool with claude -p and JSON schemas
+
+## What to Build Next
+
+### Today (30 minutes)
+
+1. Add CLAUDE.md to your main project
+2. Configure settings.json with permissions and auto-format hooks
+3. Create 2-3 custom commands for your most common workflows
+
+### This Week
+
+4. Set up GitHub MCP server
+5. Create a security-reviewer agent
+6. Set up notification hooks
+
+### This Month
+
+7. Integrate Claude Code in your CI/CD pipeline
+8. Build a custom MCP server for an internal tool
+9. Set up /schedule for daily dependency checks
+10. Create a PR review skill
+
+### Ongoing
+
+11. Iterate on your CLAUDE.md as the project evolves
+12. Add agents and skills as patterns emerge
+13. Optimize token usage with /insights
+14. Share your configuration with your team
+
+## The Ecosystem Keeps Growing
+
+Claude Code is evolving rapidly. Features added regularly:
+- New MCP servers for more services
+- Agent team improvements
+- New hook events
+- Performance optimizations
+- New slash commands and skills
+
+Stay current:
+- Update Claude Code regularly (`claude update`)
+- Check the changelog after updates
+- Experiment with new features in isolated worktrees
+- Share what you learn with your team
+
+## From User to Builder
+
+The fundamental shift this course taught you:
+
+**Before**: Claude Code is a tool I use to write code.
+
+**After**: Claude Code is a platform I build on — custom agents, skills, hooks, MCP integrations, commands, and automation pipelines that multiply my effectiveness and my team's effectiveness.
+
+You don't just use Claude Code. You configure it, extend it, automate it, and integrate it into everything you build.
+
+## Key Takeaway
+
+You've completed the full Claude Code curriculum — from first prompt to agentic systems. The skill tree spans four arcs: Foundation (what Claude is), Practitioner (configuring for real work), Power User (agents, skills, and automation), and Expert (enterprise, custom integrations, and cloud automation). Start applying what you've learned today: add CLAUDE.md to your project, configure settings.json, create your first commands. Then build up from there. Every feature you add compounds — each one makes the next more powerful. You are now a Claude Code expert. Go build something great.

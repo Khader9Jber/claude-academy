@@ -1,0 +1,292 @@
+---
+title: "Cloud Automation with /schedule"
+slug: "cloud-automation"
+order: 3
+difficulty: "expert"
+duration: 15
+tags: ["schedule", "cloud", "cron", "automation", "triggers"]
+objectives:
+  - "Use /schedule for cloud-based cron tasks"
+  - "Set up daily dependency checks and weekly security scans"
+  - "Monitor and manage scheduled agents"
+  - "Understand the difference between /loop and /schedule"
+quiz:
+  - id: "schedule-1"
+    question: "What's the difference between /loop and /schedule?"
+    type: "multiple-choice"
+    options:
+      - "They're the same"
+      - "/loop runs locally (stops when your machine sleeps); /schedule runs in the cloud (persists independently)"
+      - "/loop is faster"
+      - "/schedule is a local cron job"
+    correct: 1
+    explanation: "/loop is a local background process — it stops when your machine sleeps, restarts, or the terminal closes. /schedule creates a cloud-based trigger that runs independently of your machine. It persists through reboots, runs while you're offline, and executes on a cron schedule."
+  - id: "schedule-2"
+    question: "What cron schedule means 'every day at 9 AM UTC'?"
+    type: "multiple-choice"
+    options:
+      - "0 9 * * *"
+      - "9 0 * * *"
+      - "* 9 * * *"
+      - "0 * 9 * *"
+    correct: 0
+    explanation: "The cron format is: minute hour day-of-month month day-of-week. '0 9 * * *' means minute 0, hour 9, every day, every month, every day of week — which is 9:00 AM UTC daily."
+  - id: "schedule-3"
+    question: "What's a practical use case for /schedule?"
+    type: "multiple-choice"
+    options:
+      - "Real-time code editing"
+      - "Daily dependency vulnerability checks that run whether or not you're at your desk"
+      - "Instant code review"
+      - "Live debugging"
+    correct: 1
+    explanation: "Daily dependency checks are a perfect /schedule use case. The scan runs every morning at 9 AM whether you're at your desk, sleeping, or on vacation. If vulnerabilities are found, it can create an issue or send a notification. This kind of 'set and forget' automation is what /schedule is designed for."
+  - id: "schedule-4"
+    question: "How do you list all scheduled agents?"
+    type: "multiple-choice"
+    options:
+      - "crontab -l"
+      - "/schedule list or claude schedule list"
+      - "Check the cloud dashboard"
+      - "Read a config file"
+    correct: 1
+    explanation: "Use /schedule list in a session or claude schedule list from the terminal to see all your scheduled agents. Each entry shows the schedule name, cron pattern, next run time, and last result."
+---
+
+## Beyond Local Loops
+
+`/loop` is great for monitoring during a work session. But it dies when your machine sleeps. `/schedule` solves this — it creates cloud-based triggers that run independently of your machine.
+
+Think of `/schedule` as cron jobs powered by Claude Code, running in the cloud.
+
+## How /schedule Works
+
+```
+You: /schedule → describe task and cron pattern
+  ↓
+Cloud creates a scheduled trigger
+  ↓
+At each scheduled time:
+  1. Cloud spins up a Claude Code session
+  2. Runs your task against your repository
+  3. Takes any configured actions (create issues, send notifications)
+  4. Session ends
+  ↓
+Persists indefinitely until you remove it
+```
+
+The key difference from /loop: your machine doesn't need to be on. The schedule runs in the cloud.
+
+## Creating a Schedule
+
+```bash
+/schedule
+
+"Every day at 9 AM UTC, check for dependency vulnerabilities:
+1. Run pnpm audit
+2. If critical or high vulnerabilities found, create a GitHub issue 
+   with the details
+3. If no vulnerabilities, log success"
+```
+
+Claude creates the schedule:
+
+```
+Schedule Created: dependency-audit
+  Cron: 0 9 * * *
+  Next run: 2026-04-05 09:00 UTC
+  Task: Check dependency vulnerabilities
+```
+
+## Cron Syntax Reference
+
+```
+ ┌───── minute (0-59)
+ │ ┌───── hour (0-23)
+ │ │ ┌───── day of month (1-31)
+ │ │ │ ┌───── month (1-12)
+ │ │ │ │ ┌───── day of week (0-7, 0 and 7 = Sunday)
+ │ │ │ │ │
+ * * * * *
+```
+
+Common patterns:
+
+| Cron | Meaning |
+|---|---|
+| `0 9 * * *` | Every day at 9:00 AM |
+| `0 9 * * 1` | Every Monday at 9:00 AM |
+| `0 9 * * 1-5` | Weekdays at 9:00 AM |
+| `0 */4 * * *` | Every 4 hours |
+| `0 0 1 * *` | First of every month at midnight |
+| `0 9,17 * * 1-5` | 9 AM and 5 PM on weekdays |
+
+## Practical Scheduled Tasks
+
+### Daily Dependency Audit
+
+```bash
+/schedule
+
+"Daily at 9 AM UTC (0 9 * * *):
+Check for dependency vulnerabilities with pnpm audit.
+If critical vulnerabilities found:
+  - Create a GitHub issue titled 'Critical Dependency Vulnerability — [date]'
+  - Include the affected packages and recommended fixes
+  - Label it 'security' and 'priority-high'
+If no vulnerabilities: log 'All clear' and take no action."
+```
+
+### Weekly Security Scan
+
+```bash
+/schedule
+
+"Every Monday at 8 AM UTC (0 8 * * 1):
+Run a comprehensive security scan on the codebase:
+1. Check all files in src/ for common vulnerabilities
+2. Look for hardcoded secrets, SQL injection, XSS patterns
+3. Check for new dependencies added since last week
+4. Generate a security report as a GitHub issue
+5. Tag it 'weekly-security-review'"
+```
+
+### Daily Test Suite Monitor
+
+```bash
+/schedule
+
+"Every day at 6 AM UTC (0 6 * * *):
+1. Pull the latest main branch
+2. Run pnpm test
+3. If any tests fail:
+   - Create a GitHub issue with failing test details
+   - Label it 'broken-tests' and 'priority-high'
+4. If all pass, do nothing."
+```
+
+### Weekly Report Generation
+
+```bash
+/schedule
+
+"Every Friday at 5 PM UTC (0 17 * * 5):
+Generate a weekly project report:
+1. Count commits this week (git log --since='1 week ago')
+2. List PRs merged
+3. List issues closed
+4. Check test coverage
+5. Create a summary and post it as a GitHub discussion"
+```
+
+### Monthly Dependency Update
+
+```bash
+/schedule
+
+"First Monday of each month at 10 AM UTC (0 10 1-7 * 1):
+1. Check for outdated dependencies (pnpm outdated)
+2. For patch updates: create a PR that updates them
+3. For minor updates: create an issue listing them
+4. For major updates: create an issue with migration notes
+5. Run tests after any updates"
+```
+
+## Managing Schedules
+
+### List All Schedules
+
+```bash
+# In session
+/schedule list
+
+# From terminal
+claude schedule list
+```
+
+Output:
+```
+Active Schedules
+
+Name                │ Cron          │ Next Run           │ Last Result
+────────────────────┼───────────────┼────────────────────┼─────────────
+dependency-audit    │ 0 9 * * *     │ 2026-04-05 09:00   │ ✓ No issues
+security-scan       │ 0 8 * * 1    │ 2026-04-07 08:00   │ ✓ 0 findings
+test-monitor        │ 0 6 * * *     │ 2026-04-05 06:00   │ ✗ 2 failures
+weekly-report       │ 0 17 * * 5   │ 2026-04-11 17:00   │ ✓ Posted
+```
+
+### View Schedule Details
+
+```bash
+/schedule show dependency-audit
+```
+
+### Update a Schedule
+
+```bash
+/schedule update dependency-audit
+
+"Change the cron to run twice daily: 9 AM and 5 PM (0 9,17 * * *)"
+```
+
+### Delete a Schedule
+
+```bash
+/schedule remove dependency-audit
+```
+
+### Run Immediately
+
+```bash
+/schedule run dependency-audit
+```
+
+Triggers an immediate execution without waiting for the next scheduled time.
+
+## /loop vs. /schedule
+
+| Feature | /loop | /schedule |
+|---|---|---|
+| Runs on | Your machine (local process) | Cloud infrastructure |
+| Survives reboot | No | Yes |
+| Survives sleep | No | Yes |
+| Interval | Minutes (5m, 30m, 2h) | Cron schedule |
+| Best for | Active monitoring during work | Recurring automation |
+| Cost | Your session tokens | Cloud execution tokens |
+| Interactive | Yes (you can steer) | No (runs autonomously) |
+
+Use `/loop` when you're actively working and want to monitor something. Use `/schedule` when you want a task to run reliably regardless of whether you're at your computer.
+
+## Combining Schedules with Other Features
+
+### Schedule + MCP
+
+```bash
+/schedule
+
+"Daily at 9 AM: Check GitHub for PRs older than 48 hours without review.
+For each stale PR, post a comment reminding the author and tag the team lead."
+```
+
+### Schedule + Commands
+
+```bash
+/schedule
+
+"Weekly on Monday: run /security-review on all changes since last Monday.
+Post the results as a GitHub discussion."
+```
+
+### Schedule + Notifications
+
+```bash
+/schedule
+
+"If any scheduled task fails, send a Slack notification to #engineering-alerts
+with the task name and error details."
+```
+
+## Key Takeaway
+
+/schedule creates cloud-based cron jobs powered by Claude Code. Unlike /loop (which runs locally and dies when your machine sleeps), /schedule persists independently. Use it for daily dependency audits, weekly security scans, test suite monitoring, and automated report generation. Manage schedules with /schedule list, show, update, remove, and run. Choose /loop for active monitoring during work sessions and /schedule for reliable recurring automation.

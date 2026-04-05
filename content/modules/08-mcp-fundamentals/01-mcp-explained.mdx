@@ -1,0 +1,213 @@
+---
+title: "MCP: The Protocol That Changes Everything"
+slug: "mcp-explained"
+order: 1
+difficulty: "intermediate"
+duration: 15
+tags: ["mcp", "protocol", "integrations", "architecture"]
+objectives:
+  - "Understand what MCP is and why it exists"
+  - "Know the client-server architecture"
+  - "Understand how MCP tools appear in Claude Code"
+  - "Be aware of the token cost of MCP connections"
+quiz:
+  - id: "mcp-1"
+    question: "What does MCP stand for?"
+    type: "multiple-choice"
+    options:
+      - "Multi-Channel Protocol"
+      - "Model Context Protocol"
+      - "Machine Communication Protocol"
+      - "Managed Cloud Platform"
+    correct: 1
+    explanation: "MCP stands for Model Context Protocol — an open standard created by Anthropic for connecting AI models to external data sources and tools. It provides a standardized way for Claude to interact with databases, APIs, and services."
+  - id: "mcp-2"
+    question: "What is the relationship between Claude Code and MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "Claude Code IS an MCP server"
+      - "Claude Code is an MCP client that connects to MCP servers"
+      - "They're the same thing"
+      - "MCP servers replace Claude Code"
+    correct: 1
+    explanation: "Claude Code acts as an MCP client. MCP servers are separate processes that provide tools and data. Claude Code connects to these servers and can invoke their tools — for example, querying a database through a PostgreSQL MCP server or creating PRs through a GitHub MCP server."
+  - id: "mcp-3"
+    question: "How do MCP tools appear in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "As new keyboard shortcuts"
+      - "As tools with the naming pattern mcp__servername__toolname"
+      - "As new files in the project"
+      - "As web browser tabs"
+    correct: 1
+    explanation: "MCP tools appear in Claude Code with the naming pattern mcp__servername__toolname. For example, mcp__github__list_prs or mcp__postgres__query. Claude can invoke these tools just like built-in tools (Read, Write, Bash), and they're subject to the same permission system."
+  - id: "mcp-4"
+    question: "What is the token cost concern with MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "MCP servers are free"
+      - "Each connected server adds tool definitions to context, consuming tokens with every message"
+      - "MCP only costs tokens when tools are used"
+      - "MCP uses a separate token pool"
+    correct: 1
+    explanation: "Every connected MCP server adds its tool definitions (name, description, parameters) to the context window. These definitions are sent with EVERY message, consuming 100-500 tokens per tool. Five servers with 50 tools total can add 10,000+ tokens to every single message — a significant hidden cost."
+---
+
+## The Integration Problem
+
+Without MCP, connecting Claude to your tools looks like this:
+
+1. Open GitHub in a browser
+2. Find the PR you want to review
+3. Copy the diff
+4. Paste it into Claude
+5. Read Claude's review
+6. Go back to GitHub
+7. Paste Claude's comments
+
+Every external tool requires manual copy-paste. Every data source requires manual export and import. Claude is powerful but isolated — it can only work with what you manually feed it.
+
+**MCP eliminates this entirely.**
+
+## What Is MCP?
+
+**Model Context Protocol (MCP)** is an open standard created by Anthropic for connecting AI models to external data sources and tools. Think of it as a USB port for AI — a standardized way to plug in databases, APIs, services, and tools.
+
+With MCP, Claude can:
+- **Query your database** directly (through a PostgreSQL/MySQL MCP server)
+- **Manage GitHub** PRs, issues, and repos (through a GitHub MCP server)
+- **Send Slack messages** (through a Slack MCP server)
+- **Browse the web** (through a browser automation MCP server)
+- **Access any API** (through custom MCP servers)
+
+All without you copying or pasting anything.
+
+## Architecture: Client ↔ Server
+
+MCP uses a simple client-server model:
+
+```
+┌─────────────┐     MCP Protocol     ┌──────────────────┐
+│             │ ──── requests ──────→ │                  │
+│ Claude Code │                       │   MCP Server     │
+│  (Client)   │ ←── responses ─────  │  (GitHub, DB,    │
+│             │                       │   Slack, etc.)   │
+└─────────────┘                       └──────────────────┘
+```
+
+- **Client** (Claude Code): Sends requests like "list all open PRs" or "run this SQL query"
+- **Server** (MCP Server): Receives requests, executes them against the external service, and returns results
+
+Each MCP server exposes a set of **tools** — functions that Claude can call. The GitHub server might expose:
+- `list_prs` — List pull requests
+- `create_pr` — Create a new pull request
+- `list_issues` — List issues
+- `create_issue` — Create a new issue
+
+Claude sees these tools and can invoke them just like built-in tools (Read, Write, Bash).
+
+## How Tools Appear in Claude Code
+
+When you connect an MCP server, its tools become available with a namespaced naming pattern:
+
+```
+mcp__servername__toolname
+```
+
+For example:
+- `mcp__github__list_prs` — List PRs from the GitHub server
+- `mcp__github__create_pr` — Create a PR
+- `mcp__postgres__query` — Run a SQL query
+- `mcp__slack__post_message` — Send a Slack message
+
+You can see all connected tools with:
+
+```bash
+/mcp
+```
+
+This shows every connected MCP server and its available tools.
+
+## Without MCP vs. With MCP
+
+### Without MCP: Manual Workflow
+
+```
+You: "Review the changes in PR #42"
+Claude: "I don't have access to GitHub. Please paste the diff."
+You: *opens GitHub, copies diff, pastes it*
+Claude: "Here are the issues I found: ..."
+You: *copies review, goes to GitHub, pastes as comments*
+```
+
+Four context switches, two copy-paste operations, significant time wasted.
+
+### With MCP: Seamless Workflow
+
+```
+You: "Review the changes in PR #42"
+Claude: *calls mcp__github__get_pr_diff(42)*
+       *calls mcp__github__list_pr_comments(42)*
+       "Here are the issues I found. I'll post them as review comments."
+       *calls mcp__github__create_pr_review(42, comments)*
+```
+
+Zero context switches. Claude reads the PR, analyzes it, and posts the review — all in one flow.
+
+## The Token Cost Reality
+
+Here's what most tutorials don't tell you: MCP connections have a significant token cost.
+
+Every connected MCP server adds its tool definitions to your context window. These definitions include the tool name, description, and parameter schema. A typical tool definition is 100-500 tokens.
+
+**The math**:
+```
+GitHub MCP server:    15 tools × ~200 tokens = ~3,000 tokens
+Postgres MCP server:   8 tools × ~200 tokens = ~1,600 tokens
+Slack MCP server:     12 tools × ~200 tokens = ~2,400 tokens
+Notion MCP server:    10 tools × ~200 tokens = ~2,000 tokens
+────────────────────────────────────────────────────────────
+Total:                45 tools = ~9,000 tokens
+```
+
+These 9,000 tokens are included in **every single message**. Over a 50-message session, that's 450,000 tokens just for tool definitions — almost half your context window.
+
+### The Practical Implication
+
+Only connect the MCP servers you're actively using. If you're doing a code review and only need GitHub, don't also connect Postgres, Slack, and Notion. Connect them when you need them, disconnect when you don't.
+
+## What MCP Can Connect
+
+MCP servers exist for a wide range of tools and services:
+
+| Category | Examples |
+|---|---|
+| **Version Control** | GitHub, GitLab, Bitbucket |
+| **Databases** | PostgreSQL, MySQL, SQLite, MongoDB |
+| **Communication** | Slack, Discord, Telegram |
+| **Project Management** | Linear, Jira, Notion, Asana |
+| **Monitoring** | Sentry, Datadog, PagerDuty |
+| **Cloud** | AWS, GCP, Cloudflare |
+| **Browser** | Playwright (automation/testing) |
+| **Documentation** | Context7 (live docs), Notion |
+| **Custom** | Any API you build a server for |
+
+The ecosystem is growing rapidly. If an MCP server doesn't exist for your tool, you can build one (covered in Module 12).
+
+## MCP vs. Other Integrations
+
+You might wonder: "Can't I just use the GitHub CLI in Bash?" Yes, but MCP has advantages:
+
+| Aspect | Bash (gh CLI) | MCP |
+|---|---|---|
+| Structured data | Text output, needs parsing | Native JSON objects |
+| Error handling | Exit codes | Structured error responses |
+| Authentication | Per-command auth | Session-level auth |
+| Tool discovery | Claude guesses commands | Claude sees exact tools and parameters |
+| Permissions | Bash permission patterns | MCP-specific permission patterns |
+
+MCP gives Claude structured, typed interactions with external services — more reliable than parsing CLI output.
+
+## Key Takeaway
+
+MCP (Model Context Protocol) is the standard for connecting Claude to external tools and data. It eliminates manual copy-paste by giving Claude direct access to GitHub, databases, Slack, and any service with an MCP server. The architecture is simple: Claude Code (client) connects to MCP servers that expose tools. Each tool appears as `mcp__server__tool` in your session. The critical thing to remember is the token cost — every connected server adds tool definitions to every message, so only connect what you're actively using.

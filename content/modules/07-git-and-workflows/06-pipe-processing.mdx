@@ -1,0 +1,272 @@
+---
+title: "Pipe Processing: stdin/stdout Magic"
+slug: "pipe-processing"
+order: 6
+difficulty: "intermediate"
+duration: 13
+tags: ["pipes", "stdin", "stdout", "unix", "data-processing"]
+objectives:
+  - "Use Claude Code in unix pipe chains"
+  - "Process logs, CSV data, and git output"
+  - "Transform file formats with piped Claude"
+  - "Build data pipelines combining unix tools and Claude"
+quiz:
+  - id: "pipes-1"
+    question: "What's the basic pattern for piping data to Claude?"
+    type: "multiple-choice"
+    options:
+      - "claude pipe input.txt"
+      - "command | claude -p \"instructions\""
+      - "claude < input.txt"
+      - "claude --stdin input"
+    correct: 1
+    explanation: "The basic pipe pattern is: command | claude -p \"instructions\". The output of the command becomes Claude's input, and the -p flag runs Claude in headless mode. Claude processes the data according to your instructions and outputs the result to stdout."
+  - id: "pipes-2"
+    question: "How would you summarize the last 50 git commits into a changelog?"
+    type: "multiple-choice"
+    options:
+      - "claude changelog 50"
+      - "git log --oneline -50 | claude -p 'create a changelog grouped by type'"
+      - "git log | claude changelog"
+      - "claude -p 'read git log'"
+    correct: 1
+    explanation: "Pipe the git log output directly to Claude: git log --oneline -50 | claude -p 'create a changelog grouped by type'. Claude reads the commit messages and produces a formatted, grouped changelog. You can customize the format with your instructions."
+  - id: "pipes-3"
+    question: "Can you chain Claude in the middle of a unix pipeline?"
+    type: "multiple-choice"
+    options:
+      - "No, Claude must be the last command"
+      - "Yes — pipe input to Claude, then pipe Claude's output to another command"
+      - "Only with special flags"
+      - "Only on Linux"
+    correct: 1
+    explanation: "Claude works anywhere in a pipeline: command1 | claude -p 'transform' | command2. Claude reads from stdin, processes according to instructions, and writes to stdout — just like any other unix tool. You can pipe Claude's output to grep, sort, jq, or any other tool."
+  - id: "pipes-4"
+    question: "What's the advantage of pipe processing over interactive mode for data tasks?"
+    type: "multiple-choice"
+    options:
+      - "It's cheaper"
+      - "It's composable — combine Claude with grep, awk, sort, jq, and other unix tools in a single pipeline"
+      - "It's faster"
+      - "It uses a different model"
+    correct: 1
+    explanation: "Pipe processing makes Claude composable with the entire unix toolchain. You can pre-filter data with grep, transform with Claude, then post-process with jq — each tool doing what it's best at. This is more powerful and flexible than doing everything in an interactive session."
+---
+
+## Claude as a Unix Citizen
+
+Unix philosophy: each tool does one thing well, and tools compose through pipes. Claude Code fits right into this philosophy via headless mode. It reads from stdin, processes data intelligently, and writes to stdout.
+
+This means you can put Claude in the middle of a pipeline alongside grep, awk, sort, jq, and any other unix tool — using each for what it does best.
+
+## The Basic Pattern
+
+```bash
+data_source | claude -p "instructions" | output_destination
+```
+
+Data flows left to right. Claude receives whatever the previous command outputs, processes it according to your instructions, and passes the result to the next command (or stdout).
+
+## Log Analysis
+
+### Error Summarization
+
+```bash
+cat /var/log/app/error.log | claude -p "Summarize the errors in this log. 
+Group by error type, count occurrences, and identify the most critical 
+issues. Output as a markdown table."
+```
+
+### Filtering and Understanding
+
+```bash
+# First grep for the relevant lines, then ask Claude to analyze
+grep "TIMEOUT" /var/log/app/api.log | tail -100 | claude -p \
+  "These are timeout errors from our API. Identify:
+   1. Which endpoints are timing out most
+   2. What time patterns exist (is it worse during certain hours?)
+   3. Likely root causes based on the error details"
+```
+
+### Real-Time Monitoring
+
+```bash
+# Analyze the last 5 minutes of errors
+journalctl --since "5 min ago" -u myapp | claude -p \
+  "Summarize what happened in this service in the last 5 minutes. 
+   Any errors or warnings to be concerned about?"
+```
+
+## Git Output Processing
+
+### Changelog Generation
+
+```bash
+git log --oneline -30 | claude -p "Create a changelog from these commits.
+Group into: Features, Bug Fixes, Refactoring, Other.
+Format as markdown with bullet points. Use past tense."
+```
+
+### Diff Analysis
+
+```bash
+git diff main | claude -p "Summarize these changes in plain language. 
+What was added, what was removed, what was modified? 
+Focus on the 'why' not the 'what'."
+```
+
+### Blame Analysis
+
+```bash
+git log --author="$(git config user.name)" --oneline --since="1 week ago" | \
+  claude -p "Summarize my work this week for a standup report. 
+  Group by feature/area. Be concise — 3-5 bullet points."
+```
+
+## CSV and Data Processing
+
+### Data Analysis
+
+```bash
+cat sales-data.csv | claude -p "Analyze this CSV data:
+1. What are the column headers?
+2. What's the total revenue?
+3. Which product has the highest sales?
+4. Any anomalies or outliers?
+Output a brief report with the key findings."
+```
+
+### Data Transformation
+
+```bash
+cat users.csv | claude -p "Convert this CSV to JSON. 
+Each row should be an object. Use camelCase for keys. 
+Parse dates as ISO 8601. Output valid JSON."
+```
+
+### Data Cleaning
+
+```bash
+cat messy-data.csv | claude -p "Clean this CSV:
+- Standardize phone numbers to +1XXXXXXXXXX format
+- Fix obvious typos in city names
+- Remove duplicate rows
+- Fill missing email fields with 'N/A'
+Output the cleaned CSV."
+```
+
+## Format Transformation
+
+### Markdown to HTML
+
+```bash
+cat README.md | claude -p "Convert this Markdown to clean HTML. 
+Use semantic tags. Add a simple CSS stylesheet inline."
+```
+
+### JSON to YAML
+
+```bash
+cat config.json | claude -p "Convert this JSON to YAML. 
+Preserve comments where the JSON values suggest what they configure."
+```
+
+### SQL to Prisma
+
+```bash
+cat schema.sql | claude -p "Convert this SQL schema to a Prisma schema file. 
+Map the types appropriately and add any necessary relations."
+```
+
+## Multi-Stage Pipelines
+
+The real power comes from chaining Claude with other tools:
+
+### Pre-filter, Then Analyze
+
+```bash
+# Grep narrows the data, Claude analyzes
+grep -i "error\|warning\|critical" app.log | \
+  tail -200 | \
+  claude -p "Categorize these log entries by severity and component. 
+  Which components are most problematic?"
+```
+
+### Claude in the Middle
+
+```bash
+# Extract, transform, load
+cat raw-data.json | \
+  jq '.items[]' | \
+  claude -p "Normalize these items: fix inconsistent naming, 
+  standardize dates, fill missing fields with defaults" | \
+  jq -s '.' > normalized-data.json
+```
+
+### Claude to Claude
+
+```bash
+# First pass: extract structure, Second pass: enrich
+cat codebase-report.txt | \
+  claude -p "Extract all function names and their files as a JSON array" | \
+  claude -p "For each function in this JSON, add a one-line description 
+  of what it likely does based on the name. Output as markdown table."
+```
+
+## Practical Recipes
+
+### Weekly Report Generator
+
+```bash
+#!/bin/bash
+{
+  echo "## Git Activity"
+  git log --oneline --since="1 week ago"
+  echo ""
+  echo "## Open PRs"
+  gh pr list --state open
+  echo ""
+  echo "## Issues Closed"  
+  gh issue list --state closed --since="1 week ago"
+} | claude -p "Format this as a professional weekly engineering report. 
+Include: summary, key accomplishments, open items, and blockers."
+```
+
+### API Response Tester
+
+```bash
+curl -s https://api.example.com/users | \
+  claude -p "Analyze this API response:
+  - Is the JSON well-formed?
+  - Are all expected fields present?
+  - Any null values that shouldn't be null?
+  - Response time implications from the data volume?"
+```
+
+### Documentation Freshness Check
+
+```bash
+find docs -name "*.md" -newer src/services/ -print | \
+  claude -p "These doc files were modified more recently than the source code. 
+  List them and note which might need updating based on the file names."
+```
+
+## Performance Considerations
+
+When using pipes, keep in mind:
+
+- **Token limits**: Large inputs (10,000+ lines) may exceed what Claude can process in one shot. Pre-filter with grep, head, or tail.
+- **Cost**: Each pipe invocation is a separate API call. Batch related processing into single calls when possible.
+- **Latency**: Headless mode still takes 2-10 seconds per call. For high-volume processing, consider batching.
+
+```bash
+# Instead of processing files one at a time:
+for f in *.ts; do cat "$f" | claude -p "analyze"; done  # Slow: N API calls
+
+# Batch them:
+cat src/services/*.ts | claude -p "Analyze all these files"  # Fast: 1 API call
+```
+
+## Key Takeaway
+
+Pipe processing makes Claude a first-class unix citizen. The pattern is simple: `command | claude -p "instructions" | next_command`. Use it for log analysis, git output processing, data transformation, format conversion, and multi-stage pipelines. Pre-filter large data with grep/awk/jq before sending to Claude, and batch related processing into single calls for efficiency. This gives you the power of AI text processing combined with the composability of the unix toolchain.

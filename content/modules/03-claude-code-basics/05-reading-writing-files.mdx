@@ -1,0 +1,317 @@
+---
+title: "Reading, Writing, and Editing Files"
+slug: "reading-writing-files"
+order: 5
+difficulty: "beginner"
+duration: 15
+tags: ["claude-code", "file-operations", "read", "write", "edit"]
+objectives:
+  - "Understand Claude Code's three file tools: Read, Write, and Edit"
+  - "Know when Claude creates new files vs. edits existing ones"
+  - "Review diffs before approving changes"
+  - "Use Claude Code to read images and PDFs"
+quiz:
+  - id: "files-1"
+    question: "What is the difference between the Write tool and the Edit tool?"
+    type: "multiple-choice"
+    options:
+      - "There is no difference"
+      - "Write creates new files or does full rewrites; Edit makes surgical string replacements in existing files"
+      - "Write is for text files; Edit is for code"
+      - "Write is permanent; Edit is temporary"
+    correct: 1
+    explanation: "Write creates new files or completely rewrites existing ones. Edit performs targeted string replacements — finding a specific string in the file and replacing it with a new string. Edit is preferred for modifications because it's precise and less likely to accidentally change unrelated code."
+  - id: "files-2"
+    question: "What should Claude do before writing to an existing file?"
+    type: "multiple-choice"
+    options:
+      - "Delete the old file first"
+      - "Read the file first to understand its current contents"
+      - "Create a backup"
+      - "Ask for your credit card"
+    correct: 1
+    explanation: "Claude should Read a file before Writing to it. This ensures Claude knows the current state of the file and won't accidentally overwrite important content. Claude Code actually enforces this — it will error if you try to Write to a file that hasn't been Read."
+  - id: "files-3"
+    question: "Can Claude Code read image files?"
+    type: "multiple-choice"
+    options:
+      - "No — it can only read text files"
+      - "Yes — Claude is multimodal and can see PNG, JPG, and other image formats"
+      - "Only with a special plugin"
+      - "Only screenshots, not other images"
+    correct: 1
+    explanation: "Claude is a multimodal model. When Claude Code reads an image file (PNG, JPG, etc.), the image is presented visually to Claude, who can describe what it sees, identify UI elements, read text in screenshots, and more."
+  - id: "files-4"
+    question: "When Claude shows you a diff before editing a file, what should you check?"
+    type: "multiple-choice"
+    options:
+      - "Just approve immediately — Claude is always correct"
+      - "Check that the changes are correct, don't affect unrelated code, and match what you asked for"
+      - "Count the number of lines changed"
+      - "Check the file extension"
+    correct: 1
+    explanation: "Always review the diff before approving. Check that the change is correct, that it only modifies what you asked for (no accidental side effects), and that the surrounding context looks right. This is your safety net."
+---
+
+## The Three File Tools
+
+Claude Code interacts with your filesystem through three distinct tools, each designed for a specific purpose:
+
+| Tool | Purpose | Use Case |
+|------|---------|----------|
+| **Read** | Read file contents into context | Understanding code, gathering context |
+| **Write** | Create new files or fully rewrite existing ones | New files, complete rewrites |
+| **Edit** | Surgical string replacement in existing files | Bug fixes, refactors, small changes |
+
+Understanding when Claude uses each tool — and why — makes you better at directing its work and reviewing its changes.
+
+## The Read Tool
+
+Read is the most frequently used file tool. Every time Claude needs to look at a file, it uses Read.
+
+### What Read Does
+
+- Opens a file and loads its contents into the conversation context
+- Returns the content with line numbers (like `cat -n`)
+- Can read partial files (specific line ranges) for large files
+- Works with text files, code, configuration, and data files
+
+### Read in Action
+
+When you ask Claude to analyze a file:
+
+```
+You: "What does @src/auth/jwt.ts do?"
+
+Claude: Let me read that file.
+  [Read] src/auth/jwt.ts
+
+The JWT module handles three things:
+1. Token generation (generateToken, line 15-28) — creates signed
+   JWTs with user ID, role, and 1-hour expiry
+2. Token verification (verifyToken, line 30-52) — validates
+   signature and expiry, returns decoded payload
+3. Token refresh (refreshToken, line 54-78) — issues new
+   access token if the refresh token is valid
+```
+
+### Reading Images
+
+Claude is multimodal — it can see images. When you reference an image file:
+
+```
+You: "Look at @screenshots/login-page.png and tell me if the
+     layout matches the Figma design"
+
+Claude: [Read] screenshots/login-page.png
+
+I can see the login page. Comparing to typical design patterns:
+- The email field is properly centered
+- The password field has a show/hide toggle
+- The "Forgot Password" link is below the form but it's left-aligned
+  when it should be right-aligned based on most login page conventions
+- The submit button could use more vertical padding
+```
+
+This works with PNG, JPG, GIF, WebP, and other common image formats. It's incredibly useful for:
+
+- Reviewing screenshots of UI bugs
+- Comparing design mockups to implementations
+- Reading error screenshots from bug reports
+- Analyzing diagrams and architecture charts
+
+### Reading PDFs
+
+Claude can also read PDF files:
+
+```
+You: "Summarize @docs/api-specification.pdf"
+
+Claude: [Read] docs/api-specification.pdf (pages 1-10)
+
+This API specification covers...
+```
+
+For large PDFs (over 10 pages), Claude reads specific page ranges to avoid overwhelming the context window.
+
+## The Write Tool
+
+Write creates new files or completely replaces the contents of existing files.
+
+### When Claude Uses Write
+
+- **Creating new files** — you ask Claude to create a new component, test file, or configuration
+- **Full file rewrites** — the entire file needs to change (rare, but sometimes necessary)
+- **Generating boilerplate** — scaffold files, templates, initial project structure
+
+### Write in Action
+
+```
+You: "Create a new middleware for rate limiting at src/middleware/rateLimiter.ts"
+
+Claude: I'll create the rate limiting middleware.
+  [Write] src/middleware/rateLimiter.ts
+
+  import rateLimit from 'express-rate-limit';
+  
+  export const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: 'Too many requests, please try again later',
+      retryAfter: '15 minutes'
+    }
+  });
+  
+  export const authLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: {
+      error: 'Too many login attempts, please try again later',
+      retryAfter: '1 hour'
+    }
+  });
+
+[Allow this write?] [Y/n]
+```
+
+Claude shows you the full file content and asks for permission before writing.
+
+### The Read-Before-Write Rule
+
+Claude Code enforces an important safety rule: **Claude must Read a file before Writing to it** (if it already exists). This prevents accidental overwrites.
+
+If Claude tries to write to an existing file it hasn't read, the tool errors. This forces Claude to understand the current state of the file before replacing it — preventing situations where a full rewrite accidentally removes important code that Claude didn't know about.
+
+## The Edit Tool
+
+Edit is the precision instrument. Instead of rewriting an entire file, it finds a specific string and replaces it with a new string.
+
+### When Claude Uses Edit
+
+- **Bug fixes** — changing a specific line or block
+- **Refactoring** — renaming variables, changing function signatures
+- **Adding code** — inserting new functionality into an existing file
+- **Removing code** — deleting specific blocks
+
+### Edit in Action
+
+```
+You: "The JWT expiry is set to 1 hour but we need 15 minutes"
+
+Claude: I'll update the expiry in the JWT configuration.
+  [Edit] src/auth/jwt.ts
+
+  - expiresIn: '1h',
+  + expiresIn: '15m',
+
+[Allow this edit?] [Y/n]
+```
+
+The diff format shows exactly what changes — the old line (prefixed with `-`) and the new line (prefixed with `+`). You can see that only the expiry value changes and nothing else is affected.
+
+### Multi-Line Edits
+
+Edit handles multi-line replacements too:
+
+```
+Claude: I'll add input validation before the database query.
+  [Edit] src/api/users.ts
+
+  - const user = await db.user.findUnique({ where: { id: req.params.id } });
+  + const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+  + const user = await db.user.findUnique({ where: { id } });
+
+[Allow this edit?] [Y/n]
+```
+
+### Why Edit Is Preferred Over Write
+
+For modifications to existing files, Edit is almost always better than Write:
+
+1. **Precision** — only the targeted string changes; the rest of the file stays untouched
+2. **Safety** — you can see exactly what's different, making review trivial
+3. **Fewer errors** — a full Write could accidentally change or remove code
+4. **Smaller diffs** — easier to review in version control
+5. **Less token-intensive** — Claude only sends the replacement, not the entire file
+
+## Reviewing Diffs
+
+When Claude proposes a file change (either Write or Edit), it shows you a preview before applying. This is your safety net. Here's how to review effectively:
+
+### What to Check
+
+1. **Is the change correct?** Does the new code do what you asked?
+2. **Is it complete?** Did Claude miss any part of the change?
+3. **Are there side effects?** Does the change accidentally affect other functionality?
+4. **Is the context right?** Is Claude editing the right part of the right file?
+5. **Does it match your conventions?** Naming, style, patterns
+
+### When to Deny a Change
+
+- The change modifies something you didn't ask for
+- The logic looks wrong
+- An important null check or error handler was removed
+- The change introduces a security issue (e.g., removing input validation)
+- You realize you need to rethink the approach
+
+When you deny, tell Claude why:
+
+```
+[Deny]
+You: "Don't remove the null check on line 42 — it handles the edge
+     case where the user hasn't set up their profile yet. Revise
+     the fix to keep that check."
+```
+
+Claude will try again, incorporating your feedback.
+
+## Safe File Operation Patterns
+
+### The Explore-Then-Fix Pattern
+
+```
+You: "There's a bug in the payment flow"
+
+# Claude explores (all reads, no writes)
+Claude: [Read] src/services/payment.ts
+Claude: [Read] src/api/payments/charge.ts
+Claude: [Read] src/utils/stripe.ts
+
+Claude: I found the bug. The webhook handler on line 67 of charge.ts
+        doesn't verify the Stripe signature. Here's the fix:
+
+  [Edit] src/api/payments/charge.ts
+  ...
+```
+
+Claude reads first, understands the codebase, then proposes a targeted fix.
+
+### The Incremental Change Pattern
+
+For large changes, ask Claude to work incrementally:
+
+```
+You: "Refactor the auth module to use refresh tokens. Do it file by
+     file — show me each change and wait for my approval before
+     moving to the next file."
+```
+
+This gives you a review checkpoint after each file, reducing the risk of a bad change propagating through multiple files.
+
+### The Verify-After-Change Pattern
+
+After Claude makes changes, verify them:
+
+```
+You: "Good, the edit looks right. Now run the tests to make sure
+     nothing is broken: npm test -- --testPathPattern=auth"
+```
+
+Claude runs the tests and reports the results. If something breaks, you can immediately investigate and fix.
+
+## Key Takeaway
+
+Claude Code uses three file tools: Read (view files and images), Write (create new files), and Edit (surgical string replacement in existing files). Edit is preferred for modifications because it's precise, safe, and easy to review. Always review the diff preview before approving changes, and use the explore-then-fix pattern for safe debugging: let Claude read and understand before it writes. The Read-before-Write rule ensures Claude never blindly overwrites files it hasn't examined.

@@ -1,0 +1,284 @@
+---
+title: "Git Workflows with Claude Code"
+slug: "git-workflows"
+order: 1
+difficulty: "intermediate"
+duration: 16
+tags: ["git", "workflows", "commits", "pull-requests", "github"]
+objectives:
+  - "Use Claude Code for branch creation, commits, and PR workflows"
+  - "Understand Claude's git safety guarantees"
+  - "Set up GitHub integration with /install-github-app"
+  - "Use --from-pr for PR-linked sessions"
+quiz:
+  - id: "git-1"
+    question: "What git safety rule does Claude Code always follow?"
+    type: "multiple-choice"
+    options:
+      - "Claude always amends the previous commit"
+      - "Claude never force-pushes, always creates new commits (not amend), and asks before destructive operations"
+      - "Claude only commits to main"
+      - "Claude always pushes immediately after committing"
+    correct: 1
+    explanation: "Claude follows strict git safety: it never force-pushes, always creates new commits (rather than amending existing ones), and asks for permission before destructive operations like reset --hard. This protects your git history from accidental destruction."
+  - id: "git-2"
+    question: "What does claude --from-pr 42 do?"
+    type: "multiple-choice"
+    options:
+      - "Creates PR #42"
+      - "Starts a session with the context of PR #42 already loaded"
+      - "Merges PR #42"
+      - "Reviews PR #42"
+    correct: 1
+    explanation: "claude --from-pr 42 starts a session pre-loaded with the context of pull request #42 — the diff, description, and file changes. This is useful for reviewing PRs, addressing review comments, or continuing work on a PR's branch."
+  - id: "git-3"
+    question: "What does /install-github-app do?"
+    type: "multiple-choice"
+    options:
+      - "Installs Git on your machine"
+      - "Installs the Claude GitHub App for automatic PR reviews in GitHub Actions"
+      - "Creates a GitHub repository"
+      - "Installs the GitHub CLI"
+    correct: 1
+    explanation: "/install-github-app installs the Claude GitHub App, which enables automatic PR reviews in your GitHub Actions workflows. When a PR is opened, Claude can automatically review it, check for issues, and leave comments."
+  - id: "git-4"
+    question: "What is the /commit skill?"
+    type: "multiple-choice"
+    options:
+      - "A tool for writing commit messages"
+      - "A built-in skill that analyzes staged changes, writes a conventional commit message, and creates the commit"
+      - "A command to undo the last commit"
+      - "A commit template"
+    correct: 1
+    explanation: "The /commit skill analyzes your staged changes (git diff), generates a descriptive conventional commit message based on what actually changed, and creates the commit. It follows your project's commit message conventions if defined in CLAUDE.md."
+---
+
+## Claude as Your Git Partner
+
+Git is the backbone of every software project, and Claude Code integrates deeply with it. You can ask Claude to create branches, stage files, write meaningful commit messages, create pull requests, and even review PRs — all from natural language.
+
+But what makes Claude's git integration special is its **safety guarantees**. Claude is designed to never break your git history.
+
+## Git Safety Guarantees
+
+Before we dive into workflows, understand the safety rules Claude always follows:
+
+1. **Never force-pushes**: Claude will never run `git push --force` unless you explicitly ask and confirm
+2. **Always creates new commits**: Claude creates fresh commits rather than amending existing ones, protecting your history
+3. **Asks before destructive operations**: `git reset --hard`, `git checkout .`, `git branch -D` — Claude asks first
+4. **Never pushes to main/master without warning**: If you ask Claude to push to the main branch, it warns you first
+5. **Preserves hooks**: Claude never skips git hooks (`--no-verify`) unless you explicitly request it
+
+These guarantees mean you can confidently let Claude handle git operations without worrying about accidental data loss.
+
+## Branch Creation
+
+```bash
+"Create a new branch called feature/order-cancellation from main"
+```
+
+Claude runs:
+```bash
+git checkout main
+git pull
+git checkout -b feature/order-cancellation
+```
+
+You can also be more specific:
+
+```bash
+"Create a branch for fixing the payment timeout bug, 
+branching from the current develop branch"
+```
+
+Claude creates a descriptively named branch like `fix/payment-timeout` from develop.
+
+## Staging and Committing
+
+### The /commit Skill
+
+The fastest way to commit is the `/commit` skill:
+
+```bash
+# After making changes, just type:
+/commit
+```
+
+Claude analyzes the staged changes (or stages them for you), generates a descriptive commit message, and creates the commit. The message follows conventional commit format by default:
+
+```
+feat(payments): add retry logic for failed webhook deliveries
+
+- Add exponential backoff for webhook retries (max 5 attempts)
+- Store retry count and last attempt timestamp
+- Add dead letter queue for permanently failed webhooks
+```
+
+### Natural Language Commits
+
+You can also describe what you want committed:
+
+```bash
+"Stage the changes in src/services/payment/ and commit them with a message
+about the webhook retry logic"
+```
+
+Or even simpler:
+
+```bash
+"Commit all my changes with an appropriate message"
+```
+
+Claude examines the diff, understands what changed, and writes a meaningful commit message — not "updated files" but a real description of the changes.
+
+### Commit Message Conventions
+
+If your CLAUDE.md specifies commit conventions, Claude follows them:
+
+```markdown
+## Commit Conventions
+- Use conventional commits: type(scope): description
+- Types: feat, fix, refactor, test, docs, chore
+- Scope is the module name (payments, auth, users)
+- Description is imperative tense ("add", not "added")
+- Body explains why, not what
+```
+
+Claude will follow these rules for every commit it creates.
+
+## Pull Requests
+
+### Creating PRs
+
+```bash
+"Create a pull request for the current branch. Compare against main."
+```
+
+Claude uses `gh` (GitHub CLI) to create a PR with:
+- A descriptive title based on the branch changes
+- A body summarizing what changed and why
+- Labels if your project uses them
+
+```bash
+"Create a PR with the title 'Add webhook retry logic' and include 
+a summary of all commits on this branch"
+```
+
+### PR-Linked Sessions
+
+Start a session pre-loaded with a PR's context:
+
+```bash
+claude --from-pr 42
+```
+
+This loads PR #42's diff, description, and comments into the session. You can then:
+
+```bash
+"Address the review comments on this PR"
+"The reviewer asked about error handling in the webhook handler — fix it"
+"Add the test cases the reviewer requested"
+```
+
+Claude has the full PR context, so it knows exactly what the reviewer asked for and what code needs to change.
+
+## Code Review
+
+Claude is an excellent code reviewer. Point it at a diff:
+
+```bash
+"Review the changes in the current branch compared to main"
+
+"Review the last 3 commits for security issues"
+
+"Look at the diff for src/services/payment/ and check for:
+- Race conditions
+- Missing error handling  
+- N+1 queries
+- Input validation gaps"
+```
+
+Claude reads the diff, understands the context, and provides specific feedback with line references.
+
+## GitHub App Integration
+
+For automated PR reviews in your CI pipeline:
+
+```bash
+/install-github-app
+```
+
+This installs the Claude GitHub App on your repository. Once installed, when a PR is opened, Claude can automatically:
+
+- Review the code changes
+- Check for common issues
+- Leave comments on specific lines
+- Suggest improvements
+
+The app runs as part of your GitHub Actions workflow, so reviews happen automatically without anyone needing to manually trigger Claude.
+
+## Common Git Workflows
+
+### Feature Branch Workflow
+
+```bash
+# Start the feature
+claude -n "order-cancellation"
+"Create a feature branch from main for order cancellation"
+
+# Implement
+"Implement the order cancellation endpoint following our API conventions"
+
+# Test
+"Run the tests for the order service"
+
+# Commit
+/commit
+
+# Create PR
+"Create a PR targeting main with a summary of all changes"
+```
+
+### Bug Fix Workflow
+
+```bash
+# Start from the bug report
+claude --from-pr 87
+"This PR introduced a regression. What changed that could cause
+the timeout errors described in the bug report?"
+
+# Fix
+"Fix the timeout issue — the connection pool was being exhausted"
+
+# Commit and push
+/commit
+"Push the fix to the PR branch"
+```
+
+### Release Workflow
+
+```bash
+claude -n "release-v2.3.0"
+"Generate a changelog from all commits since the last tag (v2.2.0)"
+"Create a release branch from main"
+"Tag the release as v2.3.0 with the changelog as the tag message"
+```
+
+## Git Operations Reference
+
+| Task | Example Prompt |
+|---|---|
+| Create branch | "Create a branch called fix/auth-timeout from develop" |
+| Stage files | "Stage all changes in src/services/" |
+| Commit | `/commit` or "Commit with message about auth fix" |
+| Push | "Push the current branch" |
+| Create PR | "Create a PR against main" |
+| Review PR | "Review the diff against main" |
+| Resolve conflicts | "Resolve the merge conflicts in package.json" |
+| Cherry pick | "Cherry-pick commit abc123 to this branch" |
+| Generate changelog | "Generate a changelog from commits since v2.0.0" |
+| Tag release | "Tag this as v2.3.0" |
+
+## Key Takeaway
+
+Claude Code integrates deeply with Git while maintaining strict safety guarantees — no force pushes, no amending, no destructive operations without permission. Use `/commit` for quick, well-messaged commits. Use `--from-pr` for PR-linked sessions. Install the GitHub App for automated reviews. Claude handles the git mechanics so you can focus on the code, not the commands.

@@ -1,0 +1,244 @@
+---
+title: "File References with @ — Give Claude Context"
+slug: "file-references"
+order: 4
+difficulty: "beginner"
+duration: 14
+tags: ["claude-code", "file-references", "context", "at-syntax"]
+objectives:
+  - "Use the @ syntax to reference files, directories, and glob patterns"
+  - "Understand the token cost of file references"
+  - "Know best practices for efficient context loading"
+  - "Use the ! syntax for inline shell commands and @ for sub-agents"
+quiz:
+  - id: "file-refs-1"
+    question: "What does @src/auth/middleware.ts do in a Claude Code prompt?"
+    type: "multiple-choice"
+    options:
+      - "Creates a new file at that path"
+      - "Reads the file's contents into Claude's context for the current message"
+      - "Deletes the file"
+      - "Opens the file in VS Code"
+    correct: 1
+    explanation: "The @ prefix tells Claude Code to read that file's contents into context. Claude can then see and reason about the file's code as part of your conversation."
+  - id: "file-refs-2"
+    question: "What happens to token usage when you reference a file with @ in multiple messages?"
+    type: "multiple-choice"
+    options:
+      - "The file is read once and cached"
+      - "The file is re-read and re-processed for each message where it's referenced"
+      - "Only the changes since the last read are sent"
+      - "File references are free and don't use tokens"
+    correct: 1
+    explanation: "File references are re-read every time you send a message that references them. A 500-line file referenced in 10 messages costs 10x the tokens. This is why being selective about file references matters."
+  - id: "file-refs-3"
+    question: "Which file reference pattern is the MOST token-efficient for debugging a specific TypeScript file?"
+    type: "multiple-choice"
+    options:
+      - "@src/"
+      - "@src/**/*.ts"
+      - "@src/auth/jwt.ts"
+      - "@."
+    correct: 2
+    explanation: "Referencing the specific file (@src/auth/jwt.ts) uses the fewest tokens. Broader references like @src/ or glob patterns load many files, most of which may be irrelevant to your debugging task."
+  - id: "file-refs-4"
+    question: "What does the !command syntax do in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Deletes a command from history"
+      - "Runs a shell command inline and includes the output in your message"
+      - "Negates the previous instruction"
+      - "Marks a command as high priority"
+    correct: 1
+    explanation: "The ! prefix runs a shell command and includes its output as context in your message. For example, '!git diff HEAD~1' includes the recent diff. This is useful for giving Claude dynamic context."
+---
+
+## Why File References Matter
+
+Claude Code can read your files directly — that's one of its biggest advantages over claude.ai. But Claude doesn't automatically read every file in your project. It reads files when:
+
+1. **You reference them** with the `@` syntax
+2. **Claude decides it needs to** as part of solving your task (using the Read tool)
+3. **You include them** via CLAUDE.md directives
+
+The `@` syntax gives you explicit control over what Claude sees. This matters because every file you reference consumes tokens — and the more precisely you target the relevant files, the better Claude's answers and the lower your token usage.
+
+## The @ Syntax
+
+### Single File Reference
+
+The most common pattern — point Claude at a specific file:
+
+```
+"Explain the authentication flow in @src/auth/middleware.ts"
+
+"There's a bug in @src/utils/date.ts — the timezone conversion
+is off by one hour during DST transitions"
+
+"Review @package.json and tell me if any dependencies have
+known vulnerabilities"
+```
+
+Claude reads the file's full contents into context. You can then ask questions about it, request changes, or use it as reference for other tasks.
+
+### Directory Reference
+
+Reference an entire directory to give Claude broader context:
+
+```
+"Look at @src/auth/ and explain the overall authentication architecture"
+
+"Review @src/api/routes/ for consistent error handling patterns"
+```
+
+This reads **all files** in the directory. Use this when you need Claude to understand how multiple files in a module work together. Be cautious with large directories — `@src/` on a big project could load thousands of files.
+
+### Glob Patterns
+
+Target specific file types or patterns:
+
+```
+"Find all React components that use the deprecated useEffect pattern
+in @src/components/**/*.tsx"
+
+"Check all test files for proper cleanup:
+@src/**/*.test.ts"
+
+"Review the API route handlers:
+@src/api/**/*.ts"
+```
+
+Globs let you be surgical: load all TypeScript files in a directory, all test files across the project, or all files matching a specific naming pattern.
+
+### Multiple References
+
+Combine references in a single message:
+
+```
+"Compare the error handling in @src/api/users.ts with @src/api/payments.ts
+and tell me which patterns are inconsistent"
+
+"The bug is somewhere between @src/services/auth.ts,
+@src/middleware/jwt.ts, and @src/utils/token.ts — find it"
+```
+
+## The Token Cost of File References
+
+Here's the critical thing to understand: **file references are not free**. Every file you reference is read into Claude's context, consuming tokens.
+
+Rough token costs per file:
+
+| File Size | Approximate Tokens |
+|-----------|-------------------|
+| 50 lines (small utility) | 400-600 |
+| 200 lines (typical module) | 1,500-2,500 |
+| 500 lines (large file) | 4,000-6,000 |
+| 1,000 lines (very large) | 8,000-12,000 |
+
+And remember: these tokens are consumed **every message** where the file is referenced. If you write `@src/big-file.ts` in 10 consecutive messages, you use 10x the tokens.
+
+### Efficient vs. Wasteful Patterns
+
+**Wasteful** — loading the entire source directory for a specific bug:
+```
+"There's a null pointer in the user service. Look at @src/"
+# Loads potentially hundreds of files, most irrelevant
+```
+
+**Efficient** — targeting the specific files:
+```
+"There's a null pointer in @src/services/user.service.ts, probably
+in the updateProfile method around line 85"
+# Loads one file, exactly what's needed
+```
+
+**Wasteful** — referencing the same large file in every message:
+```
+Message 1: "Look at @src/api/routes.ts and find the bug"
+Message 2: "Now look at @src/api/routes.ts and fix it"
+Message 3: "Check @src/api/routes.ts — is the fix correct?"
+# File is re-read 3 times
+```
+
+**Efficient** — reference once, then let conversation context carry forward:
+```
+Message 1: "Look at @src/api/routes.ts and find the bug"
+Message 2: "Fix the bug you found"  # Claude remembers the file from message 1
+Message 3: "Is your fix correct?"    # Still remembers
+```
+
+After the first reference, Claude has the file content in conversation history. You don't need to reference it again unless the file has changed (e.g., Claude edited it).
+
+## The ! Syntax: Inline Shell Commands
+
+The `!` prefix runs a shell command and includes its output in your message context:
+
+```
+"Based on !git diff HEAD~3, write a summary of recent changes"
+
+"Look at !npm test 2>&1 | tail -20 and fix the failing tests"
+
+"Analyze !curl -s https://api.example.com/health and tell me
+if there are any concerning metrics"
+```
+
+This is powerful for dynamic context — information that changes between sessions, like recent git diffs, test output, or API responses.
+
+### Practical Uses
+
+```bash
+# Give Claude your recent changes
+"Review !git diff --staged for issues before I commit"
+
+# Give Claude test failure output
+"Fix the errors in !npm test 2>&1"
+
+# Give Claude environment context
+"Based on !env | grep DATABASE, check if our database config is correct"
+
+# Give Claude system info
+"Optimize the Dockerfile for !uname -a"
+```
+
+## The @agent Syntax: Sub-Agents
+
+When working with multi-agent setups (a Max feature), the `@` syntax can also reference sub-agents:
+
+```
+"@researcher find all papers about cursor-based pagination"
+
+"@reviewer check @src/api/payments.ts for security issues"
+```
+
+This invokes a sub-agent with a specific task. Sub-agents are specialized Claude instances that can work in parallel on different aspects of a problem. You'll learn more about this in the agents module.
+
+## Best Practices Summary
+
+### Do
+
+- **Be specific** — reference the exact file when you know which one is relevant
+- **Use globs for targeted searches** — `@src/**/*.test.ts` is better than `@src/`
+- **Reference once** — let conversation history carry the context forward
+- **Use !commands for dynamic data** — git diffs, test output, API responses
+
+### Don't
+
+- **Don't reference huge directories** — `@.` or `@src/` on a large project wastes thousands of tokens
+- **Don't re-reference unchanged files** — if Claude already has it in context, skip the @
+- **Don't reference files you can describe** — "the Express app entry point" works if there's only one
+- **Don't forget the token cost** — each file reference is real money (or usage budget)
+
+### The Decision Tree
+
+```
+Need Claude to see a file?
+  ├── Do you know exactly which file? → @specific/file.ts
+  ├── Need a category of files? → @src/**/*.test.ts
+  ├── Need the whole module? → @src/auth/
+  ├── Need dynamic output? → !command
+  └── Claude already saw it this session? → Don't re-reference, just describe
+```
+
+## Key Takeaway
+
+The `@` syntax is how you feed Claude Code your actual code — single files (`@path/to/file`), directories (`@src/auth/`), or glob patterns (`@src/**/*.ts`). Every reference consumes tokens and is re-processed each message, so be precise and avoid redundant references. Use `!command` for dynamic context like git diffs and test output. The more targeted your references, the better Claude's answers and the longer your sessions last.

@@ -1,0 +1,215 @@
+---
+title: "The Context Window Deep Dive"
+slug: "context-window-deep-dive"
+order: 1
+difficulty: "intermediate"
+duration: 16
+tags: ["context-window", "tokens", "optimization", "session-management"]
+objectives:
+  - "Understand the context window size and what fills it"
+  - "Use /context to inspect token usage"
+  - "Identify hidden token costs most users miss"
+  - "Know the relationship between conversation length and token consumption"
+quiz:
+  - id: "context-1"
+    question: "What is Claude's maximum context window size?"
+    type: "multiple-choice"
+    options:
+      - "128K tokens (~96K words)"
+      - "200K tokens (~150K words)"
+      - "1M tokens (~750K words)"
+      - "Unlimited"
+    correct: 2
+    explanation: "Claude's context window is approximately 1 million tokens, which translates to roughly 750,000 words. This is massive — enough for entire codebases — but it's not infinite, and knowing how it fills up is crucial for effective usage."
+  - id: "context-2"
+    question: "Why do long conversations consume tokens exponentially?"
+    type: "multiple-choice"
+    options:
+      - "Claude gets slower over time"
+      - "Each message re-processes ALL prior conversation history"
+      - "Tokens expire and need to be refreshed"
+      - "The API charges more for longer conversations"
+    correct: 1
+    explanation: "Every time you send a message, the ENTIRE conversation history is sent to the API. Message 20 includes messages 1-19 plus your new message. This means a 50-message conversation processes the full history 50 times — making long conversations the biggest hidden token cost."
+  - id: "context-3"
+    question: "How do @file references affect token consumption?"
+    type: "multiple-choice"
+    options:
+      - "Files are read once and cached"
+      - "Files are re-read and re-sent with EVERY message in the conversation"
+      - "Files don't use tokens"
+      - "Files are compressed before sending"
+    correct: 1
+    explanation: "@file references are re-read every message. If you reference a 1,000-line file early in a conversation, those tokens are included with every subsequent message. This is why it's better to reference files only when you need them, not at the start of a long conversation."
+  - id: "context-4"
+    question: "What does research mode cost in terms of tokens?"
+    type: "multiple-choice"
+    options:
+      - "Same as normal mode"
+      - "About 2x normal"
+      - "5-10x normal tokens due to multiple web searches and synthesis"
+      - "It uses a separate token pool"
+    correct: 2
+    explanation: "Research mode (deep research) can use 5-10x the tokens of a normal query because it performs multiple web searches, reads multiple pages, and synthesizes information from various sources. Use it when you genuinely need deep research, not for quick lookups."
+---
+
+## The 1M Token Reality
+
+Claude Code gives you access to approximately **1 million tokens** of context — roughly 750,000 words. That's enormous. You could fit an entire novel, or several hundred source files, into a single context window.
+
+But here's what most users don't understand: the context window isn't just a bucket you fill up. It's a conveyor belt. Every message you send, every file you reference, every tool output — they all ride the belt. And the belt carries everything from the start of the conversation.
+
+Understanding how this belt works is the difference between someone who uses Claude Code casually and someone who uses it efficiently.
+
+## The /context Command
+
+At any time during a session, type `/context` to see your current token usage:
+
+```
+/context
+
+Context usage:
+  Conversation:    45,231 tokens  (4.5%)
+  CLAUDE.md:        1,200 tokens  (0.1%)
+  File references:  12,800 tokens  (1.3%)
+  MCP tools:        3,400 tokens  (0.3%)
+  System prompt:    2,100 tokens  (0.2%)
+  ────────────────────────────────
+  Total:           64,731 tokens  (6.5%)
+  Remaining:      935,269 tokens  (93.5%)
+```
+
+This grid tells you exactly where your tokens are going. Check it periodically during long sessions to understand your consumption pattern.
+
+## What Eats Your Tokens
+
+### 1. Conversation History (The Biggest Cost)
+
+This is the one most people miss. In the Claude API, **every message you send includes the ENTIRE conversation history**. Here's why that matters:
+
+```
+Message 1: You send 100 tokens  →  API processes 100 tokens
+Message 2: You send 100 tokens  →  API processes 200 tokens (msg 1 + msg 2)
+Message 3: You send 100 tokens  →  API processes 300 tokens (msgs 1-3)
+Message 10: You send 100 tokens →  API processes 1,000 tokens (msgs 1-10)
+Message 50: You send 100 tokens →  API processes 5,000 tokens (msgs 1-50)
+```
+
+By message 50, you're processing 50x the tokens of message 1, even if each individual message is the same size. The total tokens consumed across all 50 messages? 127,500 tokens — not 5,000.
+
+This is why **long conversations are exponentially expensive**. A 100-message conversation doesn't use 2x the tokens of a 50-message conversation — it uses roughly 4x.
+
+The practical implication: **one task, one session**. Don't run a debugging session in the same conversation where you designed the architecture 45 messages ago.
+
+### 2. File References (@refs)
+
+When you use `@src/services/auth.ts` in a message, Claude reads the file and includes its content in the context. But here's the key: that file content is **re-read and re-sent with every subsequent message**.
+
+If you reference a 500-line file in message 3, those tokens are included in messages 4, 5, 6, and every message after that. For a 50-message conversation, that file's tokens are processed 48 times.
+
+```
+# Expensive pattern (file tokens processed every message):
+Message 1: "Look at @src/services/auth.ts and @src/services/user.ts"
+Message 2-50: Both files are in context for all 49 remaining messages
+
+# Efficient pattern (file tokens only when needed):
+Message 45: "Now check @src/services/auth.ts for the bug"
+# File only in context for messages 45-50
+```
+
+### 3. Extended Thinking
+
+When extended thinking is enabled (Alt+T), Claude spends tokens on internal reasoning before producing the visible response. These thinking tokens count toward your usage. A complex problem might use 5,000-15,000 thinking tokens per message.
+
+This is usually worth it for complex tasks — the quality improvement justifies the cost. But leaving thinking enabled for simple tasks like renaming variables wastes tokens with no benefit.
+
+### 4. MCP Tool Definitions
+
+Every connected MCP server adds tool definitions to the context. Each tool definition is typically 100-500 tokens — the tool name, description, parameter schema.
+
+If you have 5 MCP servers connected with 10 tools each, that's 50 tool definitions consuming 5,000-25,000 tokens of context, loaded with every single message.
+
+```
+# The cost of connected MCP servers:
+GitHub MCP:     ~2,000 tokens (tool definitions)
+Postgres MCP:   ~1,500 tokens
+Slack MCP:      ~1,800 tokens
+Notion MCP:     ~2,200 tokens
+────────────────────────────
+Total:          ~7,500 tokens per message
+
+# Over 50 messages: 375,000 tokens just for MCP definitions
+```
+
+Disconnect MCP servers you're not actively using.
+
+### 5. Research Mode
+
+**Research mode** (also called deep research) uses the web search tool to find and synthesize information. A single research query can trigger 5-15 web searches, read multiple pages, and synthesize the results.
+
+The token cost is typically **5-10x** a normal query:
+
+- Normal query: 1,000-3,000 tokens
+- Research query: 10,000-30,000 tokens
+
+Use research mode when you genuinely need deep research — understanding a new library, investigating a complex bug with online resources, comparing frameworks. Don't use it for questions Claude can answer from its training data.
+
+### 6. Tool Outputs
+
+Every time Claude runs a command or reads a file, the output enters the context. A `git log` with 200 lines of output adds those tokens. A test suite with verbose output can add thousands of tokens.
+
+```bash
+# High token cost — verbose output enters context:
+"Run all tests with verbose output"
+
+# Lower token cost — only summary enters context:
+"Run the tests and just tell me if they pass"
+```
+
+## The Hidden Token Tax
+
+Putting it all together, here's what a typical session actually costs:
+
+```
+Session: 50 messages, debugging a payment service
+
+Base conversation:     ~50,000 tokens
+File references (3 files, all 50 messages):  ~45,000 tokens
+CLAUDE.md (loaded every message):            ~1,200 tokens
+MCP tools (GitHub + DB):                     ~175,000 tokens
+Extended thinking (10 complex messages):     ~80,000 tokens
+Tool outputs (git, tests, reads):            ~30,000 tokens
+─────────────────────────────────────────
+Total:                                       ~381,200 tokens
+```
+
+Of those 381K tokens, the MCP tools and file references contribute over 200K — more than half — and most users don't realize it.
+
+## Practical Token Math
+
+Claude's context window is approximately 1M tokens. Here's what that means in practice:
+
+| Content | Approximate Token Cost |
+|---|---|
+| 1 line of code | ~15 tokens |
+| 100-line file | ~1,500 tokens |
+| 500-line file | ~7,500 tokens |
+| CLAUDE.md (100 lines) | ~1,500 tokens |
+| 1 MCP tool definition | ~200 tokens |
+| 1 message pair (you + Claude) | ~500-2,000 tokens |
+| 1 research query | ~15,000 tokens |
+| Full conversation (50 messages) | ~50,000-150,000 tokens |
+
+At 50 messages with a few file references and MCP servers, you're typically using 30-50% of your context window. By message 100, you're approaching the limit.
+
+## The Auto-Compact Threshold
+
+When your context usage hits **95%**, Claude Code automatically compacts the conversation — summarizing earlier messages to free up space. This happens silently but you may notice a brief pause.
+
+The problem with auto-compact: by the time it triggers, you've already lost nuance. Claude's summary of a 95-message conversation can't capture every detail. Important context about why you chose a specific approach, or a subtle bug you mentioned 40 messages ago, may be lost in the summary.
+
+This is why manual compaction at 80% is better than waiting for the 95% auto-compact. But that's a topic for the next lesson.
+
+## Key Takeaway
+
+The context window is approximately 1M tokens, but it fills up faster than you think. The biggest costs are long conversations (every message re-processes all history), file references (re-sent every message), MCP tool definitions (loaded every message), and extended thinking. Use `/context` to monitor usage and be deliberate about what enters your context. The most impactful optimization is keeping sessions short and focused — one task, one session.

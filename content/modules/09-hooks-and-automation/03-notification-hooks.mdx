@@ -1,0 +1,294 @@
+---
+title: "Notification Hooks: Never Miss a Claude Alert"
+slug: "notification-hooks"
+order: 3
+difficulty: "advanced"
+duration: 13
+tags: ["hooks", "notifications", "macos", "slack", "alerts"]
+objectives:
+  - "Set up desktop notifications for Claude alerts"
+  - "Build HTTP webhook notifications to Slack"
+  - "Add sound alerts for attention events"
+  - "Combine notification strategies for different urgency levels"
+quiz:
+  - id: "notif-1"
+    question: "When does the Notification hook event fire?"
+    type: "multiple-choice"
+    options:
+      - "Every time Claude responds"
+      - "When Claude needs your attention: waiting for approval, encountered an error, or went idle"
+      - "On a timer"
+      - "When a file changes"
+    correct: 1
+    explanation: "The Notification event fires specifically when Claude needs human attention — it's waiting for a permission approval, hit an error it can't resolve, or has gone idle after completing work. This is the 'tap on the shoulder' event."
+  - id: "notif-2"
+    question: "What macOS command creates a desktop notification?"
+    type: "multiple-choice"
+    options:
+      - "notify-send"
+      - "osascript -e 'display notification ... with title ...'"
+      - "terminal-notifier"
+      - "alert"
+    correct: 1
+    explanation: "On macOS, osascript -e 'display notification \"message\" with title \"title\"' creates a native desktop notification. This is built into macOS, requires no additional software, and integrates with the notification center."
+  - id: "notif-3"
+    question: "How do you add a sound alert to a notification hook?"
+    type: "multiple-choice"
+    options:
+      - "Turn up the volume"
+      - "Chain a sound command with &&: osascript notification && afplay /System/Library/Sounds/Glass.aiff"
+      - "Add a sound parameter to the hook"
+      - "Sounds aren't supported"
+    correct: 1
+    explanation: "Chain a sound command after the notification: 'osascript -e \"display notification ...\" && afplay /System/Library/Sounds/Glass.aiff'. The afplay command plays system sounds on macOS. Chain it with && so the sound plays after the notification appears."
+  - id: "notif-4"
+    question: "How do you send a Slack notification from a hook?"
+    type: "multiple-choice"
+    options:
+      - "Use the Slack MCP server"
+      - "Use an HTTP hook type with your Slack webhook URL"
+      - "Install a Slack plugin"
+      - "Configure Slack in CLAUDE.md"
+    correct: 1
+    explanation: "Use an HTTP hook type that sends a POST request to your Slack incoming webhook URL. The request body contains the message text. This doesn't require the Slack MCP server — it uses a simple webhook, which is lighter weight."
+---
+
+## Why Notification Hooks?
+
+Claude Code often runs long tasks — debugging, refactoring, running test suites. You switch to another window, browse the web, grab coffee. Meanwhile, Claude finishes and sits idle, or hits a permission prompt and waits.
+
+Without notifications, you have to keep checking. With notification hooks, Claude taps you on the shoulder.
+
+## macOS Desktop Notifications
+
+The simplest and most useful notification hook for macOS users:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs your attention\" with title \"Claude Code\"'"
+      }
+    ]
+  }
+}
+```
+
+This creates a native macOS notification center alert. It appears in the top-right corner, integrates with Do Not Disturb, and shows in your notification history.
+
+### With Sound
+
+Add an audible alert so you don't miss it:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs your attention\" with title \"Claude Code\"' && afplay /System/Library/Sounds/Glass.aiff"
+      }
+    ]
+  }
+}
+```
+
+macOS system sounds are at `/System/Library/Sounds/`. Some options:
+- `Glass.aiff` — Subtle ping
+- `Ping.aiff` — Short attention sound
+- `Hero.aiff` — Achievement-like sound
+- `Submarine.aiff` — Deep notification
+
+### With Custom Sound
+
+Use any audio file:
+
+```json
+{
+  "command": "osascript -e 'display notification \"Claude finished\" with title \"Claude Code\"' && afplay ~/.claude/notification.mp3"
+}
+```
+
+## Linux Desktop Notifications
+
+On Linux, use `notify-send`:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "notify-send 'Claude Code' 'Claude needs your attention' --urgency=normal"
+      }
+    ]
+  }
+}
+```
+
+With sound (requires `paplay` or `aplay`):
+
+```json
+{
+  "command": "notify-send 'Claude Code' 'Claude needs your attention' && paplay /usr/share/sounds/freedesktop/stereo/message-new-instant.oga"
+}
+```
+
+## Slack Webhook Notifications
+
+For remote notifications you can see on any device:
+
+### Step 1: Create a Slack Incoming Webhook
+
+1. Go to your Slack workspace settings
+2. Create an Incoming Webhook
+3. Choose the channel (e.g., #claude-notifications)
+4. Copy the webhook URL
+
+### Step 2: Configure the Hook
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "type": "http",
+        "url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "text": ":robot_face: Claude Code needs your attention"
+        }
+      }
+    ]
+  }
+}
+```
+
+Now when Claude needs you, a message appears in your Slack channel. You can see it on your phone, tablet, or any device with Slack.
+
+### Using a Command Hook Instead
+
+If you prefer using curl (and have it allowed):
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "curl -s -X POST -H 'Content-Type: application/json' -d '{\"text\": \"Claude Code needs your attention\"}' https://hooks.slack.com/services/xxx/yyy/zzz"
+      }
+    ]
+  }
+}
+```
+
+Note: This requires `Bash(curl *)` to be allowed in your permissions.
+
+## Task Completion Notifications
+
+Separate from the Notification event, the TaskCompleted event fires when a background task finishes:
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Background task completed\" with title \"Claude Code\" sound name \"Hero\"'"
+      }
+    ]
+  }
+}
+```
+
+The `sound name` parameter in osascript plays a named system sound directly, without needing `afplay`.
+
+## Combining Notification Strategies
+
+For the best coverage, combine local and remote notifications:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs you\" with title \"Claude Code\" sound name \"Glass\"'"
+      },
+      {
+        "type": "http",
+        "url": "https://hooks.slack.com/services/xxx/yyy/zzz",
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "text": ":eyes: Claude Code needs your attention" }
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Task complete!\" with title \"Claude Code\" sound name \"Hero\"'"
+      },
+      {
+        "type": "http",
+        "url": "https://hooks.slack.com/services/xxx/yyy/zzz",
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "text": ":white_check_mark: Claude Code task completed" }
+      }
+    ]
+  }
+}
+```
+
+This gives you:
+- **Desktop notification** when Claude needs attention (you're at your computer)
+- **Slack message** when Claude needs attention (you're away from your computer)
+- **Desktop + Slack** when a background task completes
+
+## Practical Patterns
+
+### The "Away from Desk" Setup
+
+When you're running a long task and stepping away:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Come back! Claude needs you.\" with title \"Claude Code\" sound name \"Ping\"'"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Done! Check Claude Code.\" with title \"Claude Code\" sound name \"Hero\"' && afplay /System/Library/Sounds/Hero.aiff && afplay /System/Library/Sounds/Hero.aiff"
+      }
+    ]
+  }
+}
+```
+
+The double sound play on TaskCompleted makes it harder to miss.
+
+### The "Meeting-Safe" Setup
+
+Silent during meetings — Slack only, no sounds:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "type": "http",
+        "url": "https://hooks.slack.com/services/xxx/yyy/zzz",
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "text": "Claude waiting for approval" }
+      }
+    ]
+  }
+}
+```
+
+## Key Takeaway
+
+Notification hooks ensure you never miss when Claude needs your attention. On macOS, use `osascript` for desktop notifications and `afplay` for sounds. On Linux, use `notify-send`. For remote notifications, use HTTP hooks to Slack or Discord webhooks. Combine desktop and remote notifications for full coverage — desktop when you're at your computer, Slack when you're away. Set up Notification events (Claude needs you) and TaskCompleted events (work is done) for the two most important alert types.

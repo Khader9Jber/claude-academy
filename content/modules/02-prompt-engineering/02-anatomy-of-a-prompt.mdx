@@ -1,0 +1,301 @@
+---
+title: "The Anatomy of a Perfect Prompt"
+slug: "anatomy-of-a-prompt"
+order: 2
+difficulty: "beginner"
+duration: 16
+tags: ["prompt-engineering", "framework", "structure"]
+objectives:
+  - "Master the 5-part prompt framework: Role, Context, Task, Format, Constraints"
+  - "Know when and why to use each component"
+  - "Assemble complete prompts from the framework"
+  - "Understand why structured prompts produce better results"
+quiz:
+  - id: "anatomy-1"
+    question: "What are the 5 parts of the prompt framework?"
+    type: "multiple-choice"
+    options:
+      - "Input, Process, Output, Validate, Deploy"
+      - "Role, Context, Task, Format, Constraints"
+      - "Who, What, When, Where, Why"
+      - "System, User, Assistant, Tool, Result"
+    correct: 1
+    explanation: "The 5-part framework is Role (who should Claude be), Context (background info), Task (what to do), Format (how to structure output), and Constraints (what NOT to do or boundaries to respect)."
+  - id: "anatomy-2"
+    question: "Why does setting a Role in your prompt improve results?"
+    type: "multiple-choice"
+    options:
+      - "It makes Claude respond faster"
+      - "It activates a specific persona in Claude's training data, focusing its knowledge and tone"
+      - "It's required by the API"
+      - "It reduces token usage"
+    correct: 1
+    explanation: "Setting a role focuses Claude's vast knowledge into the relevant domain. When you say 'You are a senior database engineer,' Claude draws more heavily on database-related patterns, terminology, and best practices from its training."
+  - id: "anatomy-3"
+    question: "Which prompt component tells Claude what NOT to do?"
+    type: "multiple-choice"
+    options:
+      - "Role"
+      - "Context"
+      - "Format"
+      - "Constraints"
+    correct: 3
+    explanation: "Constraints define the boundaries — what Claude should avoid, limitations to respect, edge cases to handle, and negative instructions ('do NOT use any external libraries')."
+  - id: "anatomy-4"
+    question: "What happens if you skip the Format component?"
+    type: "multiple-choice"
+    options:
+      - "Claude refuses to answer"
+      - "Claude guesses what format you want, often getting it wrong"
+      - "The response is always in JSON"
+      - "Nothing — format doesn't affect output"
+    correct: 1
+    explanation: "Without format guidance, Claude has to guess whether you want code, prose, a table, JSON, a numbered list, or something else. It often guesses differently from what you had in mind, requiring follow-up messages to reformat."
+---
+
+## A Framework for Consistent Results
+
+Random prompts produce random results. If you want Claude to consistently deliver what you need on the first try, you need a structure. The **5-part prompt framework** gives you that structure.
+
+Not every prompt needs all five parts. A quick question might only need the Task. But for anything non-trivial — generating code, analyzing a system, producing documentation — hitting all five parts dramatically improves your results.
+
+## The 5 Parts
+
+### 1. Role
+
+**What it does:** Tells Claude who to be.
+
+Setting a role focuses Claude's knowledge. When you say "You are a senior backend engineer specializing in PostgreSQL performance optimization," Claude doesn't just *know about* databases — it thinks *as* a database specialist. It'll use appropriate terminology, consider edge cases a generalist might miss, and structure its advice the way an experienced DBA would.
+
+**Examples:**
+
+```
+You are a senior TypeScript developer with 10 years of experience
+in React and Next.js.
+```
+
+```
+You are a security researcher conducting a code audit. You are
+thorough, paranoid, and you assume every input is malicious.
+```
+
+```
+You are an engineering manager reviewing this code for a junior
+developer. Be encouraging but point out every issue clearly.
+```
+
+The role doesn't have to be a single identity. You can stack roles:
+
+```
+You are both a backend engineer AND a DevOps specialist. Consider
+both the application code quality and the deployment implications.
+```
+
+**When to skip it:** For simple, unambiguous tasks ("convert this JSON to YAML"), a role adds nothing.
+
+### 2. Context
+
+**What it does:** Provides the background information Claude needs to give a relevant answer.
+
+Context is everything Claude needs to know about your situation that isn't obvious from the task itself. The tech stack, the business requirements, the constraints you're working under, what you've already tried, why the obvious solution won't work.
+
+**Examples:**
+
+```
+We're building a real-time collaborative document editor.
+The backend is Node.js with Socket.IO. The database is PostgreSQL
+with a Redis cache layer. We have 50,000 daily active users, and
+latency above 100ms is noticeable. We're currently seeing 300ms
+P95 latency on document updates.
+```
+
+```
+This is a legacy Rails 5 application that we're migrating to
+Rails 7. We can't do a big-bang migration — it has to be incremental.
+The test suite takes 45 minutes and has 300 flaky tests, so we
+can't rely on tests to catch regressions.
+```
+
+```
+I'm a junior developer, 6 months of experience. I understand basic
+React but I'm new to state management patterns. Explain things
+in simple terms.
+```
+
+**Key principle:** Give Claude the context *it doesn't already have*. You don't need to explain what React is. You do need to explain that your React app uses a custom router instead of React Router.
+
+### 3. Task
+
+**What it does:** The specific instruction — what you want Claude to do.
+
+This is the core of every prompt. It should be a clear, unambiguous action. Use strong verbs: "write," "analyze," "debug," "refactor," "compare," "design," "explain."
+
+**Examples:**
+
+```
+Write a middleware function that validates JWT tokens from the
+Authorization header and attaches the decoded user to req.user.
+```
+
+```
+Analyze @src/services/payment.ts and identify all error paths
+that don't have proper error handling. For each gap, explain
+what could go wrong in production.
+```
+
+```
+Refactor this function to eliminate the nested callbacks and
+use async/await instead. Preserve the exact same behavior —
+do not change what the function does, only how it's structured.
+```
+
+**Tip:** If your task description is longer than a paragraph, you're probably trying to do too much in one prompt. Break it up.
+
+### 4. Format
+
+**What it does:** Specifies how Claude should structure its response.
+
+This is the most underused part of the framework, and it's one of the most impactful. Without format guidance, Claude has to guess whether you want:
+
+- A code block or an explanation
+- A bullet list or a paragraph
+- A table or a comparison essay
+- JSON or YAML or plain text
+- A 5-line summary or a 50-line detailed analysis
+
+**Examples:**
+
+```
+Return your response as a single TypeScript code block with
+no explanation before or after.
+```
+
+```
+Structure your response as:
+## Summary (2-3 sentences)
+## Issues Found (numbered list with severity: LOW/MED/HIGH)
+## Recommended Fixes (code blocks with before/after)
+```
+
+```
+Output a markdown table with columns: Endpoint, Method, Auth Required,
+Rate Limit, Description.
+```
+
+```
+Give me a JSON object with this shape:
+{
+  "diagnosis": "string",
+  "confidence": "HIGH | MEDIUM | LOW",
+  "suggestedFix": "string",
+  "affectedFiles": ["string"]
+}
+```
+
+**Pro tip:** If you want Claude to produce something you'll paste directly into your codebase, say "output only the code, no explanation." If you want to understand something, say "explain your reasoning, then show the code."
+
+### 5. Constraints
+
+**What it does:** Defines boundaries, limitations, and things to avoid.
+
+Constraints are the guardrails. They prevent Claude from going down paths you don't want. Negative instructions ("do NOT...") are often more useful than positive ones because they eliminate the most common failure modes.
+
+**Examples:**
+
+```
+Constraints:
+- Do NOT use any external npm packages — only Node.js built-in modules
+- Do NOT modify any existing test files
+- Keep the function under 50 lines
+- Must work with Node.js 18 (no Node 20+ features)
+```
+
+```
+Constraints:
+- All database queries must use parameterized queries (no string concatenation)
+- Error messages must not expose internal details to the client
+- Response time must stay under 200ms — no N+1 queries
+```
+
+```
+Constraints:
+- Assume the user is malicious — validate and sanitize all inputs
+- Do not use deprecated React lifecycle methods
+- Do not add any TODO comments — implement everything completely
+```
+
+**Key constraint categories:**
+- **Technology constraints** — versions, libraries allowed/forbidden
+- **Performance constraints** — response times, query limits
+- **Security constraints** — input validation, output sanitization
+- **Style constraints** — line limits, naming conventions, patterns to follow
+- **Scope constraints** — what files to touch, what to leave alone
+
+## Assembling the Full Framework
+
+Here's a complete prompt using all five parts:
+
+```
+[ROLE]
+You are a senior backend engineer specializing in API design
+and PostgreSQL performance.
+
+[CONTEXT]
+We have an Express.js API with Prisma ORM connected to PostgreSQL.
+Our users table has 2 million rows. The current GET /api/users
+endpoint returns all users with no pagination and takes 8 seconds.
+We need to fix this before our product launch next week.
+
+[TASK]
+Refactor the users endpoint to support cursor-based pagination.
+Implement the endpoint, the Prisma query, and a reusable pagination
+utility that other endpoints can use.
+
+[FORMAT]
+Provide:
+1. The pagination utility (src/utils/pagination.ts)
+2. The refactored route handler (src/routes/users.ts)
+3. An example API response showing the pagination metadata
+4. A brief explanation of why cursor-based > offset-based for our case
+
+[CONSTRAINTS]
+- Use cursor-based pagination, NOT offset-based (we have too many rows)
+- The cursor must be opaque to the client (encode the ID)
+- Default page size: 20, max: 100
+- Must maintain backward compatibility — existing clients that don't
+  send pagination params should still get a valid response (first page)
+- Do not change the Prisma schema
+```
+
+Notice how each part does its job. The role focuses Claude's expertise. The context describes the situation. The task is a clear action. The format tells Claude exactly what to produce. The constraints prevent common mistakes.
+
+## When to Use Which Parts
+
+Not every prompt needs all five parts. Here's a quick guide:
+
+| Prompt Type | Role | Context | Task | Format | Constraints |
+|------------|------|---------|------|--------|-------------|
+| Quick question | - | - | Yes | - | - |
+| Code generation | Yes | Yes | Yes | Yes | Yes |
+| Debugging | Maybe | Yes | Yes | Maybe | Maybe |
+| Code review | Yes | Yes | Yes | Yes | Yes |
+| Explanation | Maybe | Yes | Yes | Yes | - |
+| Refactoring | Maybe | Yes | Yes | Yes | Yes |
+
+The task is always required. Context is needed whenever Claude doesn't already know about your situation. Format matters whenever the structure of the response matters. Role and constraints become important for complex, multi-step, or high-stakes tasks.
+
+## Why This Framework Works
+
+The framework works because it eliminates ambiguity at every level:
+
+1. **Role** eliminates ambiguity about *perspective* — which expertise to apply
+2. **Context** eliminates ambiguity about *situation* — what's actually going on
+3. **Task** eliminates ambiguity about *action* — what to do
+4. **Format** eliminates ambiguity about *output* — how to present the result
+5. **Constraints** eliminates ambiguity about *boundaries* — what to avoid
+
+Every time Claude gives you a response you didn't want, trace it back to which part of the framework was missing. Nine times out of ten, you'll find the gap.
+
+## Key Takeaway
+
+The 5-part prompt framework — Role, Context, Task, Format, Constraints — is a systematic way to eliminate ambiguity from your prompts. You don't need all five parts for every prompt, but for any non-trivial request, covering at least Task + Context + Format will dramatically improve your results. The framework turns prompting from guesswork into engineering.

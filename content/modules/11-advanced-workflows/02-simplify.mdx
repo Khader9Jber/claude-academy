@@ -1,0 +1,240 @@
+---
+title: "/simplify: 3-Agent Code Review"
+slug: "simplify"
+order: 2
+difficulty: "advanced"
+duration: 13
+tags: ["simplify", "code-review", "quality", "refactoring"]
+objectives:
+  - "Understand how /simplify uses 3 parallel review agents"
+  - "Use /simplify with and without focus hints"
+  - "Know what each review agent checks"
+  - "Apply /simplify as part of your workflow"
+quiz:
+  - id: "simplify-1"
+    question: "What are the three review agents in /simplify?"
+    type: "multiple-choice"
+    options:
+      - "Read, Write, Execute"
+      - "Code Reuse (duplicated logic), Code Quality (readability/structure), Efficiency (performance/resources)"
+      - "Frontend, Backend, Database"
+      - "Lint, Format, Test"
+    correct: 1
+    explanation: "/simplify runs three parallel review agents: Code Reuse (finds duplicated logic across files), Code Quality (checks readability, structure, naming, and patterns), and Efficiency (identifies performance issues and resource waste). Each agent has a focused mandate."
+  - id: "simplify-2"
+    question: "What does /simplify do with false positives?"
+    type: "multiple-choice"
+    options:
+      - "Reports everything it finds"
+      - "Auto-discards false positives — only applies changes where the improvement is clear"
+      - "Asks about each finding"
+      - "Ignores all findings"
+    correct: 1
+    explanation: "/simplify auto-discards false positives. Each finding is evaluated for whether the change actually improves the code. If the 'improvement' would make code harder to read, break an intentional pattern, or not provide meaningful benefit, it's dropped."
+  - id: "simplify-3"
+    question: "How do you focus /simplify on a specific concern?"
+    type: "multiple-choice"
+    options:
+      - "You can't focus it"
+      - "Use /simplify \"focus on error handling\" to prioritize a specific area"
+      - "Change the settings"
+      - "Edit the source code first"
+    correct: 1
+    explanation: "Pass a focus hint in quotes: /simplify \"focus on error handling\". The three review agents still run, but they prioritize their analysis around the specified concern. This is useful when you know a specific area needs attention."
+---
+
+## What /simplify Does
+
+**/simplify** is a built-in skill that reviews changed code using three parallel agents, each focused on a different quality dimension:
+
+1. **Code Reuse Agent**: Finds duplicated logic, repeated patterns, and opportunities to extract shared utilities
+2. **Code Quality Agent**: Checks readability, structure, naming, error handling, and adherence to patterns
+3. **Efficiency Agent**: Identifies performance issues, unnecessary operations, resource waste, and optimization opportunities
+
+Each agent reviews independently, then the findings are merged. False positives are automatically discarded. Real improvements are applied to your code.
+
+## Using /simplify
+
+### After Making Changes
+
+The most common pattern — run /simplify after implementing a feature:
+
+```bash
+# Implement a feature
+"Add the order cancellation endpoint with refund processing"
+
+# Claude implements the feature (might be 3-5 files)
+
+# Simplify the implementation
+/simplify
+```
+
+Claude reviews all the changes it just made, finding opportunities to improve code reuse, quality, and efficiency.
+
+### With a Focus Hint
+
+When you want to emphasize a specific concern:
+
+```bash
+/simplify "focus on error handling"
+```
+
+All three agents still run, but they prioritize error handling:
+- **Code Reuse**: Finds duplicated error handling patterns
+- **Code Quality**: Checks error handling completeness and consistency
+- **Efficiency**: Identifies unnecessarily expensive error recovery
+
+More examples:
+
+```bash
+/simplify "focus on database queries"
+/simplify "focus on type safety"
+/simplify "focus on test quality"
+/simplify "focus on the payment service"
+```
+
+### On Specific Files
+
+```bash
+/simplify "review only src/services/order-service.ts"
+```
+
+## What Each Agent Checks
+
+### Code Reuse Agent
+
+```
+Finds:
+✓ Duplicated validation logic across handlers
+✓ Repeated database query patterns
+✓ Copy-pasted error handling blocks
+✓ Similar utility functions that should be one
+
+Suggests:
+→ Extract shared validation into a utility
+→ Create a base repository with common queries
+→ Centralize error handling patterns
+→ Merge similar utilities with parameters
+```
+
+### Code Quality Agent
+
+```
+Finds:
+✓ Functions doing too many things
+✓ Unclear variable names
+✓ Missing error handling paths
+✓ Inconsistent patterns within the codebase
+✓ Dead code (unused imports, unreachable paths)
+✓ Magic numbers without constants
+
+Suggests:
+→ Split large functions into focused ones
+→ Rename variables for clarity
+→ Add missing error handling
+→ Standardize on a consistent pattern
+→ Remove dead code
+→ Extract magic numbers to named constants
+```
+
+### Efficiency Agent
+
+```
+Finds:
+✓ N+1 database queries
+✓ Unnecessary awaits in parallel-safe operations
+✓ Repeated computation that could be memoized
+✓ Large objects passed where only a few fields are needed
+✓ Missing early returns
+✓ Synchronous operations that could be parallel
+
+Suggests:
+→ Batch database queries
+→ Use Promise.all for independent async operations
+→ Add memoization for expensive computations
+→ Destructure to pass only needed fields
+→ Add early returns to reduce nesting
+→ Parallelize independent operations
+```
+
+## /simplify in Practice
+
+### Example Output
+
+After running `/simplify`, Claude produces a report and applies fixes:
+
+```
+/simplify Results
+
+Code Reuse (3 findings):
+  ✓ Applied: Extracted shared validation into src/lib/validators.ts
+  ✓ Applied: Created BaseRepository with common CRUD operations
+  ✗ Skipped: Duplicate logging setup (intentional per-service config)
+
+Code Quality (5 findings):
+  ✓ Applied: Renamed 'data' → 'orderItems' in processOrder()
+  ✓ Applied: Added missing error handling in webhook processor
+  ✓ Applied: Removed 3 unused imports
+  ✓ Applied: Extracted magic number 86400 → SECONDS_PER_DAY constant
+  ✗ Skipped: Function splitting (would reduce readability in this case)
+
+Efficiency (2 findings):
+  ✓ Applied: Replaced sequential DB queries with Promise.all
+  ✓ Applied: Added early return in validateOrder() to skip unnecessary checks
+
+Total: 8 improvements applied, 2 false positives discarded
+```
+
+Note the "Skipped" items — /simplify doesn't blindly apply every finding. It evaluates whether each change is a genuine improvement.
+
+## When to Use /simplify
+
+### Best Times
+
+- **After implementing a feature**: Clean up before code review
+- **After a /batch migration**: Polish the parallel agents' output
+- **Before a PR**: Catch quality issues before reviewers do
+- **During refactoring**: Validate that refactored code is actually simpler
+
+### Not Ideal For
+
+- **Before changes**: /simplify reviews changes, not the entire codebase
+- **Security review**: Use a security-focused agent or skill instead
+- **Architectural issues**: /simplify focuses on code-level quality, not architecture
+
+## Integrating Into Your Workflow
+
+### Feature Development Flow
+
+```bash
+# 1. Plan
+/plan
+"Plan the notification preferences feature"
+
+# 2. Execute
+/execute
+"Implement the plan"
+
+# 3. Simplify
+/simplify
+
+# 4. Test
+"Run all tests"
+
+# 5. Commit
+/commit
+```
+
+### Post-Batch Polish
+
+```bash
+# 1. Run the migration
+/batch "Convert CommonJS to ES modules"
+
+# 2. Simplify each converted file
+/simplify "focus on import organization and dead code"
+```
+
+## Key Takeaway
+
+/simplify runs three parallel review agents — Code Reuse, Code Quality, and Efficiency — on your recent changes. It finds duplicated logic, quality issues, and performance problems, then auto-applies genuine improvements while discarding false positives. Use it after implementing features, after batch migrations, and before PRs. Pass a focus hint (`/simplify "focus on error handling"`) to prioritize specific concerns. It's the fastest way to polish code before review.

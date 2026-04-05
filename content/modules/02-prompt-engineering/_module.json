@@ -1,0 +1,12 @@
+{
+  "title": "Prompt Engineering",
+  "slug": "prompt-engineering",
+  "description": "Master the art and science of writing effective prompts. Learn techniques from basic instruction to advanced multi-shot prompting, chain-of-thought, and structured output.",
+  "arc": "foundation",
+  "order": 2,
+  "icon": "pen-tool",
+  "color": "#5cb870",
+  "estimatedHours": 4,
+  "prerequisites": ["claude-fundamentals"],
+  "lessonCount": 7
+}

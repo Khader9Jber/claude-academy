@@ -1,0 +1,12 @@
+{
+  "title": "Advanced Workflows",
+  "slug": "advanced-workflows",
+  "description": "Combine everything you've learned into powerful multi-step workflows. Tackle complex refactoring, large codebase navigation, test generation, and documentation at scale.",
+  "arc": "power-user",
+  "order": 11,
+  "icon": "workflow",
+  "color": "#a07ed6",
+  "estimatedHours": 5,
+  "prerequisites": ["agents-and-skills", "git-and-workflows"],
+  "lessonCount": 7
+}

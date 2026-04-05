@@ -1,0 +1,166 @@
+---
+title: "Prompt Engineering: Module Quiz"
+slug: "prompt-engineering-quiz"
+order: 8
+difficulty: "beginner"
+duration: 10
+tags: ["prompt-engineering", "quiz", "assessment"]
+objectives:
+  - "Test your understanding of all prompt engineering concepts from this module"
+  - "Identify areas that need review before moving to Claude Code lessons"
+quiz:
+  - id: "pe-quiz-1"
+    question: "What is the biggest difference between zero-shot and few-shot prompting?"
+    type: "multiple-choice"
+    options:
+      - "Zero-shot is faster; few-shot is slower"
+      - "Zero-shot provides no examples; few-shot provides 2-3 examples of desired input/output"
+      - "Zero-shot uses Haiku; few-shot uses Opus"
+      - "Zero-shot is for coding; few-shot is for writing"
+    correct: 1
+    explanation: "The defining difference is whether you include examples. Zero-shot relies on instructions alone; few-shot teaches the pattern through examples. Both can be used for any task — the choice depends on whether Claude needs examples to understand your specific expectations."
+
+  - id: "pe-quiz-2"
+    question: "A developer writes: 'Fix my code.' What is the PRIMARY problem with this prompt?"
+    type: "multiple-choice"
+    options:
+      - "It's too short"
+      - "It doesn't specify which code, what's broken, or what 'fixed' looks like — it's critically vague"
+      - "It uses the wrong model"
+      - "It should be a question, not a command"
+    correct: 1
+    explanation: "The prompt lacks everything Claude needs: which file, what error, what the expected behavior is, and what constraints apply. Claude would have to guess at every dimension of the task."
+
+  - id: "pe-quiz-3"
+    question: "In the 5-part framework (Role, Context, Task, Format, Constraints), which part is ALWAYS required?"
+    type: "multiple-choice"
+    options:
+      - "Role"
+      - "Context"
+      - "Task"
+      - "Constraints"
+    correct: 2
+    explanation: "Every prompt needs a Task — the specific instruction of what to do. Role, Context, Format, and Constraints are important for complex prompts but can be omitted for simple, unambiguous tasks."
+
+  - id: "pe-quiz-4"
+    question: "When should you use chain of thought reasoning?"
+    type: "multiple-choice"
+    options:
+      - "Always — it improves every prompt"
+      - "When the task requires multi-step logical reasoning, debugging, or analysis"
+      - "Only for math problems"
+      - "When you want a shorter response"
+    correct: 1
+    explanation: "Chain of thought helps when the problem requires sequential reasoning — debugging, multi-step analysis, tradeoff evaluation. It wastes tokens on mechanical tasks like format conversion or boilerplate generation."
+
+  - id: "pe-quiz-5"
+    question: "You ask Claude to write a function but the output uses a different coding style than your team's conventions. What's the BEST next step?"
+    type: "multiple-choice"
+    options:
+      - "Switch to a different AI model"
+      - "Rewrite the code manually"
+      - "Use few-shot prompting — show Claude 2-3 examples of your team's coding style"
+      - "Add 'be better' to the prompt"
+    correct: 2
+    explanation: "Style matching is one of few-shot prompting's strongest use cases. Show Claude 2-3 examples of functions written in your team's style, and it will match the patterns — naming conventions, error handling, formatting — automatically."
+
+  - id: "pe-quiz-6"
+    question: "What is meta-prompting?"
+    type: "multiple-choice"
+    options:
+      - "Prompting about Claude itself"
+      - "Asking Claude to generate optimized prompts for a given task"
+      - "Using metadata in your prompts"
+      - "Writing prompts in a programming language"
+    correct: 1
+    explanation: "Meta-prompting is asking Claude to write prompts. You describe what you need, and Claude generates a well-structured prompt with appropriate role, context, format, and constraints. It's useful for complex tasks where you're not sure how to structure the request."
+
+  - id: "pe-quiz-7"
+    question: "Which prompt would produce the BEST code review from Claude?"
+    type: "multiple-choice"
+    options:
+      - "'Review my code'"
+      - "'Is this code good?'"
+      - "'Review @src/auth.ts for bugs, security issues, and performance problems. For each issue, provide the line number, severity, and a fix.'"
+      - "'What do you think about this code?'"
+    correct: 2
+    explanation: "This prompt specifies the exact file, the categories to review (bugs, security, performance), and the output format (line number, severity, fix). It eliminates ambiguity across all dimensions."
+
+  - id: "pe-quiz-8"
+    question: "You need Claude to classify customer support tickets into categories your team invented (Billing, Technical, Feature Request, Account Access, Partnership). What prompting technique should you use?"
+    type: "multiple-choice"
+    options:
+      - "Zero-shot with 'classify these tickets'"
+      - "Chain of thought reasoning"
+      - "Few-shot with 2-3 examples showing how each category is applied"
+      - "Meta-prompting"
+    correct: 2
+    explanation: "Custom classification schemes need few-shot examples. Claude doesn't know your specific category definitions or the edge cases between 'Technical' and 'Account Access.' Examples teach the boundaries."
+
+  - id: "pe-quiz-9"
+    question: "What does the self-verification pattern add to a prompt?"
+    type: "multiple-choice"
+    options:
+      - "It runs the code automatically"
+      - "It asks Claude to check its own output for errors before delivering the final version"
+      - "It verifies your API key"
+      - "It double-checks the prompt syntax"
+    correct: 1
+    explanation: "Self-verification adds a review step: 'After generating your answer, check it for errors, test it with edge cases, and fix any issues.' This catches mistakes that a single-pass generation would miss."
+
+  - id: "pe-quiz-10"
+    question: "What is the BEST approach when your first prompt doesn't produce the output you want?"
+    type: "multiple-choice"
+    options:
+      - "Abandon Claude and write the code yourself"
+      - "Send the exact same prompt again"
+      - "Evaluate what was wrong, identify what context was missing, and send a refined follow-up"
+      - "Switch to Opus model"
+    correct: 2
+    explanation: "Prompting is iterative. Your first attempt is a starting point. Evaluate Claude's response, identify what was missing from your prompt (context? constraints? format?), and refine. Two to three iterations almost always get you to the result you need."
+
+  - id: "pe-quiz-11"
+    question: "How many few-shot examples should you typically provide?"
+    type: "multiple-choice"
+    options:
+      - "As many as possible for best results"
+      - "Exactly 1"
+      - "2-3 for most tasks"
+      - "At least 10"
+    correct: 2
+    explanation: "2-3 examples is the sweet spot for most tasks. This is enough to establish the pattern without consuming excessive tokens. More than 5 examples rarely improves results — if 5 examples aren't enough, the task description needs improvement."
+
+  - id: "pe-quiz-12"
+    question: "What should a Constraints section include?"
+    type: "multiple-choice"
+    options:
+      - "Compliments for Claude"
+      - "Technology limitations, security rules, and explicit 'do NOT' instructions"
+      - "A list of all programming languages"
+      - "Your personal preferences about AI"
+    correct: 1
+    explanation: "Constraints define boundaries: what technologies to use or avoid, security requirements, performance targets, and explicit negative instructions ('do NOT use external libraries'). They prevent Claude from going down paths you don't want."
+---
+
+## Module 2 Assessment
+
+This quiz covers everything from Module 2: Prompt Engineering. Topics include:
+
+- First prompt principles (Lesson 1)
+- The 5-part framework (Lesson 2)
+- Zero-shot prompting (Lesson 3)
+- Few-shot prompting (Lesson 4)
+- Chain of thought reasoning (Lesson 5)
+- Advanced patterns (Lesson 6)
+- Prompt templates (Lesson 7)
+
+**Scoring guide:**
+- 10-12 correct: Excellent — you're ready for Module 3
+- 7-9 correct: Good — review the lessons for topics you missed
+- Below 7: Review all lessons before proceeding
+
+Take your time. For each question, think about which lesson covered the concept and recall the key principles before answering.
+
+## Key Takeaway
+
+If you scored well on this quiz, you have a solid foundation in prompt engineering. The techniques from this module — structured prompts, zero-shot and few-shot approaches, chain of thought, and advanced patterns — will make every interaction with Claude Code more productive. These skills compound: as you move into the hands-on Claude Code lessons next, good prompting will make the difference between fighting the tool and flowing with it.

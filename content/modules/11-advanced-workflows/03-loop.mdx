@@ -1,0 +1,238 @@
+---
+title: "/loop: Scheduled Background Tasks"
+slug: "loop-background-tasks"
+order: 3
+difficulty: "advanced"
+duration: 13
+tags: ["loop", "scheduled", "background", "monitoring"]
+objectives:
+  - "Set up /loop for recurring tasks"
+  - "Monitor PRs, deployments, and dependencies on a schedule"
+  - "Combine /loop with Remote Control"
+  - "Know the practical use cases for background loops"
+quiz:
+  - id: "loop-1"
+    question: "What does /loop do?"
+    type: "multiple-choice"
+    options:
+      - "Creates an infinite loop in code"
+      - "Runs a task on a recurring interval as a persistent background worker"
+      - "Loops through files"
+      - "Repeats the last command"
+    correct: 1
+    explanation: "/loop sets up a recurring task that runs on an interval. You describe what to do and how often, and Claude runs it as a persistent background worker. Examples: check PRs every 30 minutes, monitor deployment health every hour, auto-merge safe PRs daily."
+  - id: "loop-2"
+    question: "What's a practical example of /loop?"
+    type: "multiple-choice"
+    options:
+      - "Writing code faster"
+      - "Monitor open PRs every 30 minutes and alert you when reviews are needed"
+      - "Loop through array elements"
+      - "Rerun failed tests"
+    correct: 1
+    explanation: "A practical /loop example: 'Check open PRs every 30 minutes. Alert me if any PR has been open for more than 24 hours without a review, or if CI has failed on any PR.' This automates a routine monitoring task that would otherwise require manual checking."
+  - id: "loop-3"
+    question: "How do you combine /loop with Remote Control?"
+    type: "multiple-choice"
+    options:
+      - "They can't be combined"
+      - "Start a /loop task locally, use Remote Control to monitor and approve from your phone"
+      - "Install a special plugin"
+      - "Use a different terminal"
+    correct: 1
+    explanation: "Start a /loop task on your development machine, then use Remote Control (/rc) to access the session from any device. The loop runs locally, but you can monitor its output and approve actions from your phone. This lets you manage recurring tasks from anywhere."
+---
+
+## Always-On AI Automation
+
+**/loop** turns Claude Code into a persistent background worker. Instead of running a task once, you describe a recurring task and Claude executes it on a schedule — monitoring, checking, alerting, and even taking action.
+
+## Setting Up a Loop
+
+```bash
+/loop
+```
+
+Claude asks you to describe:
+1. **What to do**: The recurring task
+2. **How often**: The interval (default: 10 minutes)
+
+### Example: PR Monitor
+
+```bash
+/loop
+
+"Every 30 minutes, check all open PRs in this repo:
+1. List PRs that have been open for more than 24 hours without a review
+2. Check CI status on each PR
+3. Alert me if any PR has failing CI
+4. If a Dependabot PR has passing CI and only patches, auto-approve it"
+```
+
+Claude sets up a background loop that runs every 30 minutes, monitoring your PRs.
+
+### Example: Deployment Health
+
+```bash
+/loop
+
+"Every 2 hours, check deployment health:
+1. Run the health check endpoint: curl https://api.myapp.com/health
+2. Check response time (should be under 200ms)
+3. Check recent error rate in logs
+4. Alert me if anything is degraded"
+```
+
+### Example: Dependency Updates
+
+```bash
+/loop
+
+"Once per day (every 24 hours):
+1. Run pnpm outdated
+2. Check for known vulnerabilities with pnpm audit
+3. If there are critical vulnerabilities, alert me immediately
+4. Generate a summary of what needs updating"
+```
+
+## How /loop Works
+
+```
+You: /loop → describe task and interval
+  ↓
+Claude starts background worker
+  ↓
+Every [interval]:
+  1. Claude executes the task
+  2. If action needed → triggers Notification hook
+  3. Results logged for review
+  ↓
+Worker persists until stopped
+```
+
+The loop runs as a persistent background process. You can continue working in other sessions while it runs.
+
+## Interval Syntax
+
+Specify intervals when setting up the loop:
+
+```bash
+/loop 5m /check-ci          # Every 5 minutes
+/loop 30m /review-prs       # Every 30 minutes
+/loop 2h /health-check      # Every 2 hours
+/loop 24h /dependency-audit  # Once per day
+```
+
+The default interval is 10 minutes if not specified.
+
+## Combining with Slash Commands
+
+/loop works well with custom slash commands:
+
+```bash
+# Create a command for what the loop should do
+# .claude/commands/check-prs.md
+---
+description: "Check PR status and alert if action needed"
+---
+List all open PRs. For each:
+1. Check CI status
+2. Check if review is requested
+3. If PR is stale (>48h), flag it
+Report any items needing attention.
+
+# Then loop it
+/loop 30m /check-prs
+```
+
+## Loop + Remote Control
+
+The most powerful combination: start a loop on your machine, monitor from anywhere.
+
+```bash
+# On your development machine
+/loop 15m /monitor-deployment
+
+# Generate a remote control URL
+/rc
+
+# Scan the QR code on your phone
+# Monitor deployment status from your couch, commute, or coffee shop
+```
+
+When the loop detects an issue and triggers a Notification hook, you can respond from your phone through Remote Control.
+
+## Practical Loop Recipes
+
+### Auto-Merge Safe PRs
+
+```bash
+/loop 1h
+
+"Check for Dependabot PRs:
+- If the PR only updates patch versions
+- And CI is passing
+- And it's been open for at least 1 hour
+- Auto-approve and merge it
+
+For non-patch updates, just alert me."
+```
+
+### Monitor Error Rate
+
+```bash
+/loop 10m
+
+"Check the application error log at /var/log/app/error.log:
+- Count errors in the last 10 minutes
+- If error rate exceeds 10 errors/minute, alert immediately
+- If a new error type appears that we haven't seen before, alert
+- Include a brief summary of the most common errors"
+```
+
+### Test Suite Guardian
+
+```bash
+/loop 2h
+
+"Run the full test suite (pnpm test):
+- If all tests pass, log the result
+- If any test fails, alert me with:
+  - Which tests failed
+  - The error messages
+  - The last git commit that might have caused it"
+```
+
+## Stopping a Loop
+
+To stop a running loop:
+
+```bash
+# In the loop session
+/stop
+
+# Or just close the terminal/session
+```
+
+## Considerations
+
+### Token Cost
+
+Each loop iteration is an API call. A 10-minute loop running for 8 hours is 48 calls. Make sure your loop tasks are efficient:
+
+```bash
+# Expensive: Full codebase analysis every 5 minutes
+# Efficient: Quick health check endpoint every 30 minutes
+```
+
+### Reliability
+
+Loops persist as long as the Claude Code process is running. If your machine sleeps, restarts, or the terminal closes, the loop stops. For production-grade scheduling, use the /schedule command (covered in Module 13) which runs in the cloud.
+
+### Scope
+
+Loops are best for monitoring and lightweight automation. Heavy tasks (full code reviews, large refactorings) should be triggered manually, not looped.
+
+## Key Takeaway
+
+/loop creates persistent background workers that execute tasks on a recurring interval. Use it for monitoring (PR status, deployment health, error rates), maintenance (dependency updates, auto-merging safe PRs), and quality checks (test suite runs). Combine with Remote Control to monitor from any device. Keep loop tasks lightweight and efficient — each iteration costs tokens. For cloud-based scheduling that survives machine restarts, use /schedule instead.

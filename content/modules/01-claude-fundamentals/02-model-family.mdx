@@ -1,0 +1,206 @@
+---
+title: "The Model Family: Opus, Sonnet, and Haiku"
+slug: "model-family"
+order: 2
+difficulty: "beginner"
+duration: 15
+tags: ["claude", "models", "opus", "sonnet", "haiku"]
+objectives:
+  - "Understand the three Claude model tiers and their distinct capabilities"
+  - "Know the cost, speed, and quality tradeoffs between Opus, Sonnet, and Haiku"
+  - "Learn how to switch models inside Claude Code and when to use each one"
+  - "Understand the opusplan strategy for maximum efficiency"
+quiz:
+  - id: "model-family-1"
+    question: "Which Claude model is best for deep architectural reasoning and complex debugging?"
+    type: "multiple-choice"
+    options:
+      - "Haiku"
+      - "Sonnet"
+      - "Opus"
+      - "All models are identical in capability"
+    correct: 2
+    explanation: "Opus is the most capable model in the Claude family, optimized for deep reasoning, complex architecture decisions, and difficult debugging tasks."
+  - id: "model-family-2"
+    question: "What is the API pricing for Claude Sonnet 4.6 per million tokens (input/output)?"
+    type: "multiple-choice"
+    options:
+      - "$1 / $5"
+      - "$3 / $15"
+      - "$5 / $25"
+      - "$10 / $50"
+    correct: 1
+    explanation: "Sonnet 4.6 is priced at $3 per million input tokens and $15 per million output tokens, making it the balanced middle option."
+  - id: "model-family-3"
+    question: "What does the opusplan strategy do?"
+    type: "multiple-choice"
+    options:
+      - "Only uses Opus for everything"
+      - "Uses Opus for planning and design, then auto-switches to Sonnet for implementation"
+      - "Uses Haiku for planning, Opus for coding"
+      - "Alternates between all three models randomly"
+    correct: 1
+    explanation: "opusplan leverages Opus's superior reasoning for high-level planning and architecture, then automatically switches to Sonnet for the actual code implementation — giving you the best of both worlds."
+  - id: "model-family-4"
+    question: "Which Claude model would you use for renaming a batch of variables across a file?"
+    type: "multiple-choice"
+    options:
+      - "Opus — you need the best for any task"
+      - "Sonnet — it's the default so always use it"
+      - "Haiku — fast, cheap, and the task is straightforward"
+      - "None — Claude Code can't rename variables"
+    correct: 2
+    explanation: "Haiku is perfect for simple, well-defined tasks like renaming variables. Using Opus for this would waste tokens and time on a task that doesn't require deep reasoning."
+---
+
+## Three Models, Three Personalities
+
+Anthropic doesn't ship a single Claude model. They ship a **family** of three, each tuned for a different sweet spot on the intelligence-speed-cost spectrum. Think of it like a hospital staff: you don't send the brain surgeon to check your blood pressure, and you don't ask the triage nurse to perform open heart surgery.
+
+Here's the lineup as of Claude 4.6:
+
+| Model | Strengths | API Cost (Input / Output per 1M tokens) | Speed |
+|-------|-----------|------------------------------------------|-------|
+| **Opus 4.6** | Deepest reasoning, architecture, debugging | $5 / $25 | Slowest |
+| **Sonnet 4.6** | Balanced daily driver, fast + smart | $3 / $15 | Fast |
+| **Haiku 4.5** | Lightning fast, instant responses | $1 / $5 | Fastest |
+
+These aren't just speed tiers. Each model has genuinely different capabilities. Let's break them down.
+
+## Opus: The Surgeon
+
+**Claude Opus 4.6** is the flagship. When you need Claude to reason through a complex system design, untangle a gnarly race condition, or evaluate architectural tradeoffs across a 50,000-line codebase, Opus is your model.
+
+What Opus excels at:
+
+- **Complex multi-file refactors** where the model needs to hold the entire dependency graph in its head
+- **Debugging subtle bugs** — the kind where the symptoms are three layers removed from the cause
+- **Architecture decisions** — "should we use event sourcing or CRUD for this domain?"
+- **Security analysis** — finding vulnerabilities that require understanding how multiple components interact
+- **Extended thinking** — Opus can think for longer and deeper before responding
+
+The tradeoff is speed and cost. Opus takes noticeably longer to respond than Sonnet, and at $5/$25 per million tokens, it burns through your budget faster. On a Max subscription, Opus also consumes roughly 1.7x the tokens compared to Sonnet for the same task because of its deeper reasoning process.
+
+**Use Opus when the cost of being wrong is high.** A 30-second wait for a correct architectural decision saves you days of refactoring later.
+
+## Sonnet: The General Practitioner
+
+**Claude Sonnet 4.6** is the default model in Claude Code, and for good reason. It's the sweet spot — smart enough for the vast majority of coding tasks, fast enough that you don't feel like you're waiting, and priced at a level that won't drain your usage limits in an hour.
+
+What Sonnet handles well:
+
+- **Day-to-day coding** — writing functions, implementing features, fixing typical bugs
+- **Code reviews** — analyzing diffs and suggesting improvements
+- **Test writing** — generating comprehensive test suites
+- **Documentation** — writing clear docstrings, README updates, API docs
+- **Explaining code** — walking you through unfamiliar codebases
+
+Sonnet is the model you'll use 70-80% of the time. It's not the smartest in the family, but it's smart *enough* for most tasks, and the speed advantage is real. When you ask Sonnet to implement a React component or write a database migration, it responds in seconds rather than the tens of seconds Opus might take.
+
+**Use Sonnet as your default.** Only escalate to Opus when you genuinely need deeper reasoning.
+
+## Haiku: The Triage Nurse
+
+**Claude Haiku 4.5** is the speed demon. At $1/$5 per million tokens, it's five times cheaper than Opus on input and five times cheaper on output. Responses come back almost instantly.
+
+What Haiku is perfect for:
+
+- **Variable renaming** and simple find-replace refactors
+- **Boilerplate generation** — creating interfaces, DTOs, repetitive CRUD endpoints
+- **Quick formatting** — fixing indentation, adding semicolons, sorting imports
+- **Simple grep-and-summarize** tasks
+- **High-volume operations** where you need many small AI calls
+
+Haiku is not the model for debugging a distributed systems issue or designing a new API. But for the mechanical, well-defined tasks that make up a surprising chunk of daily development work, it's the right tool. Using Opus for a variable rename is like hiring a consultant to change a lightbulb.
+
+**Use Haiku for tasks where the answer is obvious and you just need Claude to do the typing.**
+
+## Switching Models in Claude Code
+
+Switching models mid-session is trivial. Use the `/model` slash command:
+
+```bash
+# Switch to Opus for a complex task
+/model opus
+
+# Switch back to Sonnet for implementation
+/model sonnet
+
+# Drop to Haiku for quick formatting
+/model haiku
+```
+
+You can also set the model when starting a session:
+
+```bash
+# Start a session with Opus
+claude --model opus
+
+# Start with Sonnet (default, but explicit)
+claude --model sonnet
+```
+
+The model switch takes effect immediately for the next message. Your conversation history is preserved — you're just changing which brain processes your next prompt.
+
+## The opusplan Strategy
+
+Here's where it gets clever. Claude Code supports a hybrid strategy called **opusplan**:
+
+```bash
+/model opusplan
+```
+
+With opusplan active, Claude Code uses **Opus for planning and design** — understanding your codebase, creating implementation plans, making architectural decisions — and then **automatically switches to Sonnet for implementation** — writing the actual code, making edits, running tests.
+
+This gives you Opus-quality thinking with Sonnet-speed execution. In practice, it means:
+
+1. You describe a complex feature
+2. Opus analyzes your codebase and creates a detailed implementation plan
+3. Sonnet takes over and executes each step of the plan
+4. If Sonnet hits a snag that requires deeper reasoning, it can escalate back to Opus
+
+This is genuinely the best of both worlds for non-trivial tasks. You get the surgeon's diagnosis with the GP's efficiency.
+
+## The Decision Framework
+
+When you're staring at your terminal wondering which model to use, ask yourself one question: **"How much does getting this wrong cost me?"**
+
+- **High cost of failure** (architecture, security, complex debug) → Opus
+- **Medium cost, typical work** (features, tests, refactors) → Sonnet
+- **Low cost, mechanical task** (rename, format, boilerplate) → Haiku
+- **Complex feature with many steps** → opusplan
+
+Here's a practical example. You're building an authentication system:
+
+```bash
+# Step 1: Design the auth architecture with Opus
+/model opus
+"Design an auth system for this Next.js app. Consider JWT vs sessions,
+ OAuth providers, role-based access control, and token refresh strategy."
+
+# Step 2: Switch to opusplan for implementation
+/model opusplan
+"Implement the auth system based on the plan above."
+
+# Step 3: Use Haiku for the repetitive parts
+/model haiku
+"Add the auth middleware import to all 15 route files in src/app/api/"
+```
+
+## Cost Reality Check
+
+If you're on a Pro or Max subscription, you're not paying per-token — you're paying a flat monthly fee with usage limits measured in a rolling 5-hour window. But the model choice still matters because **Opus consumes your usage budget faster** than Sonnet, which consumes faster than Haiku.
+
+On the API side, the math is straightforward. Processing 100K tokens (a medium codebase analysis):
+
+| Model | Input Cost | Output Cost (10K tokens) | Total |
+|-------|-----------|-------------------------|-------|
+| Opus | $0.50 | $0.25 | $0.75 |
+| Sonnet | $0.30 | $0.15 | $0.45 |
+| Haiku | $0.10 | $0.05 | $0.15 |
+
+Over a full workday of heavy usage, the difference between always-Opus and smart model switching can be 3-5x in cost or usage consumption.
+
+## Key Takeaway
+
+Claude isn't one model — it's three, each optimized for a different job. Use Opus when you need a surgeon's precision, Sonnet for everyday coding, and Haiku when speed trumps depth. The `/model` command and the `opusplan` strategy let you get the best of all three in a single session without breaking your flow.

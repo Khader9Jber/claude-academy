@@ -1,0 +1,299 @@
+---
+title: "Designing Agentic Systems"
+slug: "agentic-systems"
+order: 1
+difficulty: "expert"
+duration: 17
+tags: ["agentic", "architecture", "design-patterns", "systems"]
+objectives:
+  - "Architect multi-agent systems with proper boundaries"
+  - "Choose between agents, skills, and commands for different needs"
+  - "Design error handling and fallback strategies"
+  - "Implement reliable autonomous workflows"
+quiz:
+  - id: "agentic-1"
+    question: "What is the most important principle when designing multi-agent systems?"
+    type: "multiple-choice"
+    options:
+      - "Use the most agents possible"
+      - "Clear isolation boundaries — each agent has a well-defined scope, tools, and communication interface"
+      - "Use only Opus"
+      - "Minimize the number of files"
+    correct: 1
+    explanation: "Clear isolation boundaries are the foundation of reliable multi-agent systems. Each agent should have a well-defined scope (what it does), restricted tools (what it can access), and a clear communication interface (how it reports results). Without boundaries, agents conflict and produce unpredictable results."
+  - id: "agentic-2"
+    question: "When should you use an agent instead of a skill or command?"
+    type: "multiple-choice"
+    options:
+      - "Always"
+      - "When the task requires an independent context window, potentially a different model, and isolation from the main session"
+      - "For simple tasks"
+      - "Never — skills are always better"
+    correct: 1
+    explanation: "Use agents when you need: independent context (the task is complex enough to benefit from focused context), model specialization (Opus for security, Haiku for exploration), or isolation (worktree for experimental changes). Use skills for specialized knowledge and commands for repeatable task sequences."
+  - id: "agentic-3"
+    question: "What is the 'supervisor' pattern in multi-agent design?"
+    type: "multiple-choice"
+    options:
+      - "A human watching all agents"
+      - "A lead agent (usually Opus) that decomposes tasks, assigns to specialists, reviews results, and integrates"
+      - "A monitoring dashboard"
+      - "A permission system"
+    correct: 1
+    explanation: "The supervisor pattern has a lead agent (typically Opus for planning capability) that decomposes the overall task, assigns subtasks to specialist agents, reviews their outputs for quality, and integrates the results. The lead coordinates but doesn't implement — specialists do the work."
+  - id: "agentic-4"
+    question: "What's the fallback strategy for agent failures?"
+    type: "multiple-choice"
+    options:
+      - "Restart everything"
+      - "Graceful degradation: detect failure, retry once, then escalate to lead agent or human"
+      - "Ignore failures"
+      - "Always succeed"
+    correct: 1
+    explanation: "Graceful degradation: when an agent fails, first retry (it might be transient). If it fails again, escalate — either to the lead agent (who can reassign or try a different approach) or to a human (who can intervene). Never let a single agent failure crash the entire workflow."
+---
+
+## Thinking in Systems
+
+Building one agent is straightforward. Building a system of agents that work together reliably is an engineering challenge. This lesson covers the architecture patterns, communication protocols, and error handling strategies that make multi-agent systems work.
+
+## The Decision Framework
+
+Before reaching for agents, ask:
+
+### Do I need an agent, a skill, or a command?
+
+```
+Is it a recurring specialized ROLE with its own context needs?
+  → Agent (security reviewer, test writer)
+
+Is it specialized KNOWLEDGE that enhances the current session?
+  → Skill (migration patterns, API conventions)
+
+Is it a repeatable TASK sequence?
+  → Command (deploy checklist, code review)
+
+Is it a one-off request?
+  → Just ask Claude directly
+```
+
+### How many agents do I need?
+
+```
+Task touches 1-3 files → Single agent (or no agent — just ask Claude)
+Task touches 5-15 files independently → /batch with parallel agents
+Task has 2-3 distinct concerns → 2-3 specialist agents
+Task needs planning + implementation → Supervisor + worker agents
+Task is a full project → Agent team
+```
+
+The rule of thumb: **use the minimum number of agents that achieves the goal**. Each agent adds complexity and token cost.
+
+## Architecture Patterns
+
+### Pattern 1: Specialist Pool
+
+Multiple independent specialists, each handling their domain:
+
+```
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│   Security   │  │  Performance │  │   Testing    │
+│  Reviewer    │  │   Analyst    │  │   Writer     │
+│  (Opus)      │  │  (Sonnet)    │  │  (Sonnet)    │
+└──────────────┘  └──────────────┘  └──────────────┘
+       │                 │                  │
+       └─────────────────┴──────────────────┘
+                         │
+                    Your Session
+```
+
+Each specialist works independently on its concern. Results are aggregated in your session. No coordination between specialists needed.
+
+**Best for**: Multi-dimensional code review, where each dimension is independent.
+
+### Pattern 2: Supervisor + Workers
+
+A lead agent coordinates worker agents:
+
+```
+┌─────────────────────┐
+│   Supervisor (Opus) │
+│   Plans, assigns,   │
+│   reviews, integrates│
+└──────────┬──────────┘
+           │
+    ┌──────┼──────┐
+    ▼      ▼      ▼
+┌──────┐┌──────┐┌──────┐
+│Work 1││Work 2││Work 3│  (Sonnet)
+└──────┘└──────┘└──────┘
+```
+
+The supervisor decomposes the task, assigns subtasks, reviews results, and integrates. Workers implement their assigned subtask.
+
+**Best for**: Large tasks with interdependencies that need coordinated planning.
+
+### Pattern 3: Pipeline
+
+Agents process work sequentially, each adding value:
+
+```
+Code → [Implementer] → [Reviewer] → [Tester] → [Documenter] → Done
+       (Write code)    (Review it)   (Test it)   (Document it)
+```
+
+Each agent's output is the next agent's input. The pipeline ensures every change goes through a consistent quality process.
+
+**Best for**: Workflows with sequential quality gates.
+
+### Pattern 4: Mapper + Reducer
+
+Distribute work across many agents, then aggregate:
+
+```
+[Mapper] → Agent 1 → Result 1 ─┐
+         → Agent 2 → Result 2 ──┤→ [Reducer] → Final Report
+         → Agent 3 → Result 3 ──┤
+         → Agent N → Result N ──┘
+```
+
+The mapper distributes (each agent analyzes one module). The reducer aggregates (combines all analyses into a single report).
+
+**Best for**: Codebase-wide analysis where each module is independent.
+
+## Communication Protocols
+
+### Direct Messages
+
+Agent-to-agent communication for specific coordination:
+
+```
+Security Agent → Lead: "Found a critical auth bypass in payment.ts. 
+                        This blocks the performance optimization 
+                        because the fix changes the API contract."
+```
+
+### Broadcasts
+
+Messages to all agents for shared context:
+
+```
+Lead → All: "The database schema has changed. All agents working 
+            on repository files need to regenerate their Prisma client."
+```
+
+### Status Reports
+
+Periodic updates from workers to supervisor:
+
+```
+Worker 1 → Lead: "Status: 3/5 files converted. On track."
+Worker 2 → Lead: "Status: Blocked. Type error in shared utility."
+Worker 3 → Lead: "Status: Complete. All tests passing."
+```
+
+## Error Handling Strategies
+
+### Retry
+
+For transient failures:
+
+```yaml
+# Agent configuration
+---
+maxTurns: 25
+---
+
+# In the agent's instructions:
+If a tool use fails, retry once. If it fails again, report the error
+to the lead agent instead of retrying indefinitely.
+```
+
+### Escalation
+
+When an agent can't solve the problem:
+
+```
+Worker: "I can't fix the type error in shared-utils.ts because 
+         it requires changes to the interface that other workers 
+         are using."
+
+Lead: "Understood. I'll coordinate the interface change with 
+       all affected workers and provide the updated interface."
+```
+
+### Graceful Degradation
+
+When part of the system fails, the rest continues:
+
+```
+Batch of 10 agents:
+  Agent 1: ✓ Success
+  Agent 2: ✓ Success
+  Agent 3: ✗ Failed (test timeout)
+  Agent 4: ✓ Success
+  ...
+  
+Result: 9 successful, 1 failed. Failed unit queued for retry.
+```
+
+### Circuit Breaker
+
+If too many failures occur, stop and report:
+
+```
+If more than 3 out of 10 agents fail:
+  → Stop remaining agents
+  → Report to human: "30% failure rate. Likely a systemic issue 
+     (shared dependency, infrastructure problem). Human review needed."
+```
+
+## Isolation Boundaries
+
+Every agent needs clear boundaries:
+
+### File Boundaries
+
+```yaml
+# Agent A: only touches auth files
+---
+permissionMode: acceptEdits
+---
+You may ONLY read and write files in src/services/auth/ and tests/auth/.
+Do not touch any other directory.
+```
+
+### Tool Boundaries
+
+```json
+{
+  "permissions": {
+    "allow": ["Read(src/auth/**)", "Write(src/auth/**)", "Bash(pnpm test *auth*)"],
+    "deny": ["Write(src/payments/**)", "Bash(pnpm deploy *)"]
+  }
+}
+```
+
+### Context Boundaries
+
+Each agent gets only the context it needs:
+
+- Security agent: gets security-related files and instructions
+- Performance agent: gets performance-related files and metrics
+- Test agent: gets source files and test conventions
+
+Don't give every agent the full codebase context.
+
+## Design Principles
+
+1. **Start simple**: One agent first. Add more only when complexity demands it.
+2. **Clear boundaries**: Each agent knows exactly what it can and can't do.
+3. **Minimal communication**: Agents that need to communicate constantly should probably be one agent.
+4. **Fail gracefully**: Plan for agent failures from the start.
+5. **Human in the loop**: Keep a human checkpoint for critical decisions.
+6. **Match model to role**: Opus for reasoning, Sonnet for implementation, Haiku for exploration.
+7. **Isolate experiments**: Use worktrees for agents making changes.
+
+## Key Takeaway
+
+Agentic systems succeed through clear isolation boundaries, appropriate pattern selection (specialist pool, supervisor+workers, pipeline, or mapper+reducer), and robust error handling (retry, escalate, degrade gracefully). Before adding agents, ask: do I need an agent, a skill, or a command? Use the minimum number of agents that achieves the goal. Each agent should have well-defined scope, restricted tools, and clear communication interfaces. Start simple, add complexity only when justified.

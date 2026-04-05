@@ -1,0 +1,267 @@
+---
+title: "The 5-Level CLAUDE.md Hierarchy"
+slug: "claude-md-hierarchy"
+order: 3
+difficulty: "intermediate"
+duration: 16
+tags: ["claude-md", "configuration", "hierarchy", "project-setup"]
+objectives:
+  - "Understand all 5 CLAUDE.md locations and their purposes"
+  - "Know the loading order and override behavior"
+  - "Choose the right location for different types of instructions"
+  - "Use subdirectory CLAUDE.md for component-specific rules"
+quiz:
+  - id: "hierarchy-1"
+    question: "Where does the global CLAUDE.md file go?"
+    type: "multiple-choice"
+    options:
+      - "In the project root"
+      - "~/.claude/CLAUDE.md"
+      - "/etc/claude/CLAUDE.md"
+      - "~/.config/claude/CLAUDE.md"
+    correct: 1
+    explanation: "The global CLAUDE.md lives at ~/.claude/CLAUDE.md. It applies to every project and every session — ideal for personal preferences like 'always use TypeScript' or 'prefer functional style.'"
+  - id: "hierarchy-2"
+    question: "Which CLAUDE.md location is gitignored and local-only?"
+    type: "multiple-choice"
+    options:
+      - "./CLAUDE.md"
+      - "~/.claude/CLAUDE.md"
+      - "./.claude/CLAUDE.md"
+      - "./src/CLAUDE.md"
+    correct: 2
+    explanation: "./.claude/CLAUDE.md is local and gitignored — it's never committed to the repository. Use it for personal overrides that shouldn't affect teammates, like custom debugging preferences or local environment notes."
+  - id: "hierarchy-3"
+    question: "When Claude enters the src/components/ directory, which CLAUDE.md files are active?"
+    type: "multiple-choice"
+    options:
+      - "Only src/components/CLAUDE.md"
+      - "Only the root CLAUDE.md"
+      - "Global + project root + local + src/components/CLAUDE.md + auto-memory"
+      - "Only global and root"
+    correct: 2
+    explanation: "All applicable CLAUDE.md files are active simultaneously. When Claude works in src/components/, it sees: the global file, project root file, local file, the src/components/CLAUDE.md subdirectory file, and auto-memory — all layered together."
+  - id: "hierarchy-4"
+    question: "What is auto-memory and how does it work?"
+    type: "multiple-choice"
+    options:
+      - "A database of all past conversations"
+      - "Automatically saved observations at ~/.claude/projects/<hash>/memory/ that Claude reads each session"
+      - "A backup of your CLAUDE.md"
+      - "An AI training dataset"
+    correct: 1
+    explanation: "Auto-memory stores observations Claude saves during sessions (corrections, preferences, context) in ~/.claude/projects/<hash>/memory/. These are loaded automatically in subsequent sessions, giving Claude an evolving memory of your project."
+---
+
+## Why Five Levels?
+
+A single CLAUDE.md is great for small projects. But real-world development is more nuanced:
+
+- You have **personal preferences** that apply to every project (global)
+- Your **team** has shared conventions committed to git (project)
+- You have **personal overrides** that teammates shouldn't see (local)
+- Different **directories** in your project need different rules (subdirectory)
+- Claude **learns things** during sessions that should persist (auto-memory)
+
+Claude Code handles this with a 5-level hierarchy. Each level serves a different purpose, and all active levels are loaded simultaneously.
+
+## Level 1: Global — ~/.claude/CLAUDE.md
+
+**Scope**: Every project, every session, everywhere.
+
+**Committed to git**: No — this lives in your home directory.
+
+The global CLAUDE.md contains your personal coding preferences that apply regardless of what project you're working on:
+
+```markdown
+# Global Preferences
+
+- I prefer TypeScript over JavaScript in all cases
+- Use functional programming patterns — avoid classes where possible
+- When writing tests, use describe/it blocks with human-readable descriptions
+- Include JSDoc comments on all public functions
+- I use macOS with zsh — shell commands should be macOS-compatible
+- When explaining code, be concise — I'm a senior engineer
+```
+
+This file is loaded first and applies everywhere. If you always want TypeScript, this is where you say it — so you don't repeat it in every project's CLAUDE.md.
+
+**Path**: `~/.claude/CLAUDE.md`
+
+## Level 2: Project Root — ./CLAUDE.md
+
+**Scope**: This specific project, for everyone on the team.
+
+**Committed to git**: Yes — the whole team shares it.
+
+This is the CLAUDE.md you learned about in the previous lessons. It lives at the root of your project and contains stack definitions, conventions, and architecture rules:
+
+```markdown
+# TaskFlow API
+
+## Stack
+- Node.js 20 + TypeScript 5.4
+- Fastify 4.x + Prisma 5.x
+...
+```
+
+Because it's committed to git, every team member gets the same instructions. When someone clones the repo and starts a Claude session, they get the full project context automatically.
+
+**Path**: `./CLAUDE.md` (project root)
+
+## Level 3: Local — ./.claude/CLAUDE.md
+
+**Scope**: This project, but only for you.
+
+**Committed to git**: No — the `.claude/` directory is gitignored.
+
+The local CLAUDE.md is for personal overrides that shouldn't affect your teammates:
+
+```markdown
+# My Local Overrides
+
+- I'm debugging the payment service — prioritize context around
+  src/services/payment/ and src/repos/payment/
+- My local Postgres runs on port 5433 (not the default 5432)
+- When I say "deploy", I mean to staging, never production
+- I'm working on the v2 migration — reference docs/v2-migration.md
+  for current progress
+```
+
+This is powerful for per-developer customization. Maybe you're focused on a specific area of the codebase, or you have a local environment that differs from the team standard. The local file lets you add that context without modifying the shared project file.
+
+**Path**: `./.claude/CLAUDE.md`
+
+## Level 4: Subdirectory — ./path/to/CLAUDE.md
+
+**Scope**: Files within that directory and its children.
+
+**Committed to git**: Yes (unless inside .claude/).
+
+Subdirectory CLAUDE.md files let you add context that's only relevant when Claude is working in a specific part of your codebase:
+
+```markdown
+# src/services/payment/CLAUDE.md
+
+## Payment Service Rules
+- ALL monetary amounts stored as integers (cents), never floats
+- Use Decimal.js for any arithmetic involving money
+- Every payment operation must be idempotent (check idempotency key first)
+- Log every payment state transition for audit trail
+- PCI compliance: never log full card numbers, only last 4 digits
+- Test double charges explicitly in every payment flow test
+```
+
+This file only activates when Claude is reading or writing files in `src/services/payment/` or its subdirectories. It doesn't waste tokens when Claude is working on authentication or user management.
+
+Other good candidates for subdirectory CLAUDE.md files:
+
+```
+src/components/CLAUDE.md      → UI component conventions
+src/api/CLAUDE.md             → API endpoint patterns
+src/database/CLAUDE.md        → migration and schema rules
+tests/CLAUDE.md               → testing conventions and patterns
+scripts/CLAUDE.md             → deployment and automation rules
+```
+
+**Path**: Any `CLAUDE.md` in any subdirectory of your project.
+
+## Level 5: Auto-Memory — ~/.claude/projects/\<hash\>/memory/
+
+**Scope**: This project, built automatically over time.
+
+**Committed to git**: No — stored in your home directory.
+
+Auto-memory is Claude's learning system. During sessions, Claude automatically saves observations — things like corrections you make, preferences it discovers, and important context about your project.
+
+These are stored as small memory files:
+
+```
+~/.claude/projects/abc123/memory/
+├── MEMORY.md           → index of all memories
+├── user.md             → your role and preferences
+├── feedback.md         → corrections you've made
+├── project.md          → project context Claude has learned
+└── reference.md        → external references and pointers
+```
+
+For example, if you correct Claude:
+
+```
+You: "No, we don't use console.log for debugging — use our logger from src/lib/logger.ts"
+```
+
+Claude saves this as a memory. In future sessions, it remembers to use your logger instead of console.log.
+
+You can also explicitly create memories:
+
+```
+"Remember that the auth service was refactored in March 2026 — the old
+ pattern in the git history is no longer valid."
+
+"Forget the note about using REST — we've switched to GraphQL."
+```
+
+Auto-memory is loaded alongside the other CLAUDE.md levels but is managed by Claude, not by you.
+
+## Loading Order
+
+All five levels load simultaneously at session start. Here's the order:
+
+```
+1. Global         ~/.claude/CLAUDE.md
+2. Project Root   ./CLAUDE.md
+3. Local          ./.claude/CLAUDE.md
+4. Subdirectory   ./current-path/CLAUDE.md (when applicable)
+5. Auto-Memory    ~/.claude/projects/<hash>/memory/
+```
+
+There's no strict override hierarchy — all levels are additive. Claude sees all of them and follows all instructions. If two levels contradict each other, the more specific one generally takes precedence (local overrides global, subdirectory overrides project root).
+
+## Choosing the Right Level
+
+| What You Want | Where to Put It |
+|---|---|
+| "I always prefer TypeScript" | Global (~/.claude/CLAUDE.md) |
+| "This project uses Fastify + Prisma" | Project root (./CLAUDE.md) |
+| "I'm focused on the payment module this sprint" | Local (./.claude/CLAUDE.md) |
+| "Money is always stored as cents in this service" | Subdirectory (src/services/payment/CLAUDE.md) |
+| Claude-learned corrections and preferences | Auto-memory (automatic) |
+
+## A Real Multi-Level Setup
+
+Here's how these levels work together in practice:
+
+**~/.claude/CLAUDE.md** (Global):
+```markdown
+- TypeScript always, strict mode
+- Functional patterns, no classes
+- macOS + zsh environment
+```
+
+**./CLAUDE.md** (Project):
+```markdown
+# ShipFast API
+- Fastify + Prisma + BullMQ
+- AppError for all errors
+- Multi-tenant: filter by merchantId
+```
+
+**./.claude/CLAUDE.md** (Local):
+```markdown
+- I'm refactoring the inventory service this week
+- My local Redis is on port 6380
+```
+
+**./src/services/inventory/CLAUDE.md** (Subdirectory):
+```markdown
+- Stock counts must use optimistic locking
+- Always check warehouse capacity before allocation
+- SKU format: [CATEGORY]-[ID]-[SIZE] (e.g., SHOE-1234-L)
+```
+
+When you work on `src/services/inventory/stock-allocation.ts`, Claude sees all four levels plus auto-memory. It knows to use TypeScript (global), Fastify + Prisma (project), that you're refactoring inventory (local), and that stock counts need optimistic locking (subdirectory).
+
+## Key Takeaway
+
+The 5-level CLAUDE.md hierarchy gives you precise control over what Claude knows and when. Global for personal preferences, project root for team standards, local for personal overrides, subdirectory for component-specific rules, and auto-memory for Claude's learned observations. All levels are loaded simultaneously and additive — use the most specific level for each type of instruction to keep context focused and tokens efficient.

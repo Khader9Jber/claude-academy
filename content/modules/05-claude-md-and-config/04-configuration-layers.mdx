@@ -1,0 +1,368 @@
+---
+title: "Configuration Layers: User, Project, Local"
+slug: "configuration-layers"
+order: 4
+difficulty: "intermediate"
+duration: 17
+tags: ["configuration", "settings", "permissions", "environment"]
+objectives:
+  - "Understand the three settings.json files and their precedence"
+  - "Configure permissions, hooks, environment variables, and model overrides"
+  - "Know when to use user vs project vs local settings"
+  - "Write a complete settings.json for a real project"
+quiz:
+  - id: "config-layers-1"
+    question: "What are the three settings.json locations in order of precedence?"
+    type: "multiple-choice"
+    options:
+      - "global > project > local"
+      - "local > project > user (local wins)"
+      - "project > local > user"
+      - "user > local > project"
+    correct: 1
+    explanation: "The precedence is: .claude/settings.local.json (local, highest priority) > .claude/settings.json (project) > ~/.claude/settings.json (user/global, lowest priority). Local settings override project settings, which override user settings."
+  - id: "config-layers-2"
+    question: "Which settings.json file should be committed to git?"
+    type: "multiple-choice"
+    options:
+      - "~/.claude/settings.json (user)"
+      - ".claude/settings.json (project)"
+      - ".claude/settings.local.json (local)"
+      - "All of them"
+    correct: 1
+    explanation: ".claude/settings.json is the project-level file designed to be committed to git. It standardizes Claude's behavior for all team members. The local file is gitignored for personal overrides, and the user file is in your home directory."
+  - id: "config-layers-3"
+    question: "What does the 'env' key in settings.json do?"
+    type: "multiple-choice"
+    options:
+      - "Sets Node.js version"
+      - "Defines environment variables that are set when Claude Code runs"
+      - "Changes the terminal theme"
+      - "Configures the operating system"
+    correct: 1
+    explanation: "The 'env' key in settings.json lets you define environment variables that are automatically set when Claude Code starts. This is useful for enabling features like LSP, setting effort levels, or configuring thinking tokens — without modifying your shell profile."
+  - id: "config-layers-4"
+    question: "What is the 'modelOverrides' setting used for?"
+    type: "multiple-choice"
+    options:
+      - "Changing Claude's personality"
+      - "Routing Claude Code to use custom API endpoints like AWS Bedrock or Google Vertex"
+      - "Installing additional AI models"
+      - "Switching between GPT and Claude"
+    correct: 1
+    explanation: "modelOverrides lets you route Claude Code requests to custom API endpoints — typically AWS Bedrock or Google Vertex AI. This is essential for enterprises that need to use their own cloud infrastructure instead of Anthropic's direct API."
+---
+
+## Beyond CLAUDE.md
+
+CLAUDE.md controls what Claude knows. **settings.json** controls what Claude can do.
+
+While CLAUDE.md gives Claude project context and conventions, settings.json configures Claude Code's behavior — which tools are allowed, which are blocked, what hooks run, what environment variables are set, and which model endpoints to use.
+
+There are three settings.json files, forming a layer system where more specific settings override less specific ones.
+
+## The Three Layers
+
+### Layer 1: User Settings — ~/.claude/settings.json
+
+**Scope**: All projects, all sessions.
+**Committed to git**: No (lives in home directory).
+
+Your personal defaults. These apply everywhere unless overridden:
+
+```json
+{
+  "effortLevel": "medium",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Bash(git *)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf *)"
+    ]
+  },
+  "env": {
+    "ENABLE_LSP_TOOL": "1"
+  }
+}
+```
+
+### Layer 2: Project Settings — .claude/settings.json
+
+**Scope**: This project, for all team members.
+**Committed to git**: Yes.
+
+Team-wide project configuration. This is the primary settings file for most teams:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(pnpm *)",
+      "Bash(git *)",
+      "Bash(docker compose *)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Write(package.json)",
+      "Write(prisma/schema.prisma)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      }
+    ]
+  },
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "10000"
+  }
+}
+```
+
+### Layer 3: Local Settings — .claude/settings.local.json
+
+**Scope**: This project, only for you.
+**Committed to git**: No (gitignored).
+
+Personal overrides for a specific project:
+
+```json
+{
+  "effortLevel": "high",
+  "permissions": {
+    "allow": [
+      "Write(package.json)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_BRIEF": "1"
+  }
+}
+```
+
+## Override Precedence
+
+When the same setting exists in multiple layers, the most specific one wins:
+
+```
+Local (.claude/settings.local.json)    ← Highest priority
+  ↓ overrides
+Project (.claude/settings.json)
+  ↓ overrides
+User (~/.claude/settings.json)          ← Lowest priority
+```
+
+For example, if the project settings deny `Write(package.json)` but your local settings allow it, the local allow wins — you can write to package.json even though teammates can't.
+
+Permission lists are merged, not replaced. If user settings allow `Read` and project settings allow `Write(src/**)`, both are active. Deny lists are also merged — a deny at any level blocks the action.
+
+## The Full Settings Reference
+
+Here's every key you can set in settings.json:
+
+### permissions
+
+Controls which tools Claude can use:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(src/**)",
+      "Bash(git *)",
+      "Bash(pnpm test)",
+      "mcp__github"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)"
+    ]
+  }
+}
+```
+
+Allow and deny patterns use glob syntax. We'll cover these in depth in the next lesson.
+
+### hooks
+
+Automated actions triggered by Claude events:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(rm *)",
+        "command": "echo 'Deletion blocked by hook' && exit 2"
+      }
+    ],
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs you\" with title \"Claude Code\"'"
+      }
+    ]
+  }
+}
+```
+
+Hooks are covered in detail in Module 9.
+
+### env
+
+Environment variables set when Claude Code starts:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "12000",
+    "CLAUDE_CODE_EFFORT_LEVEL": "medium",
+    "CLAUDE_CODE_BRIEF": "0"
+  }
+}
+```
+
+Note: Shell environment variables (from .zshrc, .bashrc) take precedence over settings.json `env` values. If `ENABLE_LSP_TOOL` is set in both your shell and settings.json, the shell value wins.
+
+### effortLevel
+
+Default effort level for all sessions:
+
+```json
+{
+  "effortLevel": "medium"
+}
+```
+
+Valid values: `"low"`, `"medium"`, `"high"`, `"max"`.
+
+### modelOverrides
+
+Route requests to custom API endpoints:
+
+```json
+{
+  "modelOverrides": {
+    "claude-sonnet-4-20250514": {
+      "apiKeyEnvVar": "AWS_BEDROCK_API_KEY",
+      "baseURL": "https://bedrock-runtime.us-east-1.amazonaws.com",
+      "model": "anthropic.claude-sonnet-4-20250514-v1:0"
+    }
+  }
+}
+```
+
+This is primarily used by enterprises routing through AWS Bedrock or Google Vertex AI instead of Anthropic's direct API.
+
+## A Complete Project Settings Example
+
+Here's a real-world `.claude/settings.json` for a Node.js/TypeScript backend project:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Write(docs/**)",
+      "Write(.claude/commands/**)",
+      "Bash(pnpm *)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git status)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(npx prisma *)",
+      "Bash(docker compose up -d)",
+      "Bash(docker compose down)",
+      "Bash(npx vitest *)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Read(secrets/**)",
+      "Write(package.json)",
+      "Write(pnpm-lock.yaml)",
+      "Write(prisma/schema.prisma)",
+      "Write(.github/**)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(git push --force*)",
+      "Bash(npx prisma migrate deploy)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      }
+    ],
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs your attention\" with title \"Claude Code\"'"
+      }
+    ]
+  },
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "10000"
+  },
+  "effortLevel": "medium"
+}
+```
+
+This configuration:
+- Allows reading everywhere but blocks .env and secrets
+- Allows writing to source, tests, and docs but blocks critical config files
+- Allows common git operations but blocks force push
+- Allows pnpm, Prisma, Docker, and Vitest commands
+- Blocks dangerous operations (rm -rf, sudo, curl, wget)
+- Auto-formats TypeScript files on save
+- Sends desktop notifications when Claude needs attention
+- Enables LSP for fast code navigation
+- Caps thinking tokens at 10,000
+
+## When to Use Each Layer
+
+| Need | Layer | Why |
+|---|---|---|
+| "I always want LSP enabled" | User (~/.claude/settings.json) | Applies to all projects |
+| "The team should never read .env files" | Project (.claude/settings.json) | Enforced for all members |
+| "I need to debug package.json" | Local (.claude/settings.local.json) | Temporary personal override |
+| "Route through our company API gateway" | Project (.claude/settings.json) | Team-wide infrastructure config |
+| "I prefer high effort" | User or Local | Personal preference |
+
+## Key Takeaway
+
+Claude Code's behavior is configured through three layers of settings.json: user (global defaults), project (team standards, committed to git), and local (personal overrides, gitignored). Local settings have the highest priority. The key sections are permissions (what Claude can do), hooks (automated actions), env (environment variables), effortLevel, and modelOverrides. A well-configured settings.json prevents dangerous operations, automates formatting, and standardizes behavior across your team.

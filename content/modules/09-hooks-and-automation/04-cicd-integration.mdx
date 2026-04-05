@@ -1,0 +1,313 @@
+---
+title: "CI/CD Integration with Claude Code"
+slug: "cicd-integration"
+order: 4
+difficulty: "advanced"
+duration: 16
+tags: ["ci-cd", "github-actions", "automation", "pipelines"]
+objectives:
+  - "Use Claude Code in GitHub Actions workflows"
+  - "Build auto-lint-fix and PR review bots"
+  - "Configure headless mode safely for CI"
+  - "Use /install-github-app for native integration"
+quiz:
+  - id: "cicd-1"
+    question: "What flag ensures Claude Code runs safely in CI?"
+    type: "multiple-choice"
+    options:
+      - "--safe-mode"
+      - "--allowedTools to restrict which tools Claude can use in CI"
+      - "--ci-mode"
+      - "--production"
+    correct: 1
+    explanation: "--allowedTools restricts which tools Claude can use. In CI, you should only allow the minimum necessary tools — typically Read and specific Bash commands. This prevents Claude from making unauthorized changes to your repository or running dangerous commands in the CI environment."
+  - id: "cicd-2"
+    question: "What does /install-github-app do?"
+    type: "multiple-choice"
+    options:
+      - "Installs Node.js on GitHub Actions runners"
+      - "Installs the Claude GitHub App for native PR review integration"
+      - "Creates a GitHub repository"
+      - "Configures git hooks"
+    correct: 1
+    explanation: "/install-github-app installs the official Claude GitHub App on your repository. Once installed, Claude can automatically review PRs when they're opened, leave inline comments, and check for issues — all integrated natively with GitHub's review system."
+  - id: "cicd-3"
+    question: "Why use --max-turns in CI pipelines?"
+    type: "multiple-choice"
+    options:
+      - "To speed up the build"
+      - "To prevent Claude from running indefinitely and consuming unlimited CI minutes and API tokens"
+      - "To limit the number of files changed"
+      - "CI doesn't support multiple turns"
+    correct: 1
+    explanation: "Without --max-turns, Claude could loop indefinitely in CI — reading files, trying fixes, running tests, reading more files. This wastes CI minutes and API tokens. --max-turns 15 (or whatever is appropriate) ensures Claude stops after a reasonable number of tool-use cycles."
+  - id: "cicd-4"
+    question: "What authentication method should you use for Claude Code in CI?"
+    type: "multiple-choice"
+    options:
+      - "Browser auth"
+      - "ANTHROPIC_API_KEY stored as a GitHub Secret"
+      - "SSH key"
+      - "Username and password"
+    correct: 1
+    explanation: "In CI, use the ANTHROPIC_API_KEY environment variable stored as a GitHub Secret. Browser auth requires human interaction (impossible in CI), while API key auth works headlessly. Store the key securely in GitHub Secrets, never in your workflow YAML."
+---
+
+## Claude in Your Pipeline
+
+Claude Code's headless mode makes it a natural fit for CI/CD pipelines. It can review PRs, fix lint errors, generate documentation, and run quality checks — all automatically, triggered by events in your repository.
+
+The key principles for CI integration:
+1. **API key auth** — browser auth doesn't work in headless environments
+2. **Restricted tools** — limit what Claude can do in CI
+3. **Max turns** — prevent runaway loops
+4. **Focused tasks** — one specific job per Claude invocation
+
+## GitHub Actions: Basic Setup
+
+### Step 1: Store Your API Key
+
+Go to your repository's Settings > Secrets and variables > Actions. Add a secret:
+
+- Name: `ANTHROPIC_API_KEY`
+- Value: Your Anthropic API key
+
+### Step 2: Create a Workflow
+
+Create `.github/workflows/claude-review.yml`:
+
+```yaml
+name: Claude Code Review
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Review PR
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "Review the changes in this PR. Check for:
+          1. Security vulnerabilities
+          2. Missing error handling
+          3. Performance issues
+          4. Test coverage gaps
+          
+          Output a markdown report with findings." \
+            --output-format text \
+            --max-turns 15 \
+            --allowedTools "Read" "Bash(git diff *)" "Bash(git log *)" \
+            > review-report.md
+
+      - name: Post Review Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review-report.md', 'utf8');
+            if (review.trim()) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Claude Code Review\n\n${review}`
+              });
+            }
+```
+
+This workflow:
+1. Triggers on every PR to main/develop
+2. Installs Claude Code
+3. Runs a headless review with restricted tools
+4. Posts the review as a PR comment
+
+## Auto-Lint-Fix Workflow
+
+Automatically fix lint errors when a PR is opened:
+
+```yaml
+name: Claude Auto-Fix
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  auto-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci && npm install -g @anthropic-ai/claude-code
+
+      - name: Run Lint Check
+        id: lint
+        run: |
+          npx eslint src/ --format json > lint-results.json 2>/dev/null || true
+          if [ -s lint-results.json ]; then
+            echo "has_errors=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fix Lint Errors with Claude
+        if: steps.lint.outputs.has_errors == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "Fix all lint errors found in lint-results.json. 
+          Read each file with errors and fix them. 
+          Only fix lint errors, don't refactor or change behavior." \
+            --max-turns 20 \
+            --allowedTools "Read" "Write(src/**)" "Bash(npx eslint *)"
+
+      - name: Commit Fixes
+        run: |
+          git config user.name "Claude Code Bot"
+          git config user.email "claude@bot.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "fix: auto-fix lint errors (Claude Code)"
+          git push
+```
+
+## Auto-Generate Changelog
+
+Generate a changelog entry when a release tag is pushed:
+
+```yaml
+name: Generate Changelog
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Generate Changelog
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^)
+          git log $PREV_TAG..HEAD --oneline | claude -p \
+            "Create a changelog entry for ${GITHUB_REF_NAME}. 
+            Group by: Features, Bug Fixes, Performance, Other.
+            Format as markdown. Be concise." \
+            --max-turns 1 > changelog-entry.md
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('changelog-entry.md', 'utf8');
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: process.env.GITHUB_REF_NAME,
+              name: `Release ${process.env.GITHUB_REF_NAME}`,
+              body: body
+            });
+```
+
+## Native GitHub App Integration
+
+For the most seamless experience, use the official Claude GitHub App:
+
+```bash
+# In a Claude Code session
+/install-github-app
+```
+
+This installs the app on your repository and enables:
+- **Automatic PR reviews** when PRs are opened
+- **Inline code comments** on specific lines
+- **Check runs** integrated with GitHub's status checks
+- **Review requests** and approvals
+
+The GitHub App is more deeply integrated than a custom workflow and handles authentication automatically.
+
+## Security Best Practices for CI
+
+### Restrict Tools
+
+Always use `--allowedTools` in CI:
+
+```bash
+# Read-only analysis
+--allowedTools "Read" "Bash(git diff *)" "Bash(git log *)"
+
+# Lint fix (needs write access to src/ only)
+--allowedTools "Read" "Write(src/**)" "Bash(npx eslint *)"
+
+# Never allow in CI:
+# Bash(rm *), Bash(curl *), Bash(sudo *), Write(.github/**)
+```
+
+### Limit Turns
+
+Always set `--max-turns`:
+
+```bash
+--max-turns 15  # For most tasks
+--max-turns 5   # For simple analysis
+--max-turns 30  # For complex refactoring (use sparingly)
+```
+
+### Protect Secrets
+
+- Store API keys in GitHub Secrets, never in workflow YAML
+- Don't log Claude's output if it might contain sensitive information
+- Use `--allowedTools` to prevent Claude from reading .env files
+
+### Cost Management
+
+CI runs can be expensive if unchecked:
+- Set `--max-turns` to prevent runaway usage
+- Use Sonnet (not Opus) for CI tasks — it's cheaper and fast enough
+- Run Claude only on meaningful events (PR opened, not every push)
+- Monitor API usage to catch unexpected spikes
+
+## Key Takeaway
+
+Claude Code integrates with CI/CD through headless mode (`-p`) and API key authentication. Use GitHub Actions to automate PR reviews, lint fixes, and changelog generation. Always apply three safety measures in CI: `--allowedTools` (restrict capabilities), `--max-turns` (prevent loops), and GitHub Secrets (protect keys). For the deepest integration, use `/install-github-app` for native GitHub review features. CI with Claude is powerful but requires careful guardrails.

@@ -1,0 +1,270 @@
+---
+title: "Installing Claude Code"
+slug: "installation"
+order: 1
+difficulty: "beginner"
+duration: 12
+tags: ["claude-code", "installation", "setup", "getting-started"]
+objectives:
+  - "Install Claude Code using either npm or the installer script"
+  - "Authenticate using browser auth (Pro/Max) or API key"
+  - "Verify your installation is working correctly"
+  - "Understand the critical difference between subscription auth and API key auth"
+quiz:
+  - id: "install-1"
+    question: "What is the minimum Node.js version required for Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Node.js 14"
+      - "Node.js 16"
+      - "Node.js 18"
+      - "Node.js 20"
+    correct: 2
+    explanation: "Claude Code requires Node.js 18 or higher. If you're on an older version, upgrade before installing."
+  - id: "install-2"
+    question: "What happens if you set the ANTHROPIC_API_KEY environment variable while also having a Pro/Max subscription?"
+    type: "multiple-choice"
+    options:
+      - "The subscription is used, API key is ignored"
+      - "The API key overrides the subscription — you get billed at API rates"
+      - "Both are used simultaneously"
+      - "Claude Code shows an error and won't start"
+    correct: 1
+    explanation: "This is a critical gotcha: if ANTHROPIC_API_KEY is set in your environment, Claude Code uses it instead of your subscription — meaning you get billed per-token at API rates even though you're paying for Pro/Max. Unset it if you want to use your subscription."
+  - id: "install-3"
+    question: "Which command verifies your Claude Code installation is healthy?"
+    type: "multiple-choice"
+    options:
+      - "claude --check"
+      - "claude verify"
+      - "claude doctor"
+      - "claude test"
+    correct: 2
+    explanation: "The 'claude doctor' command runs diagnostics on your installation — checking Node.js version, authentication status, configuration, and connectivity. It's the first thing to run if something isn't working."
+  - id: "install-4"
+    question: "How do you authenticate Claude Code with a Pro or Max subscription?"
+    type: "multiple-choice"
+    options:
+      - "Paste your API key into a config file"
+      - "Run 'claude' and it opens your browser for authentication"
+      - "Enter your email and password in the terminal"
+      - "Download a certificate from Anthropic's website"
+    correct: 1
+    explanation: "For Pro/Max subscribers, authentication is browser-based. Run 'claude' for the first time, it opens your default browser, you log in to your Anthropic account, and the session is authenticated automatically."
+---
+
+## Two Ways to Install
+
+Claude Code can be installed two ways: via **npm** (the Node.js package manager) or via Anthropic's **installer script**. Both produce the same result — a `claude` command available in your terminal.
+
+### Method 1: npm (Recommended)
+
+If you already have Node.js installed:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+This installs Claude Code globally, making the `claude` command available in any terminal window.
+
+### Method 2: Installer Script
+
+If you prefer a one-line install that handles dependencies:
+
+```bash
+curl -sL https://install.anthropic.com | sh
+```
+
+This script detects your platform (macOS, Linux, WSL), installs Node.js if needed, and sets up Claude Code.
+
+### Requirements
+
+Before installing, make sure you have:
+
+- **Node.js 18 or higher** — check with `node --version`
+- **A supported OS** — macOS, Linux, or Windows via WSL (Windows Subsystem for Linux)
+- **A terminal** — iTerm2, Terminal.app, Windows Terminal, or any terminal emulator
+
+If your Node.js is older than 18:
+
+```bash
+# Using nvm (Node Version Manager) — recommended
+nvm install 18
+nvm use 18
+
+# Or install directly from nodejs.org
+# https://nodejs.org/en/download
+```
+
+## Authentication
+
+This is where many new users get confused. There are two authentication methods, and **which one you use determines how you're billed**.
+
+### Browser Auth (Pro/Max Subscribers)
+
+If you have a Pro ($20/mo) or Max ($100-200/mo) subscription:
+
+1. Open your terminal
+2. Run `claude`
+3. Claude Code opens your default browser to Anthropic's login page
+4. Log in with your Anthropic account
+5. Approve the connection
+6. Return to your terminal — you're authenticated
+
+```bash
+# First run — triggers browser authentication
+claude
+
+# You'll see something like:
+# Opening browser for authentication...
+# ✓ Authenticated as your@email.com (Pro plan)
+# 
+# Welcome to Claude Code! Type your message or /help for commands.
+```
+
+That's it. Your subscription covers the usage. No API keys, no billing surprises. The authentication persists across sessions until you explicitly log out.
+
+### API Key Auth (Pay-as-you-go)
+
+If you don't have a subscription, or if you want to use Claude Code with API billing:
+
+```bash
+# Set your API key as an environment variable
+export ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxx
+
+# Now run claude
+claude
+```
+
+You can get an API key from [console.anthropic.com](https://console.anthropic.com). API usage is billed per-token at Anthropic's published rates.
+
+To make the key persistent across terminal sessions, add it to your shell profile:
+
+```bash
+# For zsh (default on macOS)
+echo 'export ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxx' >> ~/.zshrc
+
+# For bash
+echo 'export ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxx' >> ~/.bashrc
+```
+
+### The Critical Gotcha: API Key Overrides Subscription
+
+This trips up a surprising number of people:
+
+**If `ANTHROPIC_API_KEY` is set in your environment, Claude Code uses it — even if you have an active Pro/Max subscription.**
+
+This means you'll be billed at API rates (per-token) instead of using your flat-rate subscription. If you're a subscriber and you've set an API key at some point (maybe for a different project), you need to unset it:
+
+```bash
+# Check if an API key is set
+echo $ANTHROPIC_API_KEY
+
+# If it shows a key and you want to use your subscription instead
+unset ANTHROPIC_API_KEY
+
+# To remove it permanently from your shell profile
+# Edit ~/.zshrc or ~/.bashrc and remove the export line
+```
+
+**How to tell which auth you're using:** When Claude Code starts, it shows your authentication method. Look for "Pro plan" or "Max plan" vs "API key" in the startup message. You can also check with `/status`.
+
+## Verify Your Installation
+
+Once installed and authenticated, verify everything is working:
+
+```bash
+# Check the version
+claude --version
+# Should output something like: claude-code v2.1.x
+
+# Run diagnostics
+claude doctor
+```
+
+The `claude doctor` command checks:
+
+- Node.js version (must be 18+)
+- Claude Code version (is it up to date?)
+- Authentication status (are you logged in?)
+- Configuration validity (is settings.json correct?)
+- Network connectivity (can it reach Anthropic's API?)
+
+If any check fails, `claude doctor` tells you exactly what's wrong and how to fix it.
+
+## Keeping Claude Code Updated
+
+Claude Code updates frequently — sometimes multiple times per week with new features and fixes. Update with:
+
+```bash
+# Update to the latest version
+claude update
+
+# Or if you installed via npm
+npm update -g @anthropic-ai/claude-code
+```
+
+It's worth updating regularly. New model capabilities, performance improvements, and bug fixes land in updates. The `/status` command shows your current version and whether an update is available.
+
+## Your First Run
+
+Let's do a quick test to confirm everything works:
+
+```bash
+# Start Claude Code
+claude
+
+# Once the prompt appears, try:
+"What's your model name and version?"
+```
+
+Claude should respond with its model information. If it does, you're fully set up.
+
+Try a more practical test — navigate to any project directory and:
+
+```bash
+cd ~/your-project
+claude
+
+# Ask Claude about your project
+"Look at the package.json and tell me what this project does"
+```
+
+Claude will read your package.json and give you a summary. If this works, your installation, authentication, and file access are all working correctly.
+
+## Troubleshooting Common Issues
+
+**"claude: command not found"**
+The global npm bin directory isn't in your PATH. Fix:
+```bash
+# Find where npm installs global packages
+npm config get prefix
+# Add that path's bin directory to your PATH
+# e.g., export PATH="$HOME/.npm-global/bin:$PATH"
+```
+
+**"Error: Node.js 18+ required"**
+Upgrade Node.js:
+```bash
+nvm install 18 && nvm use 18
+```
+
+**"Authentication failed"**
+Clear stored auth and re-authenticate:
+```bash
+claude logout
+claude
+# Re-authenticate via browser
+```
+
+**"Rate limit exceeded" immediately**
+Check if you accidentally have an API key set with low credits:
+```bash
+echo $ANTHROPIC_API_KEY
+# If set, unset it to use your subscription
+unset ANTHROPIC_API_KEY
+```
+
+## Key Takeaway
+
+Installing Claude Code is straightforward: `npm install -g @anthropic-ai/claude-code` or the curl installer script, then run `claude` to authenticate via browser. The one critical thing to remember: if `ANTHROPIC_API_KEY` is set in your environment, it overrides your subscription and you get billed at API rates. Run `claude doctor` to verify everything is healthy, and keep Claude Code updated with `claude update`.

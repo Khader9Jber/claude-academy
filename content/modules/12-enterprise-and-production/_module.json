@@ -1,0 +1,12 @@
+{
+  "title": "Enterprise & Production",
+  "slug": "enterprise-and-production",
+  "description": "Deploy Claude in production environments. Cover security best practices, compliance, team onboarding, cost optimization, CI/CD integration, and organizational scaling strategies.",
+  "arc": "expert",
+  "order": 12,
+  "icon": "building-2",
+  "color": "#d4a053",
+  "estimatedHours": 5,
+  "prerequisites": ["advanced-workflows"],
+  "lessonCount": 7
+}

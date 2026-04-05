@@ -1,0 +1,12 @@
+{
+  "title": "Claude Fundamentals",
+  "slug": "claude-fundamentals",
+  "description": "Understand what Claude is, who built it, how it thinks, and the core concepts behind large language models. Build the mental model you need before writing a single prompt.",
+  "arc": "foundation",
+  "order": 1,
+  "icon": "brain",
+  "color": "#5cb870",
+  "estimatedHours": 2,
+  "prerequisites": [],
+  "lessonCount": 4
+}

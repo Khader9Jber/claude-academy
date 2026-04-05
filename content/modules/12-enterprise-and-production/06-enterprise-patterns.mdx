@@ -1,0 +1,302 @@
+---
+title: "Enterprise Patterns: Teams and Organizations"
+slug: "enterprise-patterns"
+order: 6
+difficulty: "expert"
+duration: 15
+tags: ["enterprise", "teams", "organization", "policies", "onboarding"]
+objectives:
+  - "Set up org-wide Claude Code policies"
+  - "Standardize team configurations via git"
+  - "Use managed settings for enforced deny lists"
+  - "Onboard new team members effectively"
+quiz:
+  - id: "enterprise-1"
+    question: "Where do organization-wide Claude Code policies go?"
+    type: "multiple-choice"
+    options:
+      - "In each developer's home directory"
+      - "/etc/claude-code/ for system-wide policies that apply to all users on a machine"
+      - "In CLAUDE.md"
+      - "In the cloud"
+    correct: 1
+    explanation: "/etc/claude-code/ is the system-wide policy location. Settings placed here apply to all Claude Code users on the machine, with the highest priority — they can't be overridden by user or project settings. IT teams use this to enforce security policies across the organization."
+  - id: "enterprise-2"
+    question: "How do you share CLAUDE.md across a team?"
+    type: "multiple-choice"
+    options:
+      - "Email it to everyone"
+      - "Commit it to git in the project root — every team member gets it when they clone/pull"
+      - "Share it on Slack"
+      - "Put it in a wiki"
+    correct: 1
+    explanation: "CLAUDE.md in the project root is automatically committed to git. When any team member clones the repository or pulls changes, they get the latest CLAUDE.md. This ensures every developer's Claude sessions follow the same conventions, architecture rules, and commands."
+  - id: "enterprise-3"
+    question: "What are 'managed settings' in enterprise Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Settings that Claude manages automatically"
+      - "Settings at /etc/claude-code/ that IT enforces and individual users cannot override"
+      - "Cloud-managed settings"
+      - "Premium settings"
+    correct: 1
+    explanation: "Managed settings at /etc/claude-code/ are enforced by IT and cannot be overridden. If the managed settings deny Bash(curl *), no user on that machine can allow it — even in their personal settings. This ensures security policies are consistently enforced across the organization."
+  - id: "enterprise-4"
+    question: "How should you route Claude Code through custom API endpoints for enterprise?"
+    type: "multiple-choice"
+    options:
+      - "It's not possible"
+      - "Use modelOverrides in settings.json to route requests to AWS Bedrock or Google Vertex AI"
+      - "Change the DNS settings"
+      - "Install a proxy"
+    correct: 1
+    explanation: "modelOverrides in settings.json lets you route Claude Code requests to custom endpoints — typically AWS Bedrock or Google Vertex AI. This is essential for enterprises that need requests to go through their own cloud infrastructure for compliance, monitoring, and cost management."
+---
+
+## Claude Code at Scale
+
+Individual Claude Code usage is straightforward. Scaling it across a team of 10, 50, or 500 developers requires standardization, policies, and processes. This lesson covers the patterns that work.
+
+## The Configuration Stack
+
+Enterprise Claude Code has four configuration layers:
+
+```
+/etc/claude-code/           ← IT-managed, highest priority
+  └── settings.json         ← Enforced policies (can't override)
+~/.claude/settings.json     ← Personal defaults
+.claude/settings.json       ← Team standards (committed to git)
+.claude/settings.local.json ← Personal overrides
+```
+
+### /etc/claude-code/ — Managed Policies
+
+IT creates `/etc/claude-code/settings.json` with enforced policies:
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(nc *)",
+      "Bash(ssh *)",
+      "Bash(sudo *)",
+      "Bash(rm -rf *)",
+      "Read(.env*)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)"
+    ]
+  }
+}
+```
+
+These denials **cannot be overridden** by any other settings layer. Even if a developer adds `Bash(curl *)` to their personal allow list, the managed deny takes precedence.
+
+### Team Settings — .claude/settings.json
+
+Committed to git, shared with everyone:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(pnpm *)",
+      "Bash(git *)"
+    ],
+    "deny": [
+      "Write(package.json)",
+      "Write(.github/**)",
+      "Bash(pnpm add *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      }
+    ]
+  },
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "10000"
+  }
+}
+```
+
+## Shared CLAUDE.md
+
+The team CLAUDE.md is the single most important file for standardization. Commit it to git:
+
+```markdown
+# Project: ShipFast API
+
+## Stack
+- Node.js 20 + TypeScript 5.4
+- Fastify 4.x + Prisma 5.x + PostgreSQL 16
+
+## Architecture Rules
+[Team-agreed rules that everyone follows]
+
+## Coding Conventions
+[Team-agreed conventions]
+
+## Commands
+[Build, test, deploy commands]
+
+## Agent Team Rules
+[How sub-agents should behave]
+
+## For New Team Members
+- Run `pnpm install` before starting Claude Code
+- Set ENABLE_LSP_TOOL=1 in your shell
+- Read docs/onboarding.md for project context
+```
+
+When anyone on the team starts a Claude session, they get the same instructions.
+
+## Custom Endpoints: modelOverrides
+
+Route Claude Code through your infrastructure:
+
+### AWS Bedrock
+
+```json
+{
+  "modelOverrides": {
+    "claude-sonnet-4-20250514": {
+      "apiKeyEnvVar": "AWS_ACCESS_KEY_ID",
+      "baseURL": "https://bedrock-runtime.us-east-1.amazonaws.com",
+      "model": "anthropic.claude-sonnet-4-20250514-v1:0"
+    }
+  }
+}
+```
+
+### Google Vertex AI
+
+```json
+{
+  "modelOverrides": {
+    "claude-sonnet-4-20250514": {
+      "apiKeyEnvVar": "GOOGLE_APPLICATION_CREDENTIALS",
+      "baseURL": "https://us-east5-aiplatform.googleapis.com",
+      "model": "claude-sonnet-4@20250514"
+    }
+  }
+}
+```
+
+### Why Custom Endpoints?
+
+- **Compliance**: Data stays in your cloud region
+- **Monitoring**: Track usage through your API gateway
+- **Cost management**: Centralized billing
+- **Access control**: Manage who can use which models
+
+## Onboarding New Team Members
+
+### The Onboarding Checklist
+
+Create `.claude/commands/onboard.md`:
+
+```markdown
+---
+description: "Onboard a new team member to Claude Code"
+---
+
+Welcome to the team! Let me help you get set up with Claude Code.
+
+1. **Check Environment**:
+   - Verify Node.js version: `node --version` (must be 18+)
+   - Verify Claude Code: `claude --version`
+   - Run `claude doctor` for diagnostics
+
+2. **Review Project Context**:
+   - Read CLAUDE.md for project standards
+   - Read .claude/settings.json for permissions
+   - List available custom commands: show all .md files in .claude/commands/
+
+3. **Verify Setup**:
+   - Check that LSP is enabled
+   - Check that auto-formatting hooks work
+   - Run a test: `pnpm test` should pass
+
+4. **Quick Tour**:
+   - src/services/ — business logic
+   - src/routes/ — API endpoints
+   - src/repos/ — database queries
+   - tests/ — test files
+
+Explain each item as we go through it.
+```
+
+New team member runs:
+
+```bash
+/onboard
+```
+
+Claude walks them through setup verification and project orientation.
+
+### The Documentation Set
+
+What to include in your repo for new Claude Code users:
+
+```
+.claude/
+├── settings.json          ← Team permissions and hooks
+├── commands/
+│   ├── onboard.md         ← Onboarding guide
+│   ├── review.md          ← Code review command
+│   ├── test.md            ← Test generation command
+│   └── deploy.md          ← Deploy checklist
+├── agents/
+│   ├── security-reviewer.md
+│   └── test-writer.md
+└── skills/
+    └── api-endpoint/
+        └── SKILL.md
+CLAUDE.md                  ← Project standards
+.mcp.json                  ← Team MCP servers
+```
+
+## Standardizing Across Multiple Repos
+
+For organizations with many repos:
+
+### Template Repository
+
+Create a template repo with standard Claude Code configuration:
+
+```
+company-claude-template/
+├── .claude/
+│   ├── settings.json      ← Standard permissions
+│   ├── commands/           ← Standard commands
+│   └── agents/             ← Standard agents
+├── CLAUDE.md.template      ← Template with TODOs for customization
+```
+
+When creating a new project, start from this template.
+
+### Organization-Wide Commands
+
+Share commands across projects via the global directory:
+
+```
+~/.claude/commands/
+├── company-review.md       ← Company code review standards
+├── company-security.md     ← Company security checklist
+└── company-standup.md      ← Standup report format
+```
+
+Distributed to all developers as part of their setup.
+
+## Key Takeaway
+
+Enterprise Claude Code requires four things: managed policies at `/etc/claude-code/` for IT-enforced security, shared team configuration in `.claude/settings.json` committed to git, a comprehensive CLAUDE.md for project standards, and custom endpoints via modelOverrides for compliance. Onboard new members with a `/onboard` command, standardize across repos with templates, and share common commands globally. The goal is: any developer, any project, same Claude Code experience.

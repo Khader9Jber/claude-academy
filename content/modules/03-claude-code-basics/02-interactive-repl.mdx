@@ -1,0 +1,282 @@
+---
+title: "The Interactive REPL: Your AI Terminal"
+slug: "interactive-repl"
+order: 2
+difficulty: "beginner"
+duration: 14
+tags: ["claude-code", "repl", "terminal", "basics"]
+objectives:
+  - "Understand what the REPL is and how it differs from claude.ai"
+  - "Start sessions, interrupt responses, and exit cleanly"
+  - "Navigate the permission system for file reads, writes, and command execution"
+  - "Know when to use Claude Code vs. claude.ai"
+quiz:
+  - id: "repl-1"
+    question: "What does REPL stand for?"
+    type: "multiple-choice"
+    options:
+      - "Remote Execution Protocol Layer"
+      - "Read-Eval-Print Loop"
+      - "Rapid Engineering Process Line"
+      - "Recursive Expression Parser Language"
+    correct: 1
+    explanation: "REPL stands for Read-Eval-Print Loop — a classic programming concept. Claude Code reads your input, evaluates it (sends to Claude, processes with tools), prints the result, and loops back for your next input."
+  - id: "repl-2"
+    question: "What happens the first time Claude Code wants to write a file in your project?"
+    type: "multiple-choice"
+    options:
+      - "It writes the file immediately without asking"
+      - "It asks for your permission before making any changes"
+      - "It creates a backup first"
+      - "It opens the file in VS Code for you to edit"
+    correct: 1
+    explanation: "Claude Code uses a permission system. The first time it wants to perform an action (read a file, write a file, run a command), it asks for your approval. You can then grant permission for that action type going forward."
+  - id: "repl-3"
+    question: "How do you exit a Claude Code session?"
+    type: "multiple-choice"
+    options:
+      - "Type 'quit'"
+      - "Press Ctrl+D or type /exit"
+      - "Close the terminal window"
+      - "Press Ctrl+Alt+Delete"
+    correct: 1
+    explanation: "Ctrl+D (end of input) or the /exit command cleanly exits a Claude Code session. Closing the terminal works too, but Ctrl+D is the standard way."
+  - id: "repl-4"
+    question: "What does Ctrl+C do during a Claude Code response?"
+    type: "multiple-choice"
+    options:
+      - "Exits the session"
+      - "Copies text to clipboard"
+      - "Interrupts the current response — Claude stops generating"
+      - "Clears the screen"
+    correct: 2
+    explanation: "Ctrl+C interrupts Claude's current response. If Claude is mid-generation and you realize you need to redirect, press Ctrl+C to stop it. Your session continues — you can send a new message."
+---
+
+## What Is the REPL?
+
+When you type `claude` in your terminal and press Enter, you enter the **REPL** — a Read-Eval-Print Loop. This is your primary interface to Claude Code.
+
+The REPL is a persistent, interactive session where you have a conversation with Claude in your terminal. It's different from a chat window in important ways:
+
+- **It runs in your terminal**, with direct access to your filesystem, shell, and tools
+- **It can read and write files** in your project
+- **It can run commands** like `npm test`, `git status`, or any other shell command
+- **It sees your project structure** and can navigate across files
+- **It persists context** throughout the session — Claude remembers everything you've discussed
+
+Think of it as having a senior engineer sitting at your terminal, able to look at any file, run any command, and make any edit — but always asking for your approval first.
+
+## Starting a Session
+
+The simplest way to start:
+
+```bash
+# Navigate to your project
+cd ~/projects/my-app
+
+# Start Claude Code
+claude
+```
+
+Claude Code starts in whatever directory you're in. This matters because it determines which project Claude sees and which `CLAUDE.md` file it loads.
+
+You can also start with an initial prompt:
+
+```bash
+# Start with a specific task
+claude "analyze the architecture of this project"
+
+# Start with file context
+claude "explain what @src/auth/middleware.ts does"
+```
+
+This launches the REPL and immediately sends your prompt as the first message.
+
+## The Permission System
+
+The first time you use Claude Code, you'll notice it asks for permission before doing things. This is the **permission system** — a safety layer that ensures Claude doesn't modify your files or run commands without your knowledge.
+
+There are three permission levels:
+
+### Level 1: Read Operations
+Claude wants to read a file, list a directory, or search your codebase:
+```
+Claude wants to read: src/auth/middleware.ts
+[Allow] [Deny] [Allow all reads]
+```
+
+### Level 2: Write Operations
+Claude wants to create, modify, or delete a file:
+```
+Claude wants to edit: src/auth/middleware.ts
+---
+- const token = req.headers.authorization;
++ const token = req.headers.authorization?.replace('Bearer ', '');
+---
+[Allow] [Deny] [Allow all writes]
+```
+
+Notice that Claude shows you the exact diff before applying it. You can review the change, approve it, or deny it.
+
+### Level 3: Command Execution
+Claude wants to run a shell command:
+```
+Claude wants to run: npm test -- --testPathPattern=auth
+[Allow] [Deny] [Allow all commands]
+```
+
+### Cycling Permission Modes with Tab
+
+The `Tab` key cycles through permission modes:
+
+1. **Ask mode** (default) — Claude asks permission for everything
+2. **Auto-accept reads** — Claude reads files freely, asks for writes and commands
+3. **Auto-accept all** — Claude has free rein (use in trusted, sandboxed environments)
+
+Most developers settle on "auto-accept reads" during active development. Claude needs to read files constantly to understand your code, and approving each read gets tedious fast. For writes and commands, keeping the approval step is usually worth the safety.
+
+You can also use `Shift+Tab` to toggle auto-accept on or off.
+
+## Anatomy of a Response
+
+When Claude processes your request, you'll see several things happening:
+
+```
+You: "Find all API endpoints that don't have authentication middleware"
+
+Claude: I'll search through the route files to find unprotected endpoints.
+
+  [Read] src/routes/index.ts
+  [Read] src/routes/auth.ts
+  [Read] src/routes/users.ts
+  [Read] src/routes/payments.ts
+  [Read] src/middleware/auth.ts
+
+After analyzing the route files, I found 3 endpoints without
+authentication middleware:
+
+1. **GET /api/health** (src/routes/index.ts:12) — This is likely
+   intentional as a health check endpoint.
+
+2. **POST /api/webhooks/stripe** (src/routes/payments.ts:45) —
+   This should use Stripe signature verification instead of JWT auth,
+   but currently has NO verification at all. This is a security issue.
+
+3. **GET /api/public/pricing** (src/routes/index.ts:28) — Public
+   endpoint, no auth needed. But it's leaking internal pricing tier
+   IDs in the response that should be hidden.
+
+Want me to fix issues #2 and #3?
+```
+
+Claude shows which tools it uses (Read, Write, Edit, Bash) as it works. This transparency lets you follow its reasoning and catch it if it's looking in the wrong places.
+
+## Interrupting and Redirecting
+
+Sometimes Claude starts going down the wrong path. You have several options:
+
+### Ctrl+C — Stop the Current Response
+```
+Claude: Let me start by analyzing every file in the project...
+  [Read] src/index.ts
+  [Read] src/app.ts
+  [Read] src/config/...
+
+# You realize this is going to take forever
+[Ctrl+C]
+
+You: "Stop. Just look at the auth directory — the bug is there."
+```
+
+Ctrl+C stops Claude mid-response. Your session continues, and Claude retains the conversation context up to the point where you interrupted.
+
+### Esc Esc — Rewind
+
+Double-press `Esc` to open the rewind menu. This lets you go back to a previous point in the conversation, as if the messages after that point never happened. Useful when Claude made changes you want to undo entirely.
+
+### Ctrl+D — Exit the Session
+
+When you're done, `Ctrl+D` exits cleanly. You can also type `/exit`.
+
+## Claude Code vs. claude.ai
+
+Both interfaces talk to the same Claude models, but they're designed for different workflows:
+
+| Feature | Claude Code (Terminal) | claude.ai (Web) |
+|---------|----------------------|-----------------|
+| File access | Direct — reads/writes your actual files | Upload only — can't access your filesystem |
+| Command execution | Yes — runs shell commands | No |
+| Code editing | Surgical edits with diffs | Code in chat, you copy/paste |
+| Project awareness | Sees your full project structure | Only sees what you paste/upload |
+| MCP tools | Full MCP server support | Limited |
+| Best for | Coding, debugging, file operations | Research, writing, brainstorming |
+| Context retention | Per-session, with resume/continue | Per-conversation, persists in cloud |
+
+**The rule of thumb:** If your task involves your codebase, use Claude Code. If your task is about ideas, research, or writing that doesn't need file access, use claude.ai.
+
+Both draw from the same usage budget (the rolling 5-hour window), so plan accordingly.
+
+## Session Best Practices
+
+### Start in the Right Directory
+
+Claude Code inherits your working directory. Always start from the root of the project you're working on:
+
+```bash
+# Good — Claude sees the full project
+cd ~/projects/my-app && claude
+
+# Bad — Claude sees your home directory, not your project
+claude
+```
+
+### One Task Per Session (When Possible)
+
+Context from unrelated tasks creates noise. If you're done debugging auth and want to work on the payment system, consider starting a new session:
+
+```bash
+# Session 1: Auth debugging
+claude "debug the JWT refresh flow in @src/auth/"
+
+# ... finish debugging, Ctrl+D to exit ...
+
+# Session 2: Payment feature
+claude "implement the subscription upgrade flow"
+```
+
+### Use Named Sessions for Long-Running Work
+
+For work that spans multiple sittings:
+
+```bash
+# Start a named session
+claude -n "auth-refactor"
+
+# Later, resume by name
+claude -r  # opens session picker
+```
+
+### Let Claude Work
+
+A common beginner mistake is micromanaging every step. Claude is most effective when you give it a clear objective and let it figure out the implementation path. Instead of:
+
+```
+"Read src/auth.ts"
+"Now read src/middleware.ts"
+"Now look at line 42"
+"Now fix the bug"
+```
+
+Try:
+
+```
+"The JWT validation in @src/auth/ is rejecting valid tokens.
+The bug started after the latest deployment. Find and fix it."
+```
+
+Claude will read the relevant files, trace the logic, find the bug, and propose a fix — all without you directing every step.
+
+## Key Takeaway
+
+The Claude Code REPL is an interactive terminal session where Claude can read files, write code, and run commands in your project — with a permission system that keeps you in control. Start sessions from your project root, use Tab to cycle permission modes, Ctrl+C to interrupt, and Ctrl+D to exit. Use Claude Code for anything that touches your codebase, and claude.ai for research and brainstorming.

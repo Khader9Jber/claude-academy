@@ -1,0 +1,255 @@
+---
+title: "IDE, GitHub, and Connectors"
+slug: "ide-github-connectors"
+order: 7
+difficulty: "advanced"
+duration: 14
+tags: ["ide", "vscode", "jetbrains", "github", "connectors"]
+objectives:
+  - "Use Claude Code in VS Code and JetBrains"
+  - "Transfer conversations with /teleport"
+  - "Connect claude.ai Connectors for Google, Slack, Notion"
+  - "Choose the right interface for each workflow"
+quiz:
+  - id: "ide-1"
+    question: "How does the VS Code extension integrate with Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "It replaces Claude Code"
+      - "It embeds Claude Code as a panel in VS Code with inline code suggestions and diff views"
+      - "It's just a terminal window"
+      - "It only works for Python"
+    correct: 1
+    explanation: "The VS Code extension embeds Claude Code as a panel in your editor. You get the full Claude Code experience plus IDE-specific features: inline code suggestions, diff views for proposed changes, file navigation integration, and the ability to reference open files and selections."
+  - id: "ide-2"
+    question: "What does /teleport do?"
+    type: "multiple-choice"
+    options:
+      - "Moves files between folders"
+      - "Transfers a conversation from claude.ai (web) to Claude Code (CLI), preserving all context"
+      - "Teleports to a different branch"
+      - "Opens a new window"
+    correct: 1
+    explanation: "/teleport transfers a conversation from the web interface (claude.ai) to your CLI session. This is useful when you start planning on the web and want to switch to Claude Code for implementation. Your full conversation context — all the planning and decisions — comes with you."
+  - id: "ide-3"
+    question: "What are claude.ai Connectors?"
+    type: "multiple-choice"
+    options:
+      - "Physical cable connectors"
+      - "Direct integrations between claude.ai and services like Google Workspace, Slack, Notion, Jira, and Figma"
+      - "Database connectors"
+      - "API endpoints"
+    correct: 1
+    explanation: "Connectors are direct integrations between claude.ai and external services. When enabled, Claude can access your Google Docs, Slack messages, Notion pages, Jira issues, Figma designs, and more — directly from the claude.ai interface. Only enable what you actively use, as each adds token cost."
+  - id: "ide-4"
+    question: "Which interface should you use for architecture planning?"
+    type: "multiple-choice"
+    options:
+      - "CLI only"
+      - "claude.ai (web) for planning, then /teleport to CLI for implementation"
+      - "VS Code only"
+      - "GitHub only"
+    correct: 1
+    explanation: "claude.ai's web interface is best for planning — longer form discussions, architecture diagrams, and decision-making. When you're ready to implement, use /teleport to bring the conversation to Claude Code (CLI) where you have file access and tool execution. This combines the best of both interfaces."
+---
+
+## The Claude Ecosystem
+
+Claude Code isn't an island. It's part of a broader ecosystem of interfaces and integrations. Knowing when to use each one — and how they connect — makes you more effective.
+
+## VS Code Extension
+
+The Claude Code VS Code extension brings Claude into your editor:
+
+### What You Get
+
+- **Side panel**: Full Claude Code conversation in a VS Code panel
+- **Inline suggestions**: Claude suggests code changes as inline diffs
+- **File context**: Automatically reference the currently open file
+- **Selection context**: Select code and ask Claude about it
+- **Diff view**: See proposed changes as a VS Code diff before accepting
+
+### When to Use VS Code
+
+- **During active coding**: When you're switching between editing and asking Claude
+- **Visual diff review**: When you want to see changes before accepting
+- **Quick questions**: "What does this function do?" while looking at it
+- **Inline fixes**: "Fix the type error on this line"
+
+### When to Stick with CLI
+
+- **Complex workflows**: Multi-file changes, git operations, deployments
+- **Agent teams**: Team coordination works better in the terminal
+- **Headless/scripting**: CLI is required for automation
+- **Remote Control**: Only available in CLI
+
+## JetBrains Plugin
+
+For IntelliJ IDEA, WebStorm, PyCharm, and other JetBrains IDEs:
+
+### Features
+
+- Tool window with Claude Code conversation
+- Code selection and reference
+- Inline diff view for proposed changes
+- Integration with JetBrains refactoring tools
+
+The experience is similar to VS Code — Claude embedded in your editor with IDE-specific integrations.
+
+## /teleport: Web to CLI Transfer
+
+Start a conversation on claude.ai, continue in Claude Code:
+
+### The Workflow
+
+```
+1. Open claude.ai in your browser
+2. Plan a feature: discuss architecture, evaluate options, make decisions
+3. Ready to implement? In Claude Code CLI, type:
+   /teleport
+4. Follow the linking instructions
+5. Your full conversation transfers to the CLI
+6. Continue with implementation — Claude remembers everything
+```
+
+### Why This Matters
+
+The web interface (claude.ai) is better for planning:
+- Longer form discussions
+- Easier to read long responses
+- Can share the conversation with others
+- More comfortable for non-coding discussion
+
+The CLI (Claude Code) is better for implementation:
+- File access and editing
+- Terminal command execution
+- Git integration
+- MCP tools
+
+/teleport lets you use the best tool for each phase.
+
+## Claude Desktop App
+
+The Claude desktop application provides a native interface:
+
+- **macOS and Windows**: Native app experience
+- **File access**: Can read files from your system
+- **MCP support**: Connect MCP servers
+- **Keyboard shortcuts**: System-wide shortcuts to invoke Claude
+
+The desktop app is a middle ground between the web interface and the full CLI — it has file access but a more polished UI.
+
+## claude.ai/code: Browser-Based
+
+Claude Code is available in the browser at claude.ai/code:
+
+- No installation required
+- Full Claude Code capabilities
+- Access from any device with a browser
+- Same session as your CLI (if linked)
+
+Useful when you're on a machine where you can't install Claude Code.
+
+## GitHub Integration
+
+### /install-github-app
+
+Native GitHub integration for automatic PR reviews:
+
+```bash
+/install-github-app
+```
+
+Installs the official Claude GitHub App on your repository for:
+- Automatic PR reviews on open
+- Inline code comments
+- Check run integration
+- Review request automation
+
+### --from-pr
+
+Start a session linked to a specific PR:
+
+```bash
+claude --from-pr 42
+```
+
+Loads the PR's diff, description, and comments into your session.
+
+### GitHub MCP
+
+The MCP server for GitHub (covered in Module 8):
+
+```bash
+claude mcp add github -e GITHUB_TOKEN=ghp_xxx --transport stdio npx -y @modelcontextprotocol/server-github
+```
+
+Full GitHub API access: PRs, issues, repos, branches, releases.
+
+## claude.ai Connectors
+
+Connectors integrate external services directly into claude.ai:
+
+| Connector | What Claude Can Access |
+|---|---|
+| **Google Workspace** | Docs, Sheets, Drive, Calendar |
+| **Slack** | Messages, channels, search |
+| **Notion** | Pages, databases, search |
+| **Jira** | Issues, projects, boards |
+| **Figma** | Designs, components, files |
+| **Asana** | Tasks, projects, sections |
+
+### Enabling Connectors
+
+Enable through claude.ai settings. Each connector requires authorization with the service.
+
+### Token Cost Warning
+
+Each enabled connector adds context to your conversations. Only enable connectors you actively use:
+
+```
+Google Workspace:  ~2,000 tokens of context
+Slack:             ~1,500 tokens
+Notion:            ~1,800 tokens
+Jira:              ~1,200 tokens
+Figma:             ~2,500 tokens
+─────────────────────────────
+All enabled:       ~9,000+ tokens per message
+```
+
+Enable selectively based on your current task.
+
+## Choosing the Right Interface
+
+| Task | Best Interface |
+|---|---|
+| Planning and architecture | claude.ai (web) |
+| Active coding | VS Code / JetBrains extension |
+| Complex workflows | CLI (terminal) |
+| Quick questions | Desktop app |
+| PR review | GitHub App + CLI |
+| Design to code | Figma Connector + CLI |
+| Remote monitoring | Remote Control (from any device) |
+| Automation/scripting | CLI headless mode |
+
+## The Multi-Interface Workflow
+
+The most effective workflow uses multiple interfaces:
+
+```
+1. claude.ai: Plan the feature, discuss architecture
+   ↓ /teleport
+2. CLI: Implement the plan with full tool access
+   ↓ /commit, create PR
+3. GitHub App: Automatic review on the PR
+   ↓ Address review comments
+4. VS Code: Fine-tune code with inline suggestions
+   ↓ /commit
+5. Remote Control: Monitor from phone while deploying
+```
+
+Each interface plays to its strengths. The connections between them (/teleport, shared sessions, GitHub integration) make transitions seamless.
+
+## Key Takeaway
+
+Claude Code is part of an ecosystem: VS Code and JetBrains extensions for in-editor coding, /teleport for transferring web conversations to CLI, GitHub App for automatic PR reviews, Desktop app for native access, and claude.ai Connectors for Google, Slack, Notion, Jira, and Figma. Use the web for planning, IDE for active coding, CLI for complex workflows, and Remote Control for mobile monitoring. Only enable connectors you actively use — each adds token cost.

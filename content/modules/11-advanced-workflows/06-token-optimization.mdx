@@ -1,0 +1,260 @@
+---
+title: "Token Optimization Mastery"
+slug: "token-optimization"
+order: 6
+difficulty: "advanced"
+duration: 15
+tags: ["tokens", "optimization", "cost", "efficiency"]
+objectives:
+  - "Apply model switching strategies by task type"
+  - "Practice session hygiene for minimal token waste"
+  - "Calculate real savings from optimization techniques"
+  - "Track costs with /cost and /insights"
+quiz:
+  - id: "tokens-1"
+    question: "What's the optimal model assignment by task type?"
+    type: "multiple-choice"
+    options:
+      - "Use Opus for everything"
+      - "Opus for architecture/security, Sonnet for coding/testing, Haiku for boilerplate/lookups"
+      - "Use Haiku for everything"
+      - "It doesn't matter"
+    correct: 1
+    explanation: "Match model to task: Opus for complex reasoning (architecture, security review, debugging hard bugs), Sonnet for standard work (implementing features, writing tests, code review), and Haiku for simple tasks (lookups, boilerplate, exploration). This optimizes both cost and quality."
+  - id: "tokens-2"
+    question: "How much is a Max subscription worth in equivalent API costs?"
+    type: "multiple-choice"
+    options:
+      - "About $50 per month"
+      - "Heavy users report $5,000-15,000+ in equivalent API costs from a $200/month subscription"
+      - "About $200 per month"
+      - "The same as API pricing"
+    correct: 1
+    explanation: "Heavy Claude Code users report that their usage, if billed at API rates, would cost $5,000-15,000+ per month. The $200/month Max subscription is a massive discount for active developers. This is why accidentally setting ANTHROPIC_API_KEY (which overrides subscription) is such a costly mistake."
+  - id: "tokens-3"
+    question: "What's the most impactful single optimization?"
+    type: "multiple-choice"
+    options:
+      - "Using a faster computer"
+      - "Enabling LSP (saves thousands of tokens per session on code navigation)"
+      - "Typing faster"
+      - "Using shorter prompts"
+    correct: 1
+    explanation: "ENABLE_LSP_TOOL=1 is the highest-impact optimization. Without it, Claude uses grep for code navigation — returning hundreds of matches that all enter context. With LSP, 'go to definition' returns exactly the target in ~50 tokens. Over a session, this saves thousands of tokens."
+  - id: "tokens-4"
+    question: "What's the 'one task, one session' rule?"
+    type: "multiple-choice"
+    options:
+      - "Limit yourself to one task per day"
+      - "Start a fresh session for each distinct task instead of continuing in the same session"
+      - "Complete one task before starting Claude"
+      - "Only use one model per task"
+    correct: 1
+    explanation: "Start a fresh session for each task. Long conversations carry irrelevant context from previous tasks, wasting tokens on every message. A debugging session from 40 messages ago adds tokens to every subsequent message about a completely different feature."
+---
+
+## The Token Budget Mindset
+
+Claude Code on a Max subscription feels unlimited — and compared to API pricing, it is. But tokens still matter. Not because of cost (your subscription covers it), but because of **quality**. A context window filled with irrelevant history, unused MCP definitions, and stale file references produces worse results than a clean, focused context.
+
+Token optimization is quality optimization.
+
+## Strategy 1: Model Switching
+
+Different tasks need different models. Don't use Opus for renaming variables, and don't use Haiku for architecture review.
+
+### The Assignment Matrix
+
+| Task | Model | Why |
+|---|---|---|
+| Architecture design | Opus | Complex reasoning, multi-factor analysis |
+| Security review | Opus | Deep pattern recognition, threat modeling |
+| Complex debugging | Opus | Subtle bug analysis, multi-file reasoning |
+| Feature implementation | Sonnet | Balanced capability and speed |
+| Writing tests | Sonnet | Good at pattern following |
+| Code review | Sonnet | Catches issues without over-reasoning |
+| Boilerplate generation | Haiku | Fast, pattern-based |
+| Code exploration | Haiku | Quick lookups, simple queries |
+| Renaming/formatting | Haiku | Mechanical tasks |
+
+### Switching During a Session
+
+```bash
+/model opus
+"Analyze the auth module architecture and identify single points of failure"
+
+/model sonnet
+"Implement the changes we discussed"
+
+/model haiku
+"Add JSDoc comments to all public functions"
+```
+
+Three model switches in one session — each task gets the right level of capability.
+
+## Strategy 2: Session Hygiene
+
+### One Task, One Session
+
+The single most impactful habit:
+
+```bash
+# Session 1: Debug auth
+claude -n "debug-auth"
+# ... 30 messages ...
+# Done. Exit.
+
+# Session 2: Implement notifications
+claude -n "notifications"
+# Fresh context, no auth debugging history
+```
+
+### Compact at 80%
+
+Don't wait for the 95% auto-compact:
+
+```bash
+/context           # Check usage
+/compact "keep the payment refund logic details"  # Manual compact with hint
+```
+
+### Write, Then Compact
+
+Save important findings before compacting:
+
+```bash
+"Add to CLAUDE.md: The payment timeout is caused by connection pool 
+exhaustion under high webhook load. Fix: increase pool size to 25."
+
+/compact
+```
+
+## Strategy 3: Minimize Passive Token Costs
+
+### Disconnect Unused MCP Servers
+
+```
+Connected servers:     Token cost per message
+  GitHub:             ~3,000 tokens
+  PostgreSQL:         ~1,600 tokens
+  Slack:              ~2,400 tokens
+  Notion:             ~2,000 tokens
+  ─────────────────────────────
+  Total:              ~9,000 tokens × 50 messages = 450,000 tokens
+
+After disconnecting unused:
+  GitHub:             ~3,000 tokens (actively using)
+  ─────────────────────────────
+  Total:              ~3,000 tokens × 50 messages = 150,000 tokens
+  Saved:              300,000 tokens
+```
+
+### Enable LSP
+
+```json
+{ "env": { "ENABLE_LSP_TOOL": "1" } }
+```
+
+Without LSP:
+```
+Claude: "Let me find where createOrder is defined"
+→ grep "createOrder" src/ → 45 results → ~3,000 tokens in context
+```
+
+With LSP:
+```
+Claude: "Let me find where createOrder is defined"
+→ go to definition → 1 result → ~50 tokens in context
+```
+
+**Savings**: ~2,950 tokens per navigation × 20 navigations per session = ~59,000 tokens saved
+
+### Reference Files Late
+
+```bash
+# Expensive: file tokens re-processed 50 times
+Message 1: "Look at @src/services/auth.ts"
+Messages 2-50: Auth file in every message
+
+# Efficient: file tokens re-processed 5 times
+Message 46: "Now look at @src/services/auth.ts"
+Messages 47-50: Auth file in 5 messages
+```
+
+## Strategy 4: Effort Matching
+
+```bash
+/effort low     # Renaming, formatting, boilerplate
+/effort medium  # Standard features, tests
+/effort high    # Complex debugging, architecture
+```
+
+Low effort uses ~1/3 the tokens of medium. For 10 simple tasks at low instead of medium, you save 60-70% of those tokens.
+
+## Tracking Costs
+
+### /cost
+
+Shows the cost of the current session:
+
+```bash
+/cost
+# Session cost: $0.42 (15,200 input tokens, 3,400 output tokens)
+```
+
+### /insights
+
+Shows usage analytics:
+
+```bash
+/insights
+# This week:
+#   Sessions: 23
+#   Total tokens: 2.4M
+#   Average session: 104K tokens
+#   Most expensive session: "database migration" (340K tokens)
+```
+
+## The Real Savings Math
+
+For a Max subscriber ($200/month), here's what optimization saves in equivalent API costs:
+
+```
+Baseline (no optimization):
+  50 messages/session × 3 sessions/day × 22 days
+  Average 150K tokens/session
+  Total: 9.9M tokens/month
+  API equivalent: ~$3,000/month
+
+With optimization:
+  30 messages/session (shorter sessions)
+  × 4 sessions/day (more sessions, less wasted context)
+  × 22 days
+  Average 80K tokens/session
+  Total: 7.0M tokens/month
+  API equivalent: ~$2,100/month
+
+But! Better results because context is focused:
+  More accurate code (fewer retries)
+  Fewer corrections needed
+  Better architecture decisions
+```
+
+The token savings are real, but the quality improvement is worth even more.
+
+## Quick Optimization Checklist
+
+1. Enable `ENABLE_LSP_TOOL=1` (biggest single win)
+2. One task = one session
+3. Disconnect unused MCP servers
+4. Match model to task (Opus/Sonnet/Haiku)
+5. Match effort to task (low/medium/high)
+6. Compact at 80%, not 95%
+7. Reference files late, not early
+8. Write findings to CLAUDE.md before compacting
+9. Use brief mode (`CLAUDE_CODE_BRIEF=1`) if you don't need explanations
+10. Track with `/cost` and `/insights`
+
+## Key Takeaway
+
+Token optimization improves quality, not just cost. The biggest wins are: enabling LSP (saves thousands of tokens per session), one task per session (clean context), disconnecting unused MCP servers (eliminates passive token costs), and matching model and effort to the task. Track your usage with /cost and /insights. A Max subscription ($200/month) delivers $5,000-15,000+ in equivalent API value — optimization ensures you get the most quality from every token.

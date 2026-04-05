@@ -1,0 +1,303 @@
+---
+title: "Building Integrations: Slack, Notion, Playwright"
+slug: "building-integrations"
+order: 5
+difficulty: "intermediate"
+duration: 15
+tags: ["mcp", "integrations", "slack", "notion", "playwright", "tools"]
+objectives:
+  - "Connect popular MCP servers: Slack, Notion, Linear, Playwright"
+  - "Build multi-server orchestration workflows"
+  - "Scope permissions for each integration"
+  - "Know the most useful MCP servers in the ecosystem"
+quiz:
+  - id: "integrations-1"
+    question: "What can the Playwright MCP server do?"
+    type: "multiple-choice"
+    options:
+      - "Write plays and scripts"
+      - "Automate browser actions — navigate pages, fill forms, take screenshots, run E2E tests"
+      - "Play audio files"
+      - "Create slide presentations"
+    correct: 1
+    explanation: "Playwright MCP gives Claude browser automation capabilities. Claude can navigate to URLs, interact with page elements, fill out forms, take screenshots, and run end-to-end test scenarios — all programmatically through the MCP protocol."
+  - id: "integrations-2"
+    question: "How should you scope MCP permissions for a Slack integration?"
+    type: "multiple-choice"
+    options:
+      - "Allow everything — Slack is harmless"
+      - "Allow read operations (list channels, read messages) but deny send/post operations unless explicitly needed"
+      - "Deny everything"
+      - "Only allow DMs"
+    correct: 1
+    explanation: "Follow least privilege: allow read operations (listing channels, reading messages) but deny write operations (sending messages, creating channels) unless your workflow specifically needs them. You don't want Claude accidentally posting to your company's #general channel."
+  - id: "integrations-3"
+    question: "What is Context7 used for in MCP?"
+    type: "multiple-choice"
+    options:
+      - "Adding context to conversations"
+      - "Providing live, up-to-date documentation for libraries and frameworks"
+      - "Creating 7 contexts simultaneously"
+      - "A database with 7 tables"
+    correct: 1
+    explanation: "Context7 is an MCP server that provides live documentation for popular libraries and frameworks. Instead of relying on Claude's training data (which may be outdated), Context7 fetches the latest docs — ensuring Claude generates code compatible with current API versions."
+  - id: "integrations-4"
+    question: "What's the risk of connecting too many MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "They conflict with each other"
+      - "Each server adds tool definitions to context, consuming tokens with every message"
+      - "They slow down your computer"
+      - "There's no risk"
+    correct: 1
+    explanation: "Every connected MCP server adds its tool definitions to your context window — 1,000-5,000 tokens per server. Connect 5 servers and you're spending 5,000-25,000 tokens per message on tool definitions alone. Only connect what you're actively using."
+---
+
+## The MCP Ecosystem
+
+Beyond GitHub and databases, there's a growing ecosystem of MCP servers that connect Claude to the tools you use daily. Let's walk through the most useful ones and how to set them up.
+
+## Slack Integration
+
+Connect Claude to your team's Slack workspace:
+
+```bash
+claude mcp add slack \
+  -e SLACK_BOT_TOKEN=xoxb-xxxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-slack
+```
+
+### What You Can Do
+
+```bash
+# Read team messages
+"What's been discussed in #engineering this week?"
+
+# Search for context
+"Find any messages about the payment service outage last Tuesday"
+
+# Post updates
+"Post a message in #deployments: 'v2.3.0 deployed to staging — 
+please test the new order cancellation feature'"
+```
+
+### Permission Scoping
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__slack__list_channels",
+      "mcp__slack__read_messages",
+      "mcp__slack__search_messages"
+    ],
+    "deny": [
+      "mcp__slack__post_message",
+      "mcp__slack__create_channel",
+      "mcp__slack__delete_message"
+    ]
+  }
+}
+```
+
+Start with read-only access. Add write permissions only when you have a specific workflow that needs them.
+
+## Notion Integration
+
+Connect Claude to your team's Notion workspace:
+
+```bash
+claude mcp add notion \
+  -e NOTION_TOKEN=secret_xxxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-notion
+```
+
+### What You Can Do
+
+```bash
+# Read documentation
+"Find our API design guidelines in Notion"
+
+# Update pages
+"Update the sprint planning page with the tasks we discussed"
+
+# Search across workspace
+"Search Notion for all pages related to 'authentication refactor'"
+```
+
+Notion MCP is particularly useful when your team stores technical documentation, architecture decisions, or project specs in Notion. Claude can read these alongside your code for richer context.
+
+## Linear (Issue Tracking)
+
+Connect to Linear for issue and project management:
+
+```bash
+claude mcp add linear \
+  -e LINEAR_API_KEY=lin_xxxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-linear
+```
+
+### What You Can Do
+
+```bash
+# View issues
+"Show me all high-priority bugs assigned to me in Linear"
+
+# Create issues
+"Create a Linear issue: 'Payment webhook timeout under load' 
+with priority High and label 'backend'"
+
+# Update status
+"Move LIN-234 to In Progress"
+```
+
+## Sentry (Error Monitoring)
+
+Connect to Sentry for error tracking:
+
+```bash
+claude mcp add sentry \
+  -e SENTRY_AUTH_TOKEN=sntrys_xxxx \
+  -e SENTRY_ORG=my-org \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-sentry
+```
+
+### What You Can Do
+
+```bash
+# Check recent errors
+"What are the top 5 unresolved errors in the production environment?"
+
+# Investigate an error
+"Show me the stack trace and breadcrumbs for error SENTRY-4521. 
+Then find the relevant code in our codebase."
+
+# Resolve
+"Mark SENTRY-4521 as resolved — we fixed it in commit abc123"
+```
+
+The Sentry + codebase combination is powerful — Claude sees the error in Sentry, finds the code, and can fix it in one workflow.
+
+## Playwright (Browser Automation)
+
+Connect Playwright for browser automation:
+
+```bash
+claude mcp add playwright \
+  --transport stdio \
+  npx -y @anthropic-ai/mcp-server-playwright
+```
+
+### What You Can Do
+
+```bash
+# Navigate and inspect
+"Open http://localhost:3000/login and take a screenshot"
+
+# Test forms
+"Fill in the login form with test@example.com and password123, 
+then click Submit. Tell me what happens."
+
+# Visual regression
+"Navigate to /dashboard and compare the layout with 
+the Figma design in our CLAUDE.md references"
+```
+
+Playwright MCP is especially useful for front-end development — Claude can interact with your running application and verify visual output.
+
+## Context7 (Live Documentation)
+
+Context7 provides up-to-date documentation for libraries:
+
+```bash
+claude mcp add context7 \
+  --transport stdio \
+  npx -y @context7/mcp-server
+```
+
+### What It Does
+
+Instead of Claude relying on its training data (which may be months old), Context7 fetches the latest documentation for libraries you're using. When Claude needs to write code using Prisma 5.10, it gets the current Prisma 5.10 docs — not the Prisma 4 docs it was trained on.
+
+```bash
+"Write a Prisma query to find all orders with their items, 
+using the latest Prisma syntax"
+# Claude uses Context7 to fetch current Prisma docs
+```
+
+## Multi-Server Orchestration
+
+The real power of MCP comes from combining multiple servers in a single workflow:
+
+### Bug Fix Pipeline
+
+```bash
+# Sentry + GitHub + Codebase
+"Look at the top error in Sentry. Find the code that's causing it 
+in our codebase. Fix it. Create a PR with the fix."
+```
+
+Claude chains:
+1. `mcp__sentry__get_issue` → Gets the error details
+2. Built-in Read/Grep → Finds the relevant code
+3. Built-in Write → Fixes the code
+4. Built-in Bash → Runs tests
+5. `mcp__github__create_pr` → Creates the PR
+
+### Sprint Planning
+
+```bash
+# Linear + Notion + GitHub
+"Look at our open Linear issues, check the sprint planning doc in Notion, 
+and create GitHub branches for the top 3 priority items."
+```
+
+### Incident Response
+
+```bash
+# Sentry + Slack + GitHub
+"Sentry shows a spike in payment errors. Check Sentry for the details, 
+read the relevant code, diagnose the issue, and post a summary in 
+#incidents on Slack."
+```
+
+## Popular MCP Servers Reference
+
+| Server | Package | Use Case |
+|---|---|---|
+| GitHub | @modelcontextprotocol/server-github | PRs, issues, repos |
+| PostgreSQL | @modelcontextprotocol/server-postgres | Database queries |
+| Slack | @modelcontextprotocol/server-slack | Team messaging |
+| Notion | @modelcontextprotocol/server-notion | Documentation, wikis |
+| Linear | @modelcontextprotocol/server-linear | Issue tracking |
+| Sentry | @modelcontextprotocol/server-sentry | Error monitoring |
+| Playwright | @anthropic-ai/mcp-server-playwright | Browser automation |
+| Context7 | @context7/mcp-server | Live library docs |
+| Figma | Official Figma MCP | Design-to-code |
+| Datadog | @modelcontextprotocol/server-datadog | Monitoring |
+| Redis | @modelcontextprotocol/server-redis | Cache inspection |
+
+## The Connection Budget
+
+Remember the token cost. Here's a practical budget:
+
+```
+Recommended: 1-3 active servers per session
+Maximum:     5 servers (beyond this, token cost is significant)
+
+Per-session strategy:
+- Code review session: GitHub only
+- Database work: PostgreSQL only
+- Feature implementation: GitHub + Context7
+- Incident response: Sentry + Slack + GitHub (3 servers max)
+```
+
+Connect what you need, disconnect what you don't. Your context window will thank you.
+
+## Key Takeaway
+
+The MCP ecosystem includes servers for Slack, Notion, Linear, Sentry, Playwright, Context7, and many more. Multi-server orchestration lets you chain integrations — fix a Sentry error, create a PR on GitHub, and notify Slack in one workflow. Always scope permissions (read-only first, write access only when needed) and manage your connection budget (1-3 active servers per session). The most powerful MCP setups combine 2-3 targeted servers for specific workflows rather than connecting everything at once.

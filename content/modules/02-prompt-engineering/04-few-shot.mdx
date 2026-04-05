@@ -1,0 +1,318 @@
+---
+title: "Few-Shot Prompting"
+slug: "few-shot"
+order: 4
+difficulty: "beginner"
+duration: 14
+tags: ["prompt-engineering", "few-shot", "techniques"]
+objectives:
+  - "Understand what few-shot prompting is and why it works"
+  - "Know when few-shot outperforms zero-shot"
+  - "Structure few-shot prompts correctly with clear input/output examples"
+  - "Determine the right number of examples for different tasks"
+quiz:
+  - id: "few-shot-1"
+    question: "How many examples does a typical few-shot prompt include?"
+    type: "multiple-choice"
+    options:
+      - "0"
+      - "2-3"
+      - "10-20"
+      - "100+"
+    correct: 1
+    explanation: "Few-shot typically means 2-3 examples. This is usually enough for Claude to learn the pattern without consuming excessive tokens. More than 5 examples rarely improves results."
+  - id: "few-shot-2"
+    question: "When does few-shot prompting beat zero-shot?"
+    type: "multiple-choice"
+    options:
+      - "Always — few-shot is strictly better"
+      - "When the task requires matching a specific format, style, or custom classification scheme"
+      - "When the task is very simple"
+      - "When you want to save tokens"
+    correct: 1
+    explanation: "Few-shot excels when Claude needs to match a specific pattern that isn't standard — custom output formats, particular coding styles, classification into custom categories, or matching a specific tone."
+  - id: "few-shot-3"
+    question: "What is the correct structure for a few-shot prompt?"
+    type: "multiple-choice"
+    options:
+      - "Just list the examples with no instruction"
+      - "Give the instruction, then show examples of input→output pairs, then provide the new input"
+      - "Provide one example after the response"
+      - "Put examples in a separate file"
+    correct: 1
+    explanation: "The correct structure is: instruction (what to do) → examples (input→output pairs) → new input. The instruction sets the task, the examples teach the pattern, and the new input asks Claude to apply it."
+  - id: "few-shot-4"
+    question: "What makes a good few-shot example?"
+    type: "multiple-choice"
+    options:
+      - "It should be as long and complex as possible"
+      - "It should cover the exact same case as the actual task"
+      - "It should be representative, showing edge cases and the consistent pattern you want"
+      - "It should use completely different formatting than the desired output"
+    correct: 2
+    explanation: "Good few-shot examples are representative of the task, cover different sub-cases (including edge cases), and consistently demonstrate the exact format and pattern you want Claude to follow."
+---
+
+## What Is Few-Shot Prompting?
+
+**Few-shot prompting** means providing 2-3 examples of the desired input/output before asking Claude to process a new input. You're essentially saying: "Here's the pattern — now apply it to this new case."
+
+Where zero-shot relies entirely on Claude's training, few-shot teaches Claude your specific expectations through demonstration. It's the difference between telling someone "make it look professional" versus showing them three examples of what "professional" means to you.
+
+## Why Few-Shot Works
+
+Claude excels at pattern recognition. When you show it examples, it extracts the implicit rules:
+
+- The output format (what fields, what order, what separators)
+- The level of detail (concise vs. verbose)
+- The tone and style (formal vs. casual, technical vs. accessible)
+- The classification logic (how inputs map to outputs)
+- Edge case handling (what to do with unusual inputs)
+
+You don't have to explain these rules explicitly. The examples teach them implicitly.
+
+## The Structure of a Few-Shot Prompt
+
+Every few-shot prompt follows this pattern:
+
+```
+[Instruction: what you want Claude to do]
+
+[Example 1]
+Input: ...
+Output: ...
+
+[Example 2]
+Input: ...
+Output: ...
+
+[Example 3]
+Input: ...
+Output: ...
+
+[Actual task]
+Input: ...
+Output:
+```
+
+Notice the last entry has an empty output. Claude fills it in, following the pattern established by the examples.
+
+## 4 Real Few-Shot Examples
+
+### Example 1: Matching Code Style
+
+Your team has a specific way of writing Express route handlers. Instead of explaining every convention, show Claude:
+
+```
+Write Express route handlers following our team's style.
+
+Example 1:
+Input: GET endpoint to fetch a user by ID
+Output:
+```typescript
+export const getUser = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = validateParams(req.params, userIdSchema);
+  const user = await userService.findById(id);
+  if (!user) throw new AppError('User not found', 404);
+  res.status(200).json({ data: user });
+});
+```
+
+Example 2:
+Input: POST endpoint to create a new project
+Output:
+```typescript
+export const createProject = asyncHandler(async (req: Request, res: Response) => {
+  const data = validateBody(req.body, createProjectSchema);
+  const project = await projectService.create(data, req.user.id);
+  res.status(201).json({ data: project });
+});
+```
+
+Example 3:
+Input: DELETE endpoint to remove a team member
+Output:
+```typescript
+export const removeTeamMember = asyncHandler(async (req: Request, res: Response) => {
+  const { teamId, memberId } = validateParams(req.params, teamMemberSchema);
+  await teamService.removeMember(teamId, memberId, req.user.id);
+  res.status(204).send();
+});
+```
+
+Now write:
+Input: PUT endpoint to update a user's profile settings
+Output:
+```
+
+From three examples, Claude learns your conventions: `asyncHandler` wrapper, `validateParams`/`validateBody` functions, service layer calls, `AppError` for errors, `{ data: ... }` response wrapper, specific HTTP status codes. It will apply all of these to the new endpoint without you explicitly listing each convention.
+
+### Example 2: Email Tone Matching
+
+You need Claude to write emails in your company's voice:
+
+```
+Write customer support emails in our company's tone.
+
+Example 1:
+Situation: Customer's payment failed
+Email:
+Hey Sarah,
+
+Looks like your latest payment didn't go through — totally fixable.
+This usually happens when the card on file has expired or hit its limit.
+
+Could you hop into Settings → Billing and update your payment method?
+If it still acts up, just reply here and we'll sort it out together.
+
+Cheers,
+The Acme Team
+
+Example 2:
+Situation: Customer requesting a feature we're already building
+Email:
+Hey Marcus,
+
+Great minds think alike — we're actually building exactly this right now.
+Our team is targeting a release in the next 3-4 weeks.
+
+Want us to ping you when it ships? We'd also love your input on the
+design if you're up for a quick 15-minute call.
+
+Cheers,
+The Acme Team
+
+Now write:
+Situation: Customer found a bug in the export feature
+Email:
+```
+
+Claude picks up the casual-but-professional tone, the "Hey [Name]" greeting, the short paragraphs, the "Cheers" sign-off, and the pattern of acknowledging the issue, explaining the path forward, and offering further help.
+
+### Example 3: Data Extraction
+
+You need to extract structured data from unstructured text:
+
+```
+Extract structured data from server log entries.
+
+Example 1:
+Log: [2025-03-15 14:23:01] ERROR api-gateway: Connection timeout to
+     upstream service user-service after 30000ms. Retry 3/3 failed.
+     Request: POST /api/users/bulk-import (trace-id: abc-123)
+Extracted:
+{
+  "timestamp": "2025-03-15T14:23:01Z",
+  "level": "ERROR",
+  "service": "api-gateway",
+  "error_type": "connection_timeout",
+  "upstream": "user-service",
+  "timeout_ms": 30000,
+  "retries_exhausted": true,
+  "endpoint": "POST /api/users/bulk-import",
+  "trace_id": "abc-123"
+}
+
+Example 2:
+Log: [2025-03-15 14:23:05] WARN payment-service: Rate limit approaching
+     for Stripe API. Current: 85/100 requests in window. Client: org_456.
+Extracted:
+{
+  "timestamp": "2025-03-15T14:23:05Z",
+  "level": "WARN",
+  "service": "payment-service",
+  "error_type": "rate_limit_warning",
+  "external_api": "Stripe",
+  "current_usage": 85,
+  "limit": 100,
+  "client_id": "org_456"
+}
+
+Now extract:
+Log: [2025-03-15 14:25:12] ERROR auth-service: JWT verification failed.
+     Token expired at 2025-03-15T13:00:00Z (1h25m ago). User: usr_789.
+     IP: 192.168.1.42. Endpoint: GET /api/dashboard
+Extracted:
+```
+
+The examples establish the JSON schema, the field naming convention (`snake_case`), how to normalize log-specific data (converting relative times to absolute), and what to extract vs. ignore.
+
+### Example 4: Classification
+
+You've defined custom priority levels for bug reports:
+
+```
+Classify bug reports into our priority system.
+
+Example 1:
+Bug: "The app crashes when I try to upload a file larger than 10MB"
+Classification: P2-HIGH
+Reasoning: Data loss risk, affects core functionality, but has a workaround (smaller files)
+
+Example 2:
+Bug: "The font on the settings page looks slightly different on Firefox"
+Classification: P4-LOW
+Reasoning: Cosmetic issue, single browser, no functionality impact
+
+Example 3:
+Bug: "Users can access other users' private documents by changing the URL ID"
+Classification: P0-CRITICAL
+Reasoning: Security vulnerability, data breach risk, no workaround, immediate fix required
+
+Now classify:
+Bug: "Password reset emails take 15 minutes to arrive instead of the usual 30 seconds"
+Classification:
+```
+
+Without examples, Claude would classify on a generic scale. With your examples, it learns *your* P0-P4 scale and the reasoning framework behind it.
+
+## How Many Examples Do You Need?
+
+The short answer: **2-3 examples is the sweet spot.**
+
+| Examples | When to use |
+|----------|------------|
+| 1 | Very simple format matching — sometimes enough |
+| 2-3 | Most tasks — covers the pattern plus an edge case |
+| 4-5 | Complex classification with many categories |
+| 5+ | Rarely needed — if 5 examples don't work, the task needs rephrasing |
+
+More examples consume more tokens. Each example might be 100-500 tokens, so 5 examples could cost 500-2,500 tokens every time you use the prompt. For a pattern Claude mostly understands already, 2 examples is enough. For a truly novel classification scheme, 4-5 might be worth the token cost.
+
+**Quality over quantity.** Two carefully chosen examples that cover different sub-cases beat five examples that all show the same thing. Pick examples that demonstrate:
+
+- The most common case
+- An edge case or exception
+- A case that might be ambiguous (to show how you want it handled)
+
+## When Few-Shot Beats Zero-Shot
+
+The decision is straightforward:
+
+| Situation | Use |
+|-----------|-----|
+| Standard coding task | Zero-shot |
+| Custom output format | Few-shot |
+| Style/tone matching | Few-shot |
+| Custom classification | Few-shot |
+| Consistent formatting across many items | Few-shot |
+| Claude keeps getting the format wrong (zero-shot) | Few-shot |
+| Quick one-off question | Zero-shot |
+
+**The escalation pattern:** Start with zero-shot. If the output is close but the format is wrong, add 2-3 examples. If the output is still off, add constraints. If it's still wrong, rethink the task description.
+
+## Tips for Effective Few-Shot Examples
+
+1. **Make examples consistent.** If your examples use different formats from each other, Claude will pick one randomly. Keep them identical in structure.
+
+2. **Cover edge cases.** Don't just show the happy path. Show how you want errors, empty inputs, or unusual cases handled.
+
+3. **Use realistic data.** Generic placeholders like "foo" and "bar" teach weaker patterns than realistic data.
+
+4. **Put the instruction first.** Don't start with examples — start with a clear instruction of what the task is, then show examples as demonstrations.
+
+5. **Match the complexity.** If your actual task is complex, your examples should be at similar complexity. Simple examples for a complex task teach the wrong level of detail.
+
+## Key Takeaway
+
+Few-shot prompting teaches Claude your specific expectations through 2-3 examples of input/output pairs. It's your go-to technique when zero-shot gets the task right but the format, style, or classification wrong. Structure your prompts as instruction, then examples, then the new input — and choose examples that are consistent, representative, and cover the edge cases that matter.

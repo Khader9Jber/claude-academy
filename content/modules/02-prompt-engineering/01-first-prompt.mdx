@@ -1,0 +1,269 @@
+---
+title: "Your First Prompt: From Vague to Precise"
+slug: "first-prompt"
+order: 1
+difficulty: "beginner"
+duration: 15
+tags: ["prompt-engineering", "basics", "getting-started"]
+objectives:
+  - "Recognize the most common prompting mistakes"
+  - "Transform vague prompts into precise, effective ones"
+  - "Understand why specificity dramatically improves Claude's output"
+  - "Practice the iterative approach to prompt refinement"
+quiz:
+  - id: "first-prompt-1"
+    question: "Which of these is the BEST prompt for Claude?"
+    type: "multiple-choice"
+    options:
+      - "Fix my code"
+      - "Help me with Python"
+      - "The login function in @src/auth/login.ts returns 200 even when the password is wrong. The bcrypt comparison on line 42 should reject mismatches. Find and fix the bug."
+      - "Make my code better please"
+    correct: 2
+    explanation: "This prompt is specific about the file, the symptom (returns 200 on wrong password), the suspected location (line 42), and the expected behavior (reject mismatches). It gives Claude everything it needs to help immediately."
+  - id: "first-prompt-2"
+    question: "What is the biggest mistake new users make with prompts?"
+    type: "multiple-choice"
+    options:
+      - "Using too many code blocks"
+      - "Being too vague — not providing enough context or specificity"
+      - "Writing prompts that are too long"
+      - "Using technical jargon"
+    correct: 1
+    explanation: "The most common prompting mistake is being too vague. Prompts like 'fix my code' or 'help me with this' force Claude to guess what you want, leading to generic or irrelevant responses."
+  - id: "first-prompt-3"
+    question: "What does 'iterative prompting' mean?"
+    type: "multiple-choice"
+    options:
+      - "Writing the same prompt over and over"
+      - "Sending your prompt to multiple AI models"
+      - "Starting with a first attempt, evaluating the response, and refining your prompt based on what was missing"
+      - "Using only one prompt per session"
+    correct: 2
+    explanation: "Iterative prompting means treating your first prompt as a starting point, evaluating what Claude gives back, identifying gaps, and sending a refined follow-up. Each iteration gets you closer to the output you want."
+  - id: "first-prompt-4"
+    question: "Why should you specify the output format in your prompt?"
+    type: "multiple-choice"
+    options:
+      - "Claude can't produce different formats"
+      - "It saves tokens"
+      - "Without format guidance, Claude guesses what you want and often gets it wrong"
+      - "It's required by the API"
+    correct: 2
+    explanation: "When you don't specify a format, Claude has to guess whether you want a code block, a bulleted list, a paragraph, JSON, or something else. Being explicit about format eliminates this guessing and gets you usable output immediately."
+---
+
+## The Gap Between You and Great Output
+
+Here's a truth that trips up every new Claude user: **the quality of Claude's response is directly proportional to the quality of your prompt**. Claude is incredibly capable, but it's not telepathic. When you give it a vague instruction, you get a vague response. When you give it a precise, well-structured instruction, you get output that feels like it was written by a senior engineer who knows your exact situation.
+
+The good news: writing good prompts is a learnable skill, not a talent. Let's start by understanding what goes wrong.
+
+## The 5 Most Common Prompting Mistakes
+
+### Mistake 1: Being Too Vague
+
+This is the number one offender. Watch the difference:
+
+**Bad:**
+```
+Fix my authentication
+```
+
+Claude doesn't know what's broken, what stack you're using, what "fix" means to you, or even which file to look at. It'll produce a generic response about common auth issues that probably doesn't match your situation.
+
+**Good:**
+```
+The JWT refresh token flow in @src/auth/refresh.ts is broken.
+When the access token expires, the client sends the refresh token
+to /api/auth/refresh, but the endpoint returns 401 instead of
+a new token pair. The refresh token is valid (I checked the DB).
+I think the issue is in the verifyRefreshToken function around line 35.
+```
+
+Now Claude knows the file, the endpoint, the symptom, what you've already checked, and where you suspect the issue is. It can give you a targeted, useful answer.
+
+### Mistake 2: Missing Context
+
+Claude doesn't know anything about your project unless you tell it. It doesn't know your tech stack, your coding conventions, your business requirements, or your constraints.
+
+**Bad:**
+```
+Write a user registration function
+```
+
+Registration for what? A Node.js Express app? A Django REST API? A serverless function? With what database? What validation rules? Does it need email verification? Rate limiting?
+
+**Good:**
+```
+Write a user registration endpoint for our Express.js API.
+Stack: TypeScript, Express, Prisma with PostgreSQL.
+Requirements:
+- Validate email format and password strength (min 8 chars, 1 number, 1 special)
+- Hash password with bcrypt (12 rounds)
+- Check for duplicate emails (return 409)
+- Create user record in Prisma
+- Send verification email via our @src/services/email.ts service
+- Return 201 with user object (exclude password hash)
+Follow the patterns in @src/routes/auth.ts for error handling style.
+```
+
+### Mistake 3: Not Specifying Format
+
+When you don't tell Claude how to format its response, it guesses. Sometimes it gives you a code block when you wanted an explanation. Sometimes it gives you a paragraph when you wanted a bullet list. Sometimes it gives you a 500-line file when you needed a 5-line diff.
+
+**Bad:**
+```
+Explain how our auth middleware works
+```
+
+**Good:**
+```
+Explain how @src/middleware/auth.ts works. Structure your response as:
+1. One-paragraph summary of what it does
+2. Step-by-step flow (numbered list) of what happens when a request hits it
+3. A table of all possible response codes and when each is returned
+```
+
+### Mistake 4: Stuffing Too Much Into One Prompt
+
+New users often try to get Claude to do five things in a single prompt: refactor the auth system, add rate limiting, write tests, update the docs, and deploy. This produces mediocre results across all five tasks instead of excellent results on one.
+
+**Bad:**
+```
+Refactor the auth system to use refresh tokens, add rate limiting
+to all API endpoints, write tests for everything, update the README,
+and set up the CI pipeline to run tests on push.
+```
+
+**Good approach:** Break this into a conversation:
+
+```
+# Message 1
+"Let's refactor the auth system to use refresh tokens.
+Here's the current implementation: @src/auth/"
+
+# Message 2 (after reviewing Claude's refactor)
+"Good. Now add rate limiting to the auth endpoints we just changed.
+Use the express-rate-limit pattern from @src/middleware/rateLimiter.ts"
+
+# Message 3
+"Write tests for the new refresh token flow.
+Follow the test patterns in @src/auth/__tests__/"
+```
+
+Each message builds on the last. Claude does one thing well before moving to the next.
+
+### Mistake 5: Not Iterating
+
+Your first prompt doesn't have to be perfect. What matters is that you **evaluate the response and refine**. Many people see an imperfect response and think "Claude is bad at this" when the real issue is their prompt needed adjustment.
+
+**First attempt:**
+```
+Write a React component for user settings
+```
+
+**Claude produces something generic. You refine:**
+```
+Good start, but adjust:
+- Use our existing Form component from @src/components/ui/Form.tsx
+- The settings should include: display name, email, avatar upload, timezone
+- Use react-hook-form for validation, not controlled inputs
+- Match the styling in @src/components/Profile/ProfileCard.tsx
+```
+
+**Claude produces something closer. One more refinement:**
+```
+Almost there. Two changes:
+1. The avatar upload should use our S3 presigned URL flow, not direct upload
+2. Add a "danger zone" section at the bottom with account deletion (with confirmation modal)
+```
+
+Three iterations, and you have exactly what you need. This is normal. This is the process.
+
+## The Before/After Gallery
+
+Let's see the transformation in action across different scenarios:
+
+### Scenario: Debugging
+
+**Before:**
+```
+My API is slow
+```
+
+**After:**
+```
+Our Express API endpoint GET /api/users takes 3-4 seconds to respond.
+The database query itself runs in <100ms (confirmed via Prisma logging).
+I suspect the bottleneck is in the response serialization or middleware chain.
+Here's the route: @src/routes/users.ts
+Here's our middleware stack: @src/middleware/index.ts
+Profile this request flow and identify the bottleneck.
+```
+
+### Scenario: Code Generation
+
+**Before:**
+```
+Write a database schema
+```
+
+**After:**
+```
+Design a Prisma schema for a multi-tenant SaaS project management tool.
+Entities: Organization, User, Project, Task, Comment.
+Constraints:
+- Users belong to one Organization (tenant isolation)
+- Projects belong to an Organization
+- Tasks have assignee (User), status (enum: TODO/IN_PROGRESS/REVIEW/DONE), priority (1-4), due date
+- Comments are threaded (parent comment optional)
+- Soft delete on all entities (deletedAt timestamp)
+- Use UUID for all primary keys
+Output as a Prisma schema file.
+```
+
+### Scenario: Code Review
+
+**Before:**
+```
+Review my code
+```
+
+**After:**
+```
+Review @src/services/payment.ts for:
+1. Security issues (we handle credit card tokens here)
+2. Error handling gaps (are we catching all Stripe API failure modes?)
+3. Race conditions (this runs in concurrent Lambda invocations)
+4. Any violations of our patterns in @CLAUDE.md
+
+Be harsh. I'd rather fix issues now than in production.
+```
+
+## Your First Exercise
+
+Take this intentionally terrible prompt and rewrite it using what you've learned:
+
+```
+Make a todo app
+```
+
+A strong rewrite would specify:
+- The framework and language (React + TypeScript? Vue? Svelte?)
+- The features (add, complete, delete, filter, persist?)
+- The data model (what fields does a todo have?)
+- The styling approach (Tailwind? CSS modules? Styled components?)
+- Any constraints (no external state management, must work offline, etc.)
+
+There's no single "right" answer — but the more specific your rewrite, the more useful Claude's response will be.
+
+## The Iterative Mindset
+
+The most important takeaway from this lesson isn't any specific technique — it's the mindset shift. **Prompting is a conversation, not a one-shot command.** Your first prompt is a starting point. Claude's response tells you what was missing from your prompt. Your follow-up fills the gaps. Two or three iterations will get you to excellent output almost every time.
+
+The developers who get the most out of Claude aren't the ones who write perfect prompts. They're the ones who **iterate quickly** and **give Claude progressively better context** with each message.
+
+## Key Takeaway
+
+Good prompts are specific about the task, the context, the format, and the constraints. The five biggest mistakes are being vague, omitting context, not specifying format, cramming too much into one prompt, and failing to iterate. You don't need to write a perfect prompt on the first try — but you do need to refine based on what Claude gives back. Specificity is the single biggest lever you have.

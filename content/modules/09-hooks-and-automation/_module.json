@@ -1,0 +1,12 @@
+{
+  "title": "Hooks & Automation",
+  "slug": "hooks-and-automation",
+  "description": "Automate repetitive tasks with Claude Code hooks. Learn pre-tool, post-tool, and notification hooks, plus how to build custom automation pipelines.",
+  "arc": "power-user",
+  "order": 9,
+  "icon": "webhook",
+  "color": "#a07ed6",
+  "estimatedHours": 3,
+  "prerequisites": ["claude-md-and-config", "mcp-fundamentals"],
+  "lessonCount": 5
+}

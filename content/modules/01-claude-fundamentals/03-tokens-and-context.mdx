@@ -1,0 +1,242 @@
+---
+title: "Tokens and Context Windows Explained"
+slug: "tokens-and-context"
+order: 3
+difficulty: "beginner"
+duration: 18
+tags: ["tokens", "context-window", "pricing", "fundamentals"]
+objectives:
+  - "Understand what tokens are and how to estimate token counts"
+  - "Know the context window sizes for different Claude plans"
+  - "Identify what consumes tokens in a Claude Code session"
+  - "Learn strategies to manage your token budget effectively"
+quiz:
+  - id: "tokens-1"
+    question: "Approximately how many characters equal one token?"
+    type: "multiple-choice"
+    options:
+      - "1 character = 1 token"
+      - "~4 characters = 1 token"
+      - "1 word = 1 token"
+      - "~10 characters = 1 token"
+    correct: 1
+    explanation: "On average, one token is approximately 4 characters. This means a typical English word is about 1-1.5 tokens, and code tends to be slightly more token-dense due to special characters."
+  - id: "tokens-2"
+    question: "What is the context window size for Claude Max subscribers?"
+    type: "multiple-choice"
+    options:
+      - "100K tokens"
+      - "200K tokens"
+      - "500K tokens"
+      - "1M tokens"
+    correct: 3
+    explanation: "Claude Max subscribers get access to a 1 million token context window, which is large enough to hold entire codebases, multiple books, or extremely long conversation histories."
+  - id: "tokens-3"
+    question: "What happens to your conversation history each time you send a new message?"
+    type: "multiple-choice"
+    options:
+      - "Only the new message is processed"
+      - "The entire conversation history is re-processed along with your new message"
+      - "Only the last 5 messages are sent"
+      - "History is compressed automatically every turn"
+    correct: 1
+    explanation: "Every time you send a message, the entire conversation history is sent to the model along with your new message. This is why long conversations consume more tokens per turn — each message costs more than the last."
+  - id: "tokens-4"
+    question: "Which of the following does NOT consume tokens from your context window?"
+    type: "multiple-choice"
+    options:
+      - "File references with @"
+      - "Extended thinking"
+      - "Your computer's RAM"
+      - "MCP tool definitions"
+    correct: 2
+    explanation: "Your computer's RAM has nothing to do with Claude's token budget. File references, extended thinking tokens, and MCP tool definitions all consume tokens from your context window."
+  - id: "tokens-5"
+    question: "What does the /compact command do?"
+    type: "multiple-choice"
+    options:
+      - "Deletes all files Claude has created"
+      - "Compresses the conversation history to free up context space"
+      - "Switches to a smaller model"
+      - "Closes the current session permanently"
+    correct: 1
+    explanation: "/compact compresses your conversation history into a summary, freeing up context window space while preserving the key information Claude needs to continue helping you."
+---
+
+## What Is a Token?
+
+Before you can use Claude effectively, you need to understand the currency it runs on: **tokens**.
+
+A token is the fundamental unit of text that language models process. It's not a character, and it's not a word — it's somewhere in between. The rough rule of thumb:
+
+> **~4 characters = 1 token**
+
+This means:
+
+- The word `hello` = ~1.25 tokens
+- The word `authentication` = ~3.5 tokens
+- A line of code like `const user = await db.findOne({ email });` = ~12 tokens
+- A typical 500-word email = ~625 tokens
+- A 1,000-line source file = ~8,000-12,000 tokens (code is denser than prose)
+
+Tokens aren't split on word boundaries. The tokenizer (the algorithm that converts text to tokens) breaks text into subword pieces. The word "unbelievable" might become `["un", "believ", "able"]` — three tokens. Common words like "the" or "is" are single tokens. Rare or technical terms get split into more pieces.
+
+### Why This Matters
+
+Everything Claude reads and writes is measured in tokens. Your prompts, Claude's responses, the files you reference, the conversation history, the thinking Claude does internally — all tokens. Understanding token economics is the difference between a session that flows smoothly for hours and one that hits rate limits in 20 minutes.
+
+## Context Windows: Your Working Memory
+
+The **context window** is the total number of tokens Claude can "see" at once. Think of it as Claude's working memory — everything that needs to be in the conversation must fit inside this window.
+
+| Plan | Context Window |
+|------|---------------|
+| Pro ($20/mo) | 200K tokens |
+| Max 5x ($100/mo) | 1M tokens |
+| Max 20x ($200/mo) | 1M tokens |
+| API (direct) | 200K tokens (default) |
+
+### What Fits in These Windows?
+
+To put these numbers in perspective:
+
+**200K tokens** (~150,000 words):
+- About 2-3 full-length novels
+- A medium-sized codebase (roughly 300-400 source files)
+- The entire content of a typical technical book
+
+**1M tokens** (~750,000 words):
+- A large monorepo's worth of source code
+- 5-10 full-length novels
+- An entire semester's worth of lecture notes
+- The combined source of many open-source libraries
+
+With 1M tokens, you can genuinely feed Claude an entire application codebase and ask questions about how components interact across hundreds of files. This is a game-changer for understanding and working with large projects.
+
+## What Eats Your Tokens
+
+Here's where most people get surprised. It's not just your prompts and Claude's responses that consume tokens. Here's the full breakdown of everything that eats into your context window:
+
+### 1. Conversation History (Re-processed Every Turn)
+
+This is the biggest hidden cost. Every time you send a message, **the entire conversation history is sent to Claude again**, along with your new message. Turn 1 sends just your prompt. Turn 10 sends turns 1-9 plus your new prompt. Turn 30 sends turns 1-29 plus your new prompt.
+
+The implication: **each message in a long conversation costs more than the last**. A conversation that started efficient becomes expensive as it grows.
+
+```
+Turn 1:  Your prompt (500 tokens) → Total sent: 500
+Turn 2:  History (500 + 1000) + new prompt (400) → Total sent: 1,900
+Turn 3:  History (1,900 + 800) + new prompt (300) → Total sent: 3,000
+...
+Turn 20: History (45,000) + new prompt (500) → Total sent: 45,500
+```
+
+By turn 20, a single message might process 45K tokens just for the history, even if your actual prompt is only 500 tokens.
+
+### 2. File References (@refs)
+
+When you use `@path/to/file.ts` in your message, Claude reads that file's contents into the context. This happens **every message** where you use the reference — the file is re-read each turn.
+
+```bash
+# This reads the file every time you reference it
+"Look at @src/auth/middleware.ts and tell me about the JWT validation"
+```
+
+A 500-line TypeScript file might be 4,000-6,000 tokens. If you reference it in 10 messages, that's 40,000-60,000 tokens just for that one file.
+
+### 3. Extended Thinking
+
+When Claude uses **extended thinking** (the internal reasoning process before generating a response), those thinking tokens count against your budget. Extended thinking can range from a few hundred tokens for simple analysis to tens of thousands for complex reasoning.
+
+You can toggle thinking with `Alt+T` and cap the budget with the `MAX_THINKING_TOKENS` environment variable.
+
+### 4. MCP Tool Definitions
+
+If you have **MCP (Model Context Protocol) servers** configured, their tool definitions are included in every message. Each tool definition might be 200-500 tokens, and if you have 20 tools configured across multiple MCP servers, that's 4,000-10,000 tokens of overhead on every single turn.
+
+### 5. System Prompts and CLAUDE.md
+
+Your `CLAUDE.md` file, any `.claude/settings.json` configurations, and Claude Code's own system prompt are included in the context. A detailed CLAUDE.md file might be 2,000-5,000 tokens, loaded on every turn.
+
+### 6. Research Mode
+
+When Claude Code uses research mode to search the web, the retrieved content gets added to the context. A single web search might pull in 5,000-15,000 tokens of page content.
+
+## The Rolling 5-Hour Window
+
+For Pro and Max subscribers, usage isn't measured per-day — it's a **rolling 5-hour window**. This means:
+
+- You have a token budget that refreshes on a rolling basis
+- Tokens you used 5 hours and 1 minute ago no longer count against your limit
+- Heavy usage in a burst will hit limits faster than steady usage over time
+- The budget is shared between claude.ai (web) and Claude Code (terminal)
+
+This shared budget is important: if you've been chatting heavily on claude.ai, you'll have less capacity available in Claude Code, and vice versa.
+
+## How to Estimate Token Usage
+
+Before sending a large file or starting a complex conversation, it helps to have a rough idea of token counts:
+
+```
+Plain English text:    ~1 token per word (0.75 words/token)
+Source code:           ~2-3 tokens per line
+JSON/config files:     ~3-4 tokens per line (lots of brackets/quotes)
+Minified code:         ~1 token per 3-4 characters
+```
+
+Quick estimation for files:
+
+```bash
+# Rough token count: lines × 2.5 for code
+wc -l src/auth/middleware.ts
+# 200 lines → ~500 tokens
+
+# For a directory
+find src/ -name "*.ts" | xargs wc -l | tail -1
+# 15,000 lines → ~37,500 tokens
+```
+
+Claude Code also shows you context usage. Run `/context` to see how much of your window is consumed.
+
+## Managing Your Token Budget
+
+Here are practical strategies to keep your sessions efficient:
+
+### Use /compact Before You Hit the Wall
+
+The `/compact` command compresses your conversation history into a condensed summary:
+
+```bash
+# Compress the conversation
+/compact
+
+# Compress with a hint about what to remember
+/compact "keep the auth architecture decisions and the database schema"
+```
+
+Use `/compact` proactively when you notice your conversation getting long — don't wait until you hit limits.
+
+### Start Fresh for New Tasks
+
+If you're switching to a completely different task, open a new terminal and start a new `claude` session. There's no reason to carry 50K tokens of React component discussion into a database migration task.
+
+### Be Specific with File References
+
+Instead of referencing an entire directory:
+
+```bash
+# Expensive: reads everything
+"Look at @src/ and find the bug"
+
+# Efficient: targets what you need
+"Look at @src/auth/jwt.ts and @src/middleware/validate.ts — the JWT
+ validation fails when tokens have the 'aud' claim missing"
+```
+
+### Match Model to Task
+
+As covered in the previous lesson, using Opus for simple tasks wastes tokens through deeper (unnecessary) reasoning. Use Haiku for mechanical tasks, Sonnet for daily work, and Opus only when you need deep analysis.
+
+## Key Takeaway
+
+Tokens are the currency of every Claude interaction — approximately 4 characters each, consumed by everything from your prompts to conversation history to file references. Context windows (200K for Pro, 1M for Max) define how much Claude can "see" at once, and the rolling 5-hour usage window means smart token management directly translates to more productive sessions. Use `/compact`, start fresh sessions for new tasks, and be surgical with file references.

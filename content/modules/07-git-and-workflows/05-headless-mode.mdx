@@ -1,0 +1,322 @@
+---
+title: "Headless Mode: Claude in Your Scripts"
+slug: "headless-mode"
+order: 5
+difficulty: "intermediate"
+duration: 16
+tags: ["headless", "scripting", "automation", "ci-cd", "pipelines"]
+objectives:
+  - "Use claude -p for headless (non-interactive) execution"
+  - "Control output format with --output-format"
+  - "Limit agent loops with --max-turns"
+  - "Build automation scripts and CI/CD integrations"
+quiz:
+  - id: "headless-1"
+    question: "What does claude -p do?"
+    type: "multiple-choice"
+    options:
+      - "Opens Claude in presentation mode"
+      - "Runs Claude in headless mode — processes a prompt, outputs the result, and exits"
+      - "Pauses the current session"
+      - "Prints the current configuration"
+    correct: 1
+    explanation: "The -p flag runs Claude in headless (print) mode. It takes a prompt, processes it, outputs the result to stdout, and exits. No interactive session, no waiting for user input. This makes Claude usable in scripts, CI/CD pipelines, and unix workflows."
+  - id: "headless-2"
+    question: "What does --output-format json do?"
+    type: "multiple-choice"
+    options:
+      - "Formats all code as JSON"
+      - "Returns Claude's response as structured JSON with message, metadata, and tool usage"
+      - "Converts files to JSON"
+      - "Only works with JSON files"
+    correct: 1
+    explanation: "--output-format json returns Claude's response as structured JSON containing the response text, metadata (model, tokens used), and details of any tool usage. This is essential for programmatic processing of Claude's output in automation pipelines."
+  - id: "headless-3"
+    question: "What does --max-turns do?"
+    type: "multiple-choice"
+    options:
+      - "Limits the number of conversation turns before the session ends"
+      - "Limits how many tool-use cycles Claude can perform before stopping"
+      - "Sets a time limit"
+      - "Limits the response length"
+    correct: 1
+    explanation: "--max-turns limits the number of tool-use cycles Claude performs. Without it, Claude might loop indefinitely (reading files, running commands, reading more files...). Setting --max-turns 10 ensures Claude stops after 10 tool-use cycles, preventing runaway automation."
+  - id: "headless-4"
+    question: "How do you add a custom persona to headless Claude?"
+    type: "multiple-choice"
+    options:
+      - "Use --persona flag"
+      - "Use --append-system-prompt to inject additional system instructions"
+      - "Rename the binary"
+      - "Set a PERSONA environment variable"
+    correct: 1
+    explanation: "--append-system-prompt adds instructions to Claude's system prompt. You can use this to give Claude a persona, specialized knowledge, or specific output format requirements. For example: --append-system-prompt 'You are a security auditor. Focus only on security issues.'"
+---
+
+## Claude Without the Chat
+
+Everything you've done with Claude Code so far has been interactive — you type, Claude responds, you type again. **Headless mode** removes the interaction. Claude takes input, processes it, and produces output. One shot, no conversation.
+
+This transforms Claude Code from a chat tool into a **command-line utility** you can embed in scripts, CI/CD pipelines, cron jobs, and unix workflows.
+
+## The Basics: claude -p
+
+The `-p` flag (print mode) is the gateway to headless operation:
+
+```bash
+claude -p "What is the current time in UTC?"
+```
+
+Claude processes the prompt, outputs the answer to stdout, and exits. No interactive session opens.
+
+### From Stdin
+
+You can also pipe input:
+
+```bash
+cat src/services/auth.ts | claude -p "Find security vulnerabilities in this code"
+```
+
+Or combine piped input with a prompt:
+
+```bash
+echo "function add(a, b) { return a + b }" | claude -p "Add TypeScript types to this function"
+```
+
+### From Files
+
+Use `@file` references just like interactive mode:
+
+```bash
+claude -p "Review @src/services/payment.ts for race conditions"
+```
+
+## Output Formats
+
+### Plain Text (Default)
+
+```bash
+claude -p "Explain what src/lib/hmac.ts does"
+# Outputs: plain text explanation
+```
+
+### JSON
+
+```bash
+claude -p "Explain what src/lib/hmac.ts does" --output-format json
+```
+
+Returns structured JSON:
+
+```json
+{
+  "type": "result",
+  "subtype": "success",
+  "result": "The hmac.ts file implements HMAC signature verification...",
+  "session_id": "abc123",
+  "cost_usd": 0.003,
+  "is_error": false,
+  "total_turns": 1
+}
+```
+
+This is essential for programmatic processing — your script can parse the JSON, check for errors, and extract the result.
+
+### Stream JSON
+
+```bash
+claude -p "Analyze this codebase" --output-format stream-json
+```
+
+Outputs JSON events as they happen, line by line. Each line is a JSON object representing a different event (thinking, tool use, text output). This is useful for real-time monitoring of long-running operations.
+
+## Controlling Behavior
+
+### --max-turns
+
+Limits tool-use cycles to prevent runaway loops:
+
+```bash
+claude -p "Fix all lint errors in src/" --max-turns 20
+```
+
+Without `--max-turns`, Claude might loop indefinitely — fix a file, run lint, find more errors, fix those, run lint again. Setting a limit ensures it stops after a reasonable number of cycles.
+
+Good defaults:
+- Simple tasks (explain, review): `--max-turns 5`
+- Moderate tasks (fix bugs, write tests): `--max-turns 15`
+- Complex tasks (refactor, migrate): `--max-turns 30`
+
+### --append-system-prompt
+
+Adds instructions to Claude's system prompt:
+
+```bash
+claude -p "Review this code" \
+  --append-system-prompt "You are a security auditor. Focus ONLY on security issues. Ignore style, performance, and readability. Rate each finding as Critical, High, Medium, or Low."
+```
+
+This creates a specialized persona for the task. Claude follows both its default instructions and your appended instructions.
+
+### --allowedTools
+
+Restricts which tools Claude can use in headless mode:
+
+```bash
+claude -p "Analyze the codebase structure" \
+  --allowedTools "Read" "Bash(find *)" "Bash(wc *)"
+```
+
+In CI/CD, this is critical for safety. You can ensure headless Claude can only read files and run specific commands — never write files or execute arbitrary commands.
+
+## Scripting Patterns
+
+### Batch File Analysis
+
+```bash
+#!/bin/bash
+# Analyze all service files for complexity
+
+for file in src/services/*.ts; do
+  echo "=== Analyzing: $file ==="
+  claude -p "Analyze the complexity of @$file. Rate as Low/Medium/High \
+    and suggest simplifications if High." --max-turns 3
+  echo ""
+done
+```
+
+### Automated Test Generation
+
+```bash
+#!/bin/bash
+# Generate tests for all untested service files
+
+for file in src/services/*.ts; do
+  test_file="${file%.ts}.test.ts"
+  if [ ! -f "$test_file" ]; then
+    echo "Generating tests for $file..."
+    claude -p "Generate comprehensive tests for @$file. Follow the testing \
+      conventions in CLAUDE.md. Output only the test file content." \
+      --max-turns 10 > "$test_file"
+  fi
+done
+```
+
+### Code Quality Report
+
+```bash
+#!/bin/bash
+# Generate a daily code quality report
+
+report="reports/quality-$(date +%Y-%m-%d).md"
+
+{
+  echo "# Code Quality Report — $(date +%Y-%m-%d)"
+  echo ""
+  
+  echo "## Lint Issues"
+  pnpm lint 2>&1 | claude -p "Summarize these lint results in a table: \
+    file, issue count, most common issue type" --max-turns 1
+  
+  echo ""
+  echo "## Test Coverage"
+  pnpm test:cov 2>&1 | claude -p "Extract coverage percentages per module. \
+    Flag any module under 80%." --max-turns 1
+  
+  echo ""
+  echo "## Complexity Hotspots"
+  claude -p "Find the 5 most complex functions in src/services/ based on \
+    cyclomatic complexity. List them with file, function name, and why they're \
+    complex." --max-turns 10
+
+} > "$report"
+
+echo "Report generated: $report"
+```
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/claude-review.yml
+name: Claude Code Review
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+      
+      - name: Review PR
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "Review the changes in this PR for security issues, \
+            performance problems, and convention violations. Output a \
+            markdown report." \
+            --output-format text \
+            --max-turns 15 \
+            --allowedTools "Read" "Bash(git diff *)" > review.md
+      
+      - name: Post Review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: review
+            });
+```
+
+## Processing Patterns
+
+### JSON Output for Scripts
+
+```bash
+# Get structured analysis
+result=$(claude -p "Count the lines of code in src/" \
+  --output-format json \
+  --max-turns 5)
+
+# Parse with jq
+total_lines=$(echo "$result" | jq -r '.result' | grep -oP '\d+(?= total)')
+echo "Total lines: $total_lines"
+```
+
+### Error Handling
+
+```bash
+#!/bin/bash
+result=$(claude -p "Fix the type error in src/services/auth.ts" \
+  --output-format json \
+  --max-turns 10 2>&1)
+
+is_error=$(echo "$result" | jq -r '.is_error')
+
+if [ "$is_error" = "true" ]; then
+  echo "Claude failed to fix the issue"
+  echo "$result" | jq -r '.result'
+  exit 1
+fi
+
+echo "Fix applied successfully"
+```
+
+## Key Takeaway
+
+Headless mode (`claude -p`) transforms Claude Code from an interactive chat into a scriptable command-line tool. Use `--output-format json` for programmatic processing, `--max-turns` to prevent runaway loops, `--append-system-prompt` for specialized personas, and `--allowedTools` for CI/CD safety. This unlocks automation: batch file analysis, test generation, code quality reports, and CI/CD integration — all powered by Claude but running without human interaction.

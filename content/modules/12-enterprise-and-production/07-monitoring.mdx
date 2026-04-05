@@ -1,0 +1,288 @@
+---
+title: "Monitoring and Observability"
+slug: "monitoring-observability"
+order: 7
+difficulty: "expert"
+duration: 14
+tags: ["monitoring", "telemetry", "observability", "analytics"]
+objectives:
+  - "Enable OpenTelemetry for Claude Code"
+  - "Parse session logs for insights"
+  - "Track token usage, cost, and efficiency"
+  - "Build usage dashboards for teams"
+quiz:
+  - id: "monitor-1"
+    question: "How do you enable OpenTelemetry for Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Install a plugin"
+      - "Set CLAUDE_CODE_ENABLE_TELEMETRY=1 environment variable"
+      - "Add a telemetry section to CLAUDE.md"
+      - "It's always enabled"
+    correct: 1
+    explanation: "Set CLAUDE_CODE_ENABLE_TELEMETRY=1 to enable OpenTelemetry export. This sends structured telemetry data (spans, metrics) to an OpenTelemetry collector, which can feed into Grafana, Datadog, or any OTEL-compatible monitoring system."
+  - id: "monitor-2"
+    question: "Where are Claude Code session logs stored?"
+    type: "multiple-choice"
+    options:
+      - "In the cloud"
+      - "~/.claude/ as JSONL (JSON Lines) files"
+      - "In /var/log/"
+      - "They're not stored"
+    correct: 1
+    explanation: "Claude Code session logs are stored locally at ~/.claude/ as JSONL files — one JSON object per line. These contain conversation history, tool usage, token counts, and timing data. You can parse them for usage analytics and insights."
+  - id: "monitor-3"
+    question: "What does /cost show?"
+    type: "multiple-choice"
+    options:
+      - "Your subscription price"
+      - "Token usage and estimated cost for the current session"
+      - "Hardware costs"
+      - "Your total monthly bill"
+    correct: 1
+    explanation: "/cost shows the token usage (input tokens, output tokens) and estimated cost for the current session. This helps you understand how much a specific task costs and identify expensive patterns."
+  - id: "monitor-4"
+    question: "What's the value of team-wide usage tracking?"
+    type: "multiple-choice"
+    options:
+      - "Surveillance"
+      - "Identify costly patterns, optimize workflows, track adoption, and ensure ROI on subscriptions"
+      - "Billing disputes"
+      - "Performance reviews"
+    correct: 1
+    explanation: "Team-wide usage tracking helps identify costly patterns (who's running 200-message sessions?), optimize workflows (which tasks consume the most tokens?), track adoption (is the team actually using Claude Code?), and demonstrate ROI (how much equivalent API cost is the subscription saving?)."
+---
+
+## Seeing What's Happening
+
+As Claude Code usage scales beyond one developer, you need visibility. Which patterns are expensive? Are sessions efficient? Is the team using Claude Code effectively?
+
+This lesson covers the tools and techniques for monitoring Claude Code usage.
+
+## Session-Level Monitoring
+
+### /cost
+
+Check the current session's token usage:
+
+```bash
+/cost
+```
+
+Output:
+```
+Session Cost
+  Input tokens:   15,234
+  Output tokens:    3,421
+  Total tokens:    18,655
+  Estimated cost:  $0.042
+  Duration:        12m 34s
+  Messages:        23
+```
+
+### /insights
+
+Usage analytics across sessions:
+
+```bash
+/insights
+```
+
+Output:
+```
+Claude Code Insights (last 7 days)
+
+Sessions:          23
+Total tokens:      2.4M
+Average/session:   104K tokens
+Longest session:   340K tokens ("database migration")
+Most common model:  Sonnet (78%)
+Most used tools:    Read (342), Write (89), Bash (156)
+
+Token breakdown:
+  Conversation:    45%
+  File references:  22%
+  Tool outputs:     18%
+  MCP definitions:  10%
+  Thinking:          5%
+```
+
+## OpenTelemetry Integration
+
+For production monitoring, enable OpenTelemetry:
+
+```bash
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+```
+
+This exports structured telemetry data:
+
+### What's Exported
+
+- **Spans**: Each tool use, API call, and session event as a span
+- **Metrics**: Token counts, response times, error rates
+- **Attributes**: Model used, tool name, file paths
+
+### Connecting to Monitoring Systems
+
+**Grafana + Tempo**:
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+```
+
+**Datadog**:
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://datadog-agent:4317
+```
+
+**Jaeger**:
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+```
+
+Any OpenTelemetry-compatible backend works.
+
+## Session Log Analysis
+
+Claude Code stores session logs as JSONL files in `~/.claude/`. These contain rich data:
+
+### Log Structure
+
+Each line is a JSON object:
+
+```json
+{
+  "timestamp": "2026-04-04T10:30:00Z",
+  "type": "tool_use",
+  "tool": "Write",
+  "file": "src/services/order.ts",
+  "tokens_input": 1234,
+  "tokens_output": 567,
+  "duration_ms": 2345,
+  "model": "claude-sonnet-4-20250514",
+  "session_id": "sess_abc123"
+}
+```
+
+### Parsing with jq
+
+```bash
+# Total tokens per session today
+cat ~/.claude/sessions/*.jsonl | \
+  jq -s 'group_by(.session_id) | 
+    map({session: .[0].session_id, tokens: map(.tokens_input + .tokens_output) | add}) |
+    sort_by(.tokens) | reverse'
+
+# Most written files
+cat ~/.claude/sessions/*.jsonl | \
+  jq 'select(.type == "tool_use" and .tool == "Write") | .file' | \
+  sort | uniq -c | sort -rn | head -10
+
+# Average response time by model
+cat ~/.claude/sessions/*.jsonl | \
+  jq 'select(.type == "api_call")' | \
+  jq -s 'group_by(.model) | 
+    map({model: .[0].model, avg_ms: (map(.duration_ms) | add / length)})'
+```
+
+### Building a Simple Dashboard
+
+```bash
+#!/bin/bash
+# daily-usage-report.sh
+
+echo "=== Claude Code Usage Report — $(date +%Y-%m-%d) ==="
+
+# Session count
+sessions=$(cat ~/.claude/sessions/*.jsonl 2>/dev/null | \
+  jq -r '.session_id' | sort -u | wc -l)
+echo "Sessions today: $sessions"
+
+# Total tokens
+tokens=$(cat ~/.claude/sessions/*.jsonl 2>/dev/null | \
+  jq 'select(.tokens_input) | .tokens_input + .tokens_output' | \
+  paste -sd+ - | bc 2>/dev/null || echo 0)
+echo "Total tokens: $tokens"
+
+# Most active hours
+echo "Active hours:"
+cat ~/.claude/sessions/*.jsonl 2>/dev/null | \
+  jq -r '.timestamp' | \
+  cut -dT -f2 | cut -d: -f1 | \
+  sort | uniq -c | sort -rn | head -5
+
+echo "==="
+```
+
+## Team-Wide Tracking
+
+### Centralized Logging
+
+Use the OTEL integration to collect metrics from all team members:
+
+```
+Developer 1 → OTEL Collector → Grafana Dashboard
+Developer 2 → OTEL Collector ↗
+Developer 3 → OTEL Collector ↗
+```
+
+### Metrics to Track
+
+| Metric | What It Tells You |
+|---|---|
+| Sessions per developer per day | Adoption and engagement |
+| Tokens per session (average) | Session efficiency |
+| Token breakdown (conversation vs MCP vs files) | Where tokens are going |
+| Model distribution (Opus/Sonnet/Haiku) | Model usage patterns |
+| Most used tools | How Claude is being used |
+| Error rate | Reliability of configurations |
+| Cost per session | Financial efficiency |
+
+### Dashboard Panels
+
+A useful Claude Code team dashboard has:
+
+1. **Overview**: Total sessions, total tokens, total cost (today/week/month)
+2. **Efficiency**: Average tokens per session, sessions per task completion
+3. **Model usage**: Pie chart of Opus/Sonnet/Haiku usage
+4. **Tool usage**: Bar chart of Read/Write/Bash/MCP tool invocations
+5. **Top consumers**: Which developers use the most tokens (for coaching, not punishment)
+6. **Cost trends**: Token usage over time
+
+## Cost Monitoring
+
+### Per-Developer Tracking
+
+```bash
+# Hook that logs cost per session
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "echo \"$(date),session_start,$(whoami)\" >> /shared/claude-usage.csv"
+      }
+    ]
+  }
+}
+```
+
+### Budget Alerts
+
+If using API billing:
+
+```bash
+#!/bin/bash
+# Check if daily spending exceeds threshold
+daily_cost=$(cat ~/.claude/sessions/*.jsonl | \
+  jq '[select(.cost_usd) | .cost_usd] | add // 0')
+
+if (( $(echo "$daily_cost > 10.00" | bc -l) )); then
+  echo "WARNING: Daily Claude Code spend exceeds $10" | \
+    mail -s "Claude Code Budget Alert" team@company.com
+fi
+```
+
+## Key Takeaway
+
+Monitoring Claude Code requires multiple layers: session-level with `/cost` and `/insights`, infrastructure-level with OpenTelemetry integration, and analysis-level with JSONL log parsing. For teams, centralize metrics via OTEL and build dashboards tracking adoption, efficiency, model usage, and cost. The goal isn't surveillance — it's identifying expensive patterns, optimizing workflows, and demonstrating the ROI of your Claude Code investment.

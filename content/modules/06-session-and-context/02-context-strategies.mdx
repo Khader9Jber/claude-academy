@@ -1,0 +1,261 @@
+---
+title: "Context Management Strategies"
+slug: "context-management-strategies"
+order: 2
+difficulty: "intermediate"
+duration: 15
+tags: ["context-management", "compact", "optimization", "sessions"]
+objectives:
+  - "Master the /compact command with hints"
+  - "Apply the 80% compaction rule"
+  - "Write findings to CLAUDE.md before compacting"
+  - "Use session hygiene to maximize context efficiency"
+quiz:
+  - id: "context-strat-1"
+    question: "When should you manually compact a session?"
+    type: "multiple-choice"
+    options:
+      - "At the end of every session"
+      - "When you hit 80% context usage — before the 95% auto-compact"
+      - "Never — auto-compact handles it"
+      - "After every 5 messages"
+    correct: 1
+    explanation: "Compact manually around 80% usage. The auto-compact at 95% preserves less nuance because there's more to summarize. Compacting at 80% gives you a better summary with less information loss, plus more room for your next chunk of work."
+  - id: "context-strat-2"
+    question: "What does /compact [hint] do?"
+    type: "multiple-choice"
+    options:
+      - "Compresses files to save disk space"
+      - "Summarizes the conversation with emphasis on the hint topic"
+      - "Deletes old messages"
+      - "Switches to a smaller model"
+    correct: 1
+    explanation: "/compact with a hint tells Claude what to prioritize in the summary. For example, '/compact preserve the auth token refresh bug details and the fix we discussed' ensures those specific details survive compaction even as other conversation context is summarized."
+  - id: "context-strat-3"
+    question: "Why should you write key findings to CLAUDE.md BEFORE compacting?"
+    type: "multiple-choice"
+    options:
+      - "CLAUDE.md is faster to read"
+      - "Because compaction summarizes and may lose specific details — CLAUDE.md survives compaction intact"
+      - "CLAUDE.md is required for compaction"
+      - "It makes the summary shorter"
+    correct: 1
+    explanation: "Compaction summarizes your conversation, and summaries inevitably lose details. If you discovered something important (a bug pattern, an architecture decision, a convention), write it to CLAUDE.md before compacting. CLAUDE.md is preserved through compaction, so those details are guaranteed to survive."
+  - id: "context-strat-4"
+    question: "What's the 'one task, one session' rule?"
+    type: "multiple-choice"
+    options:
+      - "You can only do one thing per day"
+      - "Start a new session for each distinct task to keep context focused and efficient"
+      - "Each session must take exactly one hour"
+      - "Only one person can use Claude at a time"
+    correct: 1
+    explanation: "Starting a new session for each task keeps context clean and focused. A debugging session shouldn't carry the context from a previous feature implementation — that wastes tokens re-processing irrelevant history and dilutes Claude's focus on the current task."
+---
+
+## The Context Management Mindset
+
+Most Claude Code users treat context like an infinite resource — they start a session, work for hours, and wonder why Claude seems to "forget" things or get confused. The reality is that context management is a skill, and the best Claude Code users are deliberate about what's in their context and when.
+
+Think of context like RAM. You have a lot of it (1M tokens), but if you fill it with junk data, your performance degrades. The strategies in this lesson will keep your sessions clean, focused, and efficient.
+
+## Strategy 1: The 80% Compaction Rule
+
+Claude Code auto-compacts at 95% context usage. Don't wait for it.
+
+When you see context usage approaching **80%** (check with `/context`), compact manually:
+
+```bash
+/compact
+```
+
+Why 80% instead of 95%?
+
+- **Better summaries**: Claude has more room to create a thorough summary
+- **Less information loss**: Fewer messages to compress means more detail preserved
+- **Working headroom**: You get 20% clean context for the next chunk of work
+
+### Compacting with Hints
+
+The basic `/compact` works, but `/compact [hint]` is more powerful. The hint tells Claude what to prioritize in the summary:
+
+```bash
+/compact preserve the race condition details in the payment queue handler
+
+/compact keep the architecture decisions about splitting auth into separate service
+
+/compact remember the 3 failing test cases and their error patterns
+```
+
+Without a hint, Claude creates a general summary. With a hint, it ensures your specified details survive the compaction in full fidelity.
+
+### What Survives Compaction
+
+| Content | Survives? |
+|---|---|
+| CLAUDE.md | Yes — always preserved |
+| Auto-memory | Yes — stored externally |
+| Recent messages | Yes — last few messages kept |
+| Older messages | Summarized — details may be lost |
+| File contents | Re-readable but not cached |
+| Tool definitions (MCP) | Yes — always present |
+
+## Strategy 2: Write Before You Compact
+
+This is the most important context management habit:
+
+**Before compacting, write important findings to CLAUDE.md.**
+
+Compaction summarizes your conversation. Summaries lose details. If you discovered something critical — a bug pattern, an architecture decision, a performance finding — don't trust it to survive compaction. Save it:
+
+```bash
+# During a debugging session, you found the root cause
+"Write the finding about the JWT token refresh race condition to our CLAUDE.md
+under a '## Known Issues' section. Include the root cause and the fix pattern
+we discussed."
+
+# Now compact safely
+/compact
+```
+
+After compaction, Claude reads CLAUDE.md fresh and sees your finding. Nothing is lost.
+
+This pattern is especially important for:
+- Architecture decisions ("we chose X over Y because...")
+- Bug root causes ("the issue was caused by...")
+- Performance findings ("the bottleneck is at...")
+- Convention changes ("from now on, we use X instead of Y")
+
+## Strategy 3: One Task, One Session
+
+The single most impactful context management strategy: **start a new session for each distinct task**.
+
+```bash
+# Session 1: Debug the auth failure
+claude
+"Debug the 401 error on the /api/orders endpoint"
+# ... 30 messages of debugging ...
+# Task complete. Exit.
+
+# Session 2: Implement the notification feature
+claude
+"Implement email notifications for order status changes"
+# Fresh context, no debugging history to carry
+```
+
+Why this matters:
+
+1. **No wasted tokens**: Session 2 doesn't re-process 30 messages of debugging context
+2. **Focused context**: Claude's full attention is on notifications, not polluted with auth debugging
+3. **Better results**: Claude produces higher quality output when context is relevant to the current task
+
+The temptation is to keep a session going and switch tasks ("Now let's work on notifications"). Resist it. The 30 seconds to start a new session saves thousands of tokens and produces better output.
+
+## Strategy 4: Disconnect Unused MCP Servers
+
+Every connected MCP server adds tool definitions to your context. If you have GitHub, Postgres, Slack, and Notion MCP servers connected but you're only doing code review, the Postgres, Slack, and Notion definitions are wasting tokens every message.
+
+```bash
+# Check what's connected
+/mcp
+
+# In a code review session, you only need:
+# - GitHub (for PR data)
+# - File tools (built-in)
+
+# Disconnect the rest to save context
+```
+
+You can reconnect them when needed. The token savings compound over long sessions.
+
+## Strategy 5: Enable LSP
+
+The **Language Server Protocol** tool is the single biggest token saver for code navigation. Enable it:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1"
+  }
+}
+```
+
+Without LSP, when Claude needs to find a function definition, it uses `grep` or reads entire files. A grep across a large codebase might return hundreds of lines, all entering context.
+
+With LSP, Claude uses "go to definition" — a precise operation that returns exactly the function it's looking for. The token difference is dramatic:
+
+```
+Without LSP: grep for "createOrder" → 45 matches, ~3,000 tokens
+With LSP:    go to definition → exact location, ~50 tokens
+```
+
+Over a session, this saves thousands of tokens and makes Claude faster at navigating your codebase.
+
+## Strategy 6: Be Specific with File References
+
+Instead of referencing entire files, tell Claude exactly what you need:
+
+```bash
+# Expensive: Claude reads the entire 500-line file
+"Look at @src/services/order-service.ts for bugs"
+
+# Efficient: Claude reads just the relevant function
+"Look at the createOrder function in @src/services/order-service.ts"
+```
+
+When Claude reads a function instead of a whole file, fewer tokens enter context. This matters especially in long sessions where those tokens are re-processed every message.
+
+## Strategy 7: Use Projects for Persistent Context
+
+If you find yourself copying the same reference documents into conversations, use Claude's **Projects** feature to store them as persistent context:
+
+- API documentation
+- Style guides
+- Architecture diagrams (in text form)
+- Frequently referenced specifications
+
+Project context is loaded at session start, similar to CLAUDE.md, but it's managed through the Claude interface rather than as a file.
+
+## The Complete Session Workflow
+
+Putting all strategies together, here's the ideal session workflow:
+
+```bash
+# 1. Start a fresh session with clear intent
+claude
+"I need to implement the order cancellation feature. The spec is in 
+docs/features/order-cancellation.md"
+
+# 2. Work through the task (15-30 messages typically)
+# ... implementation, testing, debugging ...
+
+# 3. Check context usage periodically
+/context
+
+# 4. At ~80%, write key findings to CLAUDE.md
+"Write the decision to use a state machine for order status transitions 
+to CLAUDE.md"
+
+# 5. Compact with a hint
+/compact preserve the order cancellation state machine design
+
+# 6. Continue working with refreshed context
+# ... finishing touches ...
+
+# 7. End the session. Start fresh for the next task.
+```
+
+## Anti-Patterns to Avoid
+
+| Anti-Pattern | Why It's Bad | Better Approach |
+|---|---|---|
+| 100+ message sessions | Exponential token growth | New session every 30-50 messages |
+| Referencing files in message 1 | File tokens re-processed every message | Reference files when you need them |
+| Leaving all MCP servers connected | Tool definitions in every message | Connect only what you need |
+| Waiting for 95% auto-compact | Poor summary quality | Manual compact at 80% |
+| Switching tasks mid-session | Carries irrelevant context | One task = one session |
+| Verbose tool outputs | Wastes context on noise | Ask for summaries, not raw output |
+
+## Key Takeaway
+
+Context management is a skill that directly impacts your results and efficiency. The core strategies are: compact at 80% (not 95%), use hints to preserve important details, write findings to CLAUDE.md before compacting, start a new session for each task, disconnect unused MCP servers, and enable LSP for efficient code navigation. The developers who master context management get better output, faster responses, and lower token usage than those who treat context as infinite.

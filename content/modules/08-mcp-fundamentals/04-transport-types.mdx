@@ -1,0 +1,293 @@
+---
+title: "MCP Transport Types: stdio vs HTTP vs SSE"
+slug: "mcp-transport-types"
+order: 4
+difficulty: "intermediate"
+duration: 14
+tags: ["mcp", "transport", "stdio", "http", "configuration"]
+objectives:
+  - "Understand the three MCP transport types"
+  - "Know when to use each transport"
+  - "Configure user-level vs project-level MCP servers"
+  - "Pass environment variables securely to MCP servers"
+quiz:
+  - id: "transport-1"
+    question: "What is the recommended transport type for most MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "HTTP"
+      - "SSE"
+      - "stdio (local process communication)"
+      - "WebSocket"
+    correct: 2
+    explanation: "stdio is the recommended transport for most use cases. The MCP server runs as a local process, communicating with Claude Code through standard input/output. It's the fastest, most secure (no network exposure), and most common transport type."
+  - id: "transport-2"
+    question: "When should you use HTTP transport instead of stdio?"
+    type: "multiple-choice"
+    options:
+      - "Always — it's better than stdio"
+      - "When the MCP server runs on a remote machine or cloud service"
+      - "When you need faster performance"
+      - "When using GitHub"
+    correct: 1
+    explanation: "HTTP transport is for remote MCP servers — servers running on a different machine, cloud service, or shared infrastructure. For example, a company-hosted MCP server that multiple developers connect to, or a cloud-based service that exposes MCP endpoints."
+  - id: "transport-3"
+    question: "What's the difference between user-level (~/.claude.json) and project-level (.mcp.json) MCP configs?"
+    type: "multiple-choice"
+    options:
+      - "There's no difference"
+      - "User-level applies to all projects; project-level is committed to git and shared with the team"
+      - "Project-level is more secure"
+      - "User-level only works on macOS"
+    correct: 1
+    explanation: "User-level config (~/.claude.json) makes MCP servers available in all projects — good for personal tools like GitHub. Project-level config (.mcp.json) is committed to git and shared with the team — good for project-specific integrations like the project database."
+  - id: "transport-4"
+    question: "How do you securely pass API keys to MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "Hardcode them in the config file"
+      - "Use the -e flag for environment variables, and reference shell env vars with $VAR"
+      - "Put them in CLAUDE.md"
+      - "Email them to the server"
+    correct: 1
+    explanation: "Use the -e flag to pass environment variables: claude mcp add server -e API_KEY=$MY_API_KEY. This passes the value at the time of adding, without hardcoding it in config files. For project configs committed to git, reference variables that each developer sets in their own shell."
+---
+
+## Transport Types
+
+MCP servers communicate with Claude Code through a **transport** — the mechanism for sending requests and receiving responses. There are three transport types, each suited to different scenarios.
+
+## stdio — Local Process
+
+**stdio** (standard input/output) is the most common and recommended transport. The MCP server runs as a local process on your machine, and Claude Code communicates with it through stdin/stdout.
+
+```bash
+claude mcp add github \
+  -e GITHUB_TOKEN=ghp_xxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-github
+```
+
+### How It Works
+
+1. Claude Code spawns the MCP server as a child process
+2. Claude sends requests to the server's stdin (as JSON)
+3. The server processes the request and writes responses to stdout (as JSON)
+4. Claude reads the response
+
+```
+Claude Code ─── stdin ──→ MCP Server Process
+             ←── stdout ──
+```
+
+### Advantages
+
+- **Fast**: No network overhead — direct process communication
+- **Secure**: No network exposure — the server only talks to Claude Code
+- **Simple**: No ports, no URLs, no certificates
+- **Reliable**: No network failures possible
+
+### When to Use
+
+stdio is the right choice for:
+- Most MCP servers (GitHub, databases, Slack, etc.)
+- Any server that runs locally on your machine
+- Development and personal use
+
+## HTTP — Remote Server
+
+**HTTP** transport connects to an MCP server running on a remote machine via HTTP(S).
+
+```bash
+claude mcp add company-tools \
+  --transport http \
+  --url https://mcp.company.com/tools \
+  --header "Authorization: Bearer ${COMPANY_TOKEN}"
+```
+
+### How It Works
+
+1. The MCP server runs on a remote host and exposes an HTTP endpoint
+2. Claude Code sends HTTP POST requests with the MCP payload
+3. The server processes and returns HTTP responses
+
+```
+Claude Code ─── HTTPS ──→ Remote MCP Server
+             ←── HTTPS ──   (company.com)
+```
+
+### Advantages
+
+- **Remote access**: Server can be anywhere — different machine, cloud, corporate network
+- **Shared**: Multiple developers can use the same server instance
+- **Managed**: IT/DevOps team can maintain the server centrally
+
+### When to Use
+
+HTTP is the right choice for:
+- Company-hosted MCP servers (internal tools, proprietary data)
+- Cloud-based MCP services
+- Shared infrastructure across a team
+- Servers that need to be on a different machine
+
+### Authentication
+
+HTTP servers typically require authentication via headers:
+
+```bash
+claude mcp add internal-api \
+  --transport http \
+  --url https://mcp.internal.company.com/v1 \
+  --header "Authorization: Bearer $INTERNAL_TOKEN" \
+  --header "X-Team-ID: backend"
+```
+
+## SSE — Server-Sent Events (Legacy)
+
+**SSE** (Server-Sent Events) is a streaming transport that was used in earlier versions of MCP. It's being phased out in favor of HTTP with streaming support.
+
+```bash
+claude mcp add legacy-server \
+  --transport sse \
+  --url https://old-server.company.com/events
+```
+
+### When to Use
+
+Only use SSE if you're connecting to an older MCP server that hasn't been updated to support HTTP transport. For new setups, always prefer stdio or HTTP.
+
+## Choosing the Right Transport
+
+| Scenario | Transport | Why |
+|---|---|---|
+| GitHub, databases, Slack | stdio | Local, fast, secure |
+| Company internal tools | HTTP | Remote, shared |
+| Cloud-hosted services | HTTP | Not running locally |
+| Personal tools and scripts | stdio | Simple setup |
+| Legacy servers | SSE | Backward compatibility |
+| Most situations | stdio | Default choice |
+
+**Rule of thumb**: Use stdio unless the server must run remotely. Then use HTTP.
+
+## Configuration Scopes
+
+MCP server configs can be stored at two levels, controlling who has access:
+
+### User-Level: ~/.claude.json
+
+Servers available in **all** your projects:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_xxxx"
+      }
+    }
+  }
+}
+```
+
+Good for:
+- Personal tools (GitHub with your token)
+- Cross-project utilities
+- Personal productivity servers
+
+### Project-Level: .mcp.json
+
+Servers specific to **this project**, committed to git:
+
+```json
+{
+  "mcpServers": {
+    "project-db": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://reader:pass@localhost:5432/project_dev"
+      }
+    },
+    "project-sentry": {
+      "transport": "http",
+      "url": "https://mcp.company.com/sentry",
+      "headers": {
+        "Authorization": "Bearer ${SENTRY_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Good for:
+- Project-specific databases
+- Team-shared integrations
+- Standardizing tools across the team
+
+### Scope Flag
+
+When using `claude mcp add`, control where it's stored:
+
+```bash
+# User-level (default) — available everywhere
+claude mcp add github -e GITHUB_TOKEN=ghp_xxx --transport stdio npx -y @modelcontextprotocol/server-github
+
+# Project-level — committed to git
+claude mcp add project-db --scope project -e DATABASE_URL=$DB_URL --transport stdio npx -y @modelcontextprotocol/server-postgres
+```
+
+## Environment Variables: Secure Patterns
+
+Never hardcode secrets in config files that are committed to git. Use these patterns instead:
+
+### For User-Level Config
+
+Hardcoding is acceptable in `~/.claude.json` since it's not committed to git:
+
+```json
+{
+  "env": {
+    "GITHUB_TOKEN": "ghp_actual_token_here"
+  }
+}
+```
+
+### For Project-Level Config
+
+Reference environment variables that each developer sets in their shell:
+
+```json
+{
+  "env": {
+    "DATABASE_URL": "${DATABASE_URL}",
+    "API_KEY": "${PROJECT_API_KEY}"
+  }
+}
+```
+
+Each developer sets `DATABASE_URL` and `PROJECT_API_KEY` in their shell profile. The `.mcp.json` references the variables without containing the actual values.
+
+### Document Required Variables
+
+In your CLAUDE.md or project README, document what variables team members need:
+
+```markdown
+## MCP Setup
+Set these environment variables before using MCP servers:
+- DATABASE_URL — PostgreSQL connection string for local dev DB
+- SENTRY_TOKEN — Sentry API token (get from 1Password vault)
+```
+
+## On-Demand Loading
+
+An important optimization: MCP servers only load their tool definitions when connected. If you configure a server but don't connect it in a session, it doesn't consume tokens.
+
+This means you can configure many servers and only activate the ones you need per session. The token savings are significant — tool definitions for inactive servers don't exist in your context.
+
+## Key Takeaway
+
+MCP supports three transports: stdio (local, recommended for most cases), HTTP (remote servers), and SSE (legacy). Use stdio by default and HTTP only when the server must run remotely. Store personal servers in `~/.claude.json` (user-level) and team-shared servers in `.mcp.json` (project-level). Never hardcode secrets in project configs — reference environment variables instead. Only connect the servers you need per session to manage token costs.

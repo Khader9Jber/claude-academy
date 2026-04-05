@@ -1,0 +1,282 @@
+---
+title: "MCP with Databases"
+slug: "mcp-databases"
+order: 3
+difficulty: "intermediate"
+duration: 15
+tags: ["mcp", "databases", "postgresql", "sql", "queries"]
+objectives:
+  - "Set up the PostgreSQL MCP server"
+  - "Query databases directly from Claude Code"
+  - "Use Claude for schema analysis and query optimization"
+  - "Understand safety considerations for database MCP"
+quiz:
+  - id: "mcp-db-1"
+    question: "How do you set up the PostgreSQL MCP server?"
+    type: "multiple-choice"
+    options:
+      - "Install a PostgreSQL plugin"
+      - "claude mcp add postgres -e DATABASE_URL=postgresql://... --transport stdio npx -y @modelcontextprotocol/server-postgres"
+      - "Connect via psql"
+      - "Add a postgres section to package.json"
+    correct: 1
+    explanation: "Set up the PostgreSQL MCP server with: claude mcp add postgres -e DATABASE_URL=postgresql://... --transport stdio npx -y @modelcontextprotocol/server-postgres. This passes your connection string and starts the server. Claude can then query your database directly."
+  - id: "mcp-db-2"
+    question: "Why should you use a read-only database user for the MCP connection?"
+    type: "multiple-choice"
+    options:
+      - "It's faster"
+      - "It prevents Claude from accidentally modifying or deleting data"
+      - "Read-only users are cheaper"
+      - "Claude can't handle write queries"
+    correct: 1
+    explanation: "Using a read-only database user prevents Claude from executing INSERT, UPDATE, DELETE, or DROP statements — even if asked or tricked by prompt injection. This is a critical safety measure, especially when connected to production or staging databases."
+  - id: "mcp-db-3"
+    question: "What can Claude do with database MCP that it can't do with just reading code?"
+    type: "multiple-choice"
+    options:
+      - "Nothing different"
+      - "Query actual data, inspect live schema, suggest indexes based on real query patterns, and validate data integrity"
+      - "Only view table names"
+      - "Only create tables"
+    correct: 1
+    explanation: "Database MCP lets Claude interact with real data — querying tables, inspecting the live schema (not just what's in code), suggesting indexes based on actual query performance, and checking data integrity. This gives Claude much richer context than just reading migration files or ORM schemas."
+  - id: "mcp-db-4"
+    question: "Should you connect to your production database via MCP?"
+    type: "multiple-choice"
+    options:
+      - "Yes, for the best context"
+      - "Only through a read-only replica with a read-only user — never directly to the primary"
+      - "Never, under any circumstances"
+      - "Only on weekends"
+    correct: 1
+    explanation: "If you need production data context, connect to a read-only replica using a read-only database user. Never connect directly to the primary production database — an accidental heavy query could impact performance, and any write access is a disaster waiting to happen."
+---
+
+## Claude Meets Your Database
+
+Reading code gives Claude one perspective on your data. Reading the actual database gives it another — the complete picture.
+
+With a database MCP server, Claude can:
+- See the real schema (columns, types, constraints, indexes)
+- Query actual data to understand patterns
+- Suggest optimizations based on real cardinality
+- Validate data integrity
+- Help debug data-related issues
+
+This is transformative for database work. Instead of describing your schema to Claude, it reads it directly.
+
+## Setting Up PostgreSQL MCP
+
+### Installation
+
+```bash
+claude mcp add postgres \
+  -e DATABASE_URL=postgresql://user:password@localhost:5432/mydb \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-postgres
+```
+
+### Using a Connection String from Environment
+
+If your DATABASE_URL is already in your shell environment:
+
+```bash
+claude mcp add postgres \
+  -e DATABASE_URL=$DATABASE_URL \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-postgres
+```
+
+### Verify Connection
+
+```bash
+/mcp
+# Should show: postgres  stdio  connected  [tools: query, schema, ...]
+```
+
+## What You Can Do
+
+### Explore Schema
+
+```bash
+"Show me the complete database schema — all tables, columns, types, 
+and relationships"
+```
+
+Claude runs schema inspection queries and returns a comprehensive view of your database structure.
+
+```bash
+"What indexes exist on the orders table? Are there any missing indexes 
+based on the query patterns in our codebase?"
+```
+
+### Query Data
+
+```bash
+"How many orders were placed in the last 7 days? Break down by status."
+```
+
+Claude writes and executes the SQL:
+```sql
+SELECT status, COUNT(*) as count
+FROM orders
+WHERE created_at > NOW() - INTERVAL '7 days'
+GROUP BY status
+ORDER BY count DESC;
+```
+
+### Debug Data Issues
+
+```bash
+"We're seeing duplicate entries in the order_items table. Find all 
+orders that have duplicate items and show me the pattern."
+```
+
+Claude queries the database, finds the duplicates, and identifies the pattern causing them — maybe a race condition or a missing unique constraint.
+
+### Suggest Optimizations
+
+```bash
+"Analyze the orders table. Given its size and the queries we run 
+(check src/repos/order-repo.ts for the query patterns), suggest 
+index improvements."
+```
+
+Claude reads your repository code to understand query patterns, then checks the database for existing indexes, and suggests new ones based on the actual data distribution.
+
+## Safety Considerations
+
+Database access is powerful — and dangerous. Here's how to use it safely.
+
+### Use a Read-Only User
+
+**This is non-negotiable.** Create a read-only database user for MCP:
+
+```sql
+-- Create a read-only user
+CREATE ROLE claude_reader WITH LOGIN PASSWORD 'secure_password';
+
+-- Grant read-only access
+GRANT CONNECT ON DATABASE mydb TO claude_reader;
+GRANT USAGE ON SCHEMA public TO claude_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO claude_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public 
+  GRANT SELECT ON TABLES TO claude_reader;
+```
+
+Use this user in your connection string:
+
+```bash
+claude mcp add postgres \
+  -e DATABASE_URL=postgresql://claude_reader:secure_password@localhost:5432/mydb \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-postgres
+```
+
+Now Claude can SELECT but never INSERT, UPDATE, DELETE, or DROP.
+
+### Environment-Specific Rules
+
+| Environment | Should You Connect? | How? |
+|---|---|---|
+| **Local dev** | Yes | Full access or read-only |
+| **Staging** | Carefully | Read-only user only |
+| **Production** | Read-only replica only | Read-only user on read-only replica |
+| **CI/CD** | No | Use test database only |
+
+### Permission Scoping
+
+Restrict MCP database tools in settings.json:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__postgres__query"
+    ],
+    "deny": [
+      "mcp__postgres__execute"
+    ]
+  }
+}
+```
+
+Allow query (read) but deny execute (write) for an additional layer of protection.
+
+### What Not to Do
+
+- **Never** connect to production primary with a read-write user
+- **Never** put database credentials in CLAUDE.md (use env vars)
+- **Never** let Claude run EXPLAIN ANALYZE on production without understanding the query first
+- **Never** connect to databases containing PII without appropriate data handling policies
+
+## Real-World Database Workflows
+
+### Data Model Review
+
+```bash
+"Review our database schema. Check for:
+1. Missing foreign key constraints
+2. Columns that should have NOT NULL but don't
+3. Tables missing created_at/updated_at timestamps
+4. Potential N+1 query risks based on the relationships"
+```
+
+### Migration Preparation
+
+```bash
+"I want to add a 'canceled_at' column to the orders table. 
+Check the current table structure, estimate the number of rows 
+that would be affected, and write a safe Prisma migration that 
+won't lock the table for too long."
+```
+
+### Data Integrity Audit
+
+```bash
+"Audit the data integrity:
+1. Are there orphaned records (order_items without orders)?
+2. Are all foreign keys consistent?
+3. Are there any NULL values in required fields?
+4. How's the index health?"
+```
+
+### Performance Debugging
+
+```bash
+"The /api/orders endpoint is slow. Read the query in 
+src/repos/order-repo.ts, then check the database for:
+1. Missing indexes on the columns we filter/sort by
+2. Table sizes and row counts
+3. The actual query plan (EXPLAIN on the query)
+Give me specific index recommendations."
+```
+
+## Other Database Servers
+
+PostgreSQL is the most common, but MCP servers exist for other databases:
+
+### MySQL
+
+```bash
+claude mcp add mysql \
+  -e MYSQL_URL=mysql://user:pass@localhost:3306/mydb \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-mysql
+```
+
+### SQLite
+
+```bash
+claude mcp add sqlite \
+  -e DB_PATH=./data/app.db \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-sqlite
+```
+
+The workflow is the same regardless of the database engine — Claude queries through the MCP server and gets structured results.
+
+## Key Takeaway
+
+Database MCP servers give Claude direct access to your data — schema inspection, data queries, index analysis, and integrity checks. Always use a read-only database user (non-negotiable for anything beyond local dev). Connect to staging/production only through read-only replicas. The combination of code context (from file access) plus data context (from database MCP) gives Claude a complete picture of your application that neither provides alone.

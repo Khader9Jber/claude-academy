@@ -1,0 +1,319 @@
+---
+title: "MCP Authentication and Security"
+slug: "mcp-auth-security"
+order: 2
+difficulty: "expert"
+duration: 15
+tags: ["mcp", "security", "authentication", "oauth", "enterprise"]
+objectives:
+  - "Implement API key and OAuth authentication for MCP"
+  - "Apply least-privilege permission scoping"
+  - "Manage secrets securely"
+  - "Enforce HTTPS and secure transport"
+quiz:
+  - id: "mcp-auth-1"
+    question: "What's the most common way to pass API keys to MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "Hardcode them in the server code"
+      - "Environment variables via the -e flag: claude mcp add server -e API_KEY=$KEY"
+      - "Paste them into CLAUDE.md"
+      - "Store them in package.json"
+    correct: 1
+    explanation: "Environment variables via the -e flag are the standard way to pass credentials to MCP servers. The value is passed to the server process as an environment variable, never stored in plaintext in committed files."
+  - id: "mcp-auth-2"
+    question: "What does 'least privilege' mean for MCP tool permissions?"
+    type: "multiple-choice"
+    options:
+      - "Give all tools all access"
+      - "Each tool should only have the minimum access needed for its specific function"
+      - "Use the least expensive plan"
+      - "Give read access to everything"
+    correct: 1
+    explanation: "Least privilege means each MCP tool should only be able to perform the specific actions it needs. A 'list_users' tool shouldn't have write access. A 'read_logs' tool shouldn't have database modification access. Scope each tool's API credentials to the minimum required permissions."
+  - id: "mcp-auth-3"
+    question: "Why should you never hardcode secrets in .mcp.json for project configs?"
+    type: "multiple-choice"
+    options:
+      - "It's slower"
+      - ".mcp.json is committed to git, exposing secrets to anyone with repo access"
+      - "It doesn't work"
+      - "Hardcoded secrets are too long"
+    correct: 1
+    explanation: ".mcp.json is designed to be committed to git. Hardcoding API keys, tokens, or passwords in it exposes those secrets to everyone with access to the repository — and they become part of the permanent git history, even if removed later."
+  - id: "mcp-auth-4"
+    question: "Should MCP servers use HTTPS for remote connections?"
+    type: "multiple-choice"
+    options:
+      - "HTTP is fine"
+      - "Always — HTTPS encrypts data in transit, preventing interception of credentials and data"
+      - "Only in production"
+      - "Only if required by the firewall"
+    correct: 1
+    explanation: "Always use HTTPS for remote MCP connections. HTTP sends credentials and data in plaintext, making them interceptable on the network. HTTPS encrypts everything in transit, protecting both the authentication tokens and the data being exchanged."
+---
+
+## Security Is Not Optional
+
+MCP servers connect Claude to your infrastructure — databases, APIs, deployment systems. A misconfigured MCP server is a security hole: leaked credentials, unauthorized access, data exposure.
+
+This lesson covers how to do MCP security properly.
+
+## Authentication Methods
+
+### API Key Authentication
+
+The simplest and most common method. Pass a key via environment variable:
+
+```bash
+claude mcp add service-name \
+  -e API_KEY=your_secret_key_here \
+  --transport stdio \
+  node path/to/server.js
+```
+
+In your MCP server, read the key:
+
+```typescript
+const apiKey = process.env.API_KEY;
+if (!apiKey) {
+  throw new Error("API_KEY environment variable is required");
+}
+
+// Use in requests to your internal API
+const response = await fetch("https://api.internal.company.com/data", {
+  headers: { "Authorization": `Bearer ${apiKey}` }
+});
+```
+
+### OAuth Token Authentication
+
+For services that use OAuth:
+
+```bash
+claude mcp add github \
+  -e GITHUB_TOKEN=ghp_xxxxxxxxxxxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-github
+```
+
+OAuth tokens should be scoped to the minimum permissions. For GitHub:
+- Read access to repos and PRs? Use a token with `repo:read` scope
+- Need to create PRs? Add `repo:write`
+- Never add `admin` scope unless absolutely necessary
+
+### Header-Based Authentication
+
+For HTTP transport MCP servers:
+
+```bash
+claude mcp add internal-api \
+  --transport http \
+  --url https://mcp.internal.company.com/v1 \
+  --header "Authorization: Bearer $INTERNAL_TOKEN" \
+  --header "X-Team-ID: backend" \
+  --header "X-Request-Source: claude-code"
+```
+
+Multiple headers can carry different authentication/authorization signals.
+
+## Least-Privilege Scoping
+
+### Scope API Keys
+
+Create dedicated API keys for MCP with minimal permissions:
+
+```
+Bad:  Master admin API key with full access
+Good: Read-only API key scoped to specific endpoints
+```
+
+For databases:
+```sql
+-- Create a dedicated read-only user
+CREATE ROLE claude_mcp_reader WITH LOGIN PASSWORD 'secure_pass';
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO claude_mcp_reader;
+-- Never GRANT INSERT, UPDATE, DELETE, DROP
+```
+
+For GitHub:
+```
+Bad:  Personal access token with admin:org scope
+Good: Fine-grained token with read-only repo access
+```
+
+### Scope MCP Tool Permissions
+
+In settings.json, allow only the tools you need:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__internal__read_status",
+      "mcp__internal__list_services"
+    ],
+    "deny": [
+      "mcp__internal__delete_service",
+      "mcp__internal__modify_config",
+      "mcp__internal__execute_command"
+    ]
+  }
+}
+```
+
+Even if the MCP server exposes a dangerous tool, your permissions deny it.
+
+### Defense in Depth
+
+Apply security at multiple layers:
+
+```
+Layer 1: API key scoped to read-only operations
+  ↓
+Layer 2: MCP server only exposes read tools
+  ↓
+Layer 3: Claude Code permissions deny write tools
+  ↓
+Layer 4: PreToolUse hook blocks dangerous patterns
+```
+
+If any single layer fails, the others still protect you.
+
+## Secret Management
+
+### Never Hardcode
+
+```json
+// BAD — committed to git
+{
+  "mcpServers": {
+    "db": {
+      "env": {
+        "DATABASE_URL": "postgresql://admin:P@ssw0rd@prod.db.company.com/main"
+      }
+    }
+  }
+}
+```
+
+### Use Environment Variables
+
+```json
+// GOOD — references shell variables
+{
+  "mcpServers": {
+    "db": {
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    }
+  }
+}
+```
+
+Each developer sets `DATABASE_URL` in their shell profile.
+
+### Use Secret Managers
+
+For teams, use your organization's secret management tool:
+
+```bash
+# Fetch secrets at session start
+export DB_MCP_TOKEN=$(vault read -field=token secret/mcp/database)
+export GITHUB_MCP_TOKEN=$(vault read -field=token secret/mcp/github)
+
+# Then start Claude
+claude
+```
+
+### Rotate Keys Regularly
+
+MCP credentials should be rotated on a schedule:
+- API keys: Every 90 days
+- OAuth tokens: Follow the service's recommendation
+- Database passwords: Every 90 days
+
+When rotating, update:
+1. The secret in your secret manager
+2. The environment variable in your shell
+3. Test the MCP connection
+
+## Transport Security
+
+### HTTPS Always for Remote
+
+```bash
+# GOOD — encrypted
+claude mcp add api --transport http --url https://mcp.company.com/v1
+
+# BAD — unencrypted
+claude mcp add api --transport http --url http://mcp.company.com/v1
+```
+
+### stdio Is Inherently Secure
+
+stdio transport doesn't use the network — communication happens through process stdin/stdout. No encryption needed because no data leaves the machine.
+
+### Certificate Validation
+
+For HTTP transport, ensure your client validates server certificates. Don't disable SSL verification in production.
+
+## Separate Configs for Different Contexts
+
+Use different MCP configurations for different environments:
+
+```
+Development:
+  - Local database (full access, test data)
+  - GitHub token (your personal token)
+
+Staging:
+  - Staging database (read-only)
+  - GitHub App token (scoped to staging repo)
+
+Production:
+  - Read-only replica (read-only user)
+  - No GitHub write access
+  - No deployment tools
+```
+
+Implement this with different shell profiles:
+
+```bash
+# ~/.claude/dev-env.sh
+export DATABASE_URL="postgresql://dev:pass@localhost/dev_db"
+export GITHUB_TOKEN="ghp_personal_token"
+
+# ~/.claude/staging-env.sh
+export DATABASE_URL="postgresql://reader:pass@staging-replica/staging_db"
+export GITHUB_TOKEN="ghp_staging_scoped_token"
+```
+
+```bash
+# Start Claude with staging context
+source ~/.claude/staging-env.sh && claude
+```
+
+## Audit Logging
+
+Log MCP tool usage for security auditing:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__*",
+        "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') MCP: $tool\" >> ~/.claude/mcp-audit.log"
+      }
+    ]
+  }
+}
+```
+
+This creates a log of every MCP tool invocation — useful for security reviews and compliance.
+
+## Key Takeaway
+
+MCP security requires deliberate effort at every layer. Use environment variables for credentials (never hardcode), scope API keys to minimum required permissions, restrict MCP tool permissions in settings.json, and always use HTTPS for remote connections. Apply defense in depth: scoped credentials, limited tool exposure, permission denials, and hook-based guards. Rotate secrets regularly, use different configurations for different environments, and log MCP tool usage for auditing.

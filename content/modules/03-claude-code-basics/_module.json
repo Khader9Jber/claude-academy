@@ -1,0 +1,12 @@
+{
+  "title": "Claude Code Basics",
+  "slug": "claude-code-basics",
+  "description": "Get up and running with Claude Code, Anthropic's official CLI for Claude. Learn installation, configuration, your first session, and how Claude Code differs from the web interface.",
+  "arc": "foundation",
+  "order": 3,
+  "icon": "terminal",
+  "color": "#5cb870",
+  "estimatedHours": 3,
+  "prerequisites": ["claude-fundamentals"],
+  "lessonCount": 5
+}

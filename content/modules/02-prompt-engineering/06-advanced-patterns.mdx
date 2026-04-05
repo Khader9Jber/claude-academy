@@ -1,0 +1,300 @@
+---
+title: "Advanced Prompt Patterns"
+slug: "advanced-patterns"
+order: 6
+difficulty: "beginner"
+duration: 16
+tags: ["prompt-engineering", "advanced", "meta-prompting", "techniques"]
+objectives:
+  - "Learn 6 advanced prompt patterns that compose with basic techniques"
+  - "Apply meta-prompting to generate better prompts automatically"
+  - "Use self-verification to catch Claude's own mistakes"
+  - "Combine multiple patterns for expert-level prompt engineering"
+quiz:
+  - id: "advanced-1"
+    question: "What is meta-prompting?"
+    type: "multiple-choice"
+    options:
+      - "Using prompts inside other prompts"
+      - "Asking Claude to generate better prompts for a given task"
+      - "A way to bypass Claude's safety filters"
+      - "Prompting without any text"
+    correct: 1
+    explanation: "Meta-prompting is asking Claude to write prompts. Instead of struggling to write the perfect prompt yourself, you describe what you need and ask Claude to generate an optimized prompt for it."
+  - id: "advanced-2"
+    question: "What does the self-verification pattern do?"
+    type: "multiple-choice"
+    options:
+      - "Verifies your identity"
+      - "Asks Claude to check its own output for errors before delivering it"
+      - "Runs automated tests"
+      - "Compares Claude's answer to a database"
+    correct: 1
+    explanation: "Self-verification asks Claude to review, critique, and potentially revise its own output before presenting the final version. This catches logical errors, missed edge cases, and inconsistencies."
+  - id: "advanced-3"
+    question: "What is 'role stacking'?"
+    type: "multiple-choice"
+    options:
+      - "Assigning Claude multiple expert roles to consider a problem from several perspectives"
+      - "Creating multiple Claude sessions"
+      - "Using Claude as a team lead"
+      - "Stacking multiple prompts in a queue"
+    correct: 0
+    explanation: "Role stacking assigns Claude multiple expert perspectives simultaneously, like 'You are both a backend engineer AND a security researcher.' This produces more thorough analysis by considering the problem from multiple angles."
+  - id: "advanced-4"
+    question: "When should you use adversarial self-testing?"
+    type: "multiple-choice"
+    options:
+      - "When writing documentation"
+      - "When generating code that needs to be robust — security-critical, production-facing, or handling untrusted input"
+      - "When formatting text"
+      - "When renaming variables"
+    correct: 1
+    explanation: "Adversarial self-testing ('now try to break your own solution') is most valuable for code that faces the real world — API endpoints, auth systems, input parsers, and anything that handles untrusted data."
+---
+
+## Beyond the Basics
+
+The techniques you've learned so far — zero-shot, few-shot, chain of thought — are the foundation. Now we layer on six advanced patterns that compose with those basics to handle expert-level tasks.
+
+These patterns aren't replacements for the fundamentals. They're multipliers. A well-structured prompt with the right advanced pattern applied on top produces results that feel like they came from a senior engineer who spent an hour on the problem.
+
+## Pattern 1: Meta-Prompting
+
+**What it is:** Asking Claude to write prompts for you.
+
+This sounds recursive, but it's incredibly practical. When you're struggling to write a good prompt for a complex task, ask Claude to do it:
+
+```
+I need to write a prompt that will make Claude generate comprehensive
+API documentation from source code. The documentation should include
+endpoint descriptions, request/response schemas, authentication
+requirements, error codes, and rate limits.
+
+Write me the best possible prompt for this task. Include all the
+structure, constraints, and formatting instructions that would
+produce high-quality output.
+```
+
+Claude will generate a detailed, well-structured prompt that you can then use (and refine) for the actual task. This is especially useful for:
+
+- Tasks you'll repeat many times (worth investing in a good prompt template)
+- Complex tasks where you're not sure what constraints to specify
+- When you know *what* you want but can't articulate *how* to ask for it
+
+**Power move:** After Claude generates the prompt, ask it to critique its own prompt and improve it:
+
+```
+Good. Now review the prompt you just generated. What's missing?
+What could be more specific? Improve it.
+```
+
+## Pattern 2: Self-Verification
+
+**What it is:** Asking Claude to check its own work before delivering the final answer.
+
+```
+Write a function that calculates compound interest with monthly
+contributions.
+
+After writing the function:
+1. Trace through it with these test inputs:
+   - Principal: $10,000, Rate: 7%, Monthly: $500, Years: 10
+   - Principal: $0, Rate: 5%, Monthly: $1,000, Years: 30
+2. Verify the results against the standard compound interest formula
+3. Check for edge cases: zero rate, zero principal, zero contribution
+4. If you find any errors, fix them before showing the final version
+```
+
+Self-verification catches a surprising number of errors. Without it, Claude generates code and moves on. With it, Claude acts as its own code reviewer — and catches bugs like off-by-one errors in month calculations, floating point issues, or missing edge case handling.
+
+**A simpler version for quick checks:**
+
+```
+Refactor this function to use async/await.
+After refactoring, verify that the behavior is identical to the
+original for all possible inputs. If you find any semantic differences,
+fix them.
+```
+
+## Pattern 3: Constraint Chaining
+
+**What it is:** Layering constraints progressively, from broad to specific.
+
+Instead of dumping all constraints at once (which can overwhelm and cause Claude to miss some), chain them:
+
+```
+Write a user registration endpoint.
+
+Layer 1 — Functional requirements:
+- Validate email and password
+- Hash password, create user in DB
+- Return user object without sensitive fields
+
+Layer 2 — Security requirements:
+- Rate limit: max 5 registration attempts per IP per hour
+- Input sanitization: strip HTML from all string fields
+- Password: min 12 chars, must include upper, lower, number, special
+
+Layer 3 — Performance requirements:
+- Database query must use a transaction
+- Email uniqueness check must use a database constraint, not application logic
+- Response time target: under 200ms
+
+Layer 4 — Code quality requirements:
+- Full TypeScript types, no `any`
+- Error messages must not leak internal details
+- Follow the existing error handling pattern in @src/utils/errors.ts
+```
+
+Each layer adds a dimension of requirements. Claude addresses them systematically rather than trying to juggle everything at once. This works especially well for complex specifications where missing a single requirement leads to a security vulnerability or a production bug.
+
+## Pattern 4: Role Stacking
+
+**What it is:** Assigning Claude multiple expert perspectives simultaneously.
+
+```
+Review @src/api/payments/charge.ts from three perspectives:
+
+As a backend engineer: Is the code well-structured? Are there
+error handling gaps? Is it maintainable?
+
+As a security researcher: Are there vulnerabilities? SQL injection?
+SSRF? Token leakage? Improper access control?
+
+As a site reliability engineer: What happens under load? Are there
+timeout risks? Single points of failure? Missing circuit breakers?
+
+For each perspective, list findings with severity ratings.
+Conclude with a prioritized action list combining all three views.
+```
+
+Role stacking produces a more thorough analysis than a single-perspective review. Each "role" catches different categories of issues. A backend engineer might miss a security vulnerability that the security researcher catches. An SRE might spot a scalability issue that neither of the other roles would flag.
+
+**Variation — Debate pattern:**
+
+```
+Take two positions on whether we should use microservices or a
+monolith for our new project.
+
+Position A (pro-microservices): Make the strongest case you can.
+Position B (pro-monolith): Make the strongest case you can.
+
+Then, as a neutral CTO, evaluate both arguments and give your
+recommendation based on our specific context:
+- Team of 4 developers
+- MVP stage, need to ship in 3 months
+- Expected scale: 1,000 users in year 1, 100,000 in year 3
+```
+
+## Pattern 5: Output Structuring
+
+**What it is:** Forcing Claude's output into a specific machine-readable or human-readable structure.
+
+This goes beyond "format as markdown." You're defining an exact schema:
+
+```
+Analyze this pull request and output your review in exactly this
+JSON structure:
+
+{
+  "summary": "1-2 sentence summary of what the PR does",
+  "risk_level": "low | medium | high | critical",
+  "issues": [
+    {
+      "file": "path/to/file.ts",
+      "line": 42,
+      "severity": "error | warning | suggestion",
+      "category": "bug | security | performance | style | logic",
+      "description": "What's wrong",
+      "suggested_fix": "code or description of the fix"
+    }
+  ],
+  "positive_notes": ["Things done well"],
+  "verdict": "approve | request-changes | needs-discussion"
+}
+
+Output ONLY the JSON. No markdown code fence. No explanation.
+```
+
+This is essential when Claude's output feeds into another system — a CI pipeline, a dashboard, a notification system. Structured output also forces Claude to be concise and complete, since it has to fill every field.
+
+**For human-readable output:**
+
+```
+Compare Redis and Memcached. Output as a markdown table with these
+exact columns: Feature, Redis, Memcached, Winner, Notes.
+Include rows for: Data types, Persistence, Clustering, Memory
+efficiency, Pub/Sub, Lua scripting, Max value size, Protocol.
+```
+
+## Pattern 6: Adversarial Self-Testing
+
+**What it is:** Asking Claude to try to break its own solution.
+
+```
+Write an input validation function for our API that accepts user
+profile updates (name, email, bio, website URL).
+
+After writing it, put on your attacker hat:
+1. Try to bypass each validation with creative inputs
+2. Test for: SQL injection, XSS, Unicode tricks, null bytes,
+   extremely long strings, nested objects, prototype pollution
+3. For each bypass you find, harden the validation
+4. Show the final hardened version
+```
+
+This is Claude playing red team and blue team simultaneously. It generates the code, then attacks it, then fixes the weaknesses it found. The result is significantly more robust than a first-pass implementation.
+
+**This pattern is especially valuable for:**
+
+- Authentication and authorization logic
+- Input validation and sanitization
+- API endpoint handlers that face the public internet
+- Anything that processes untrusted data
+
+```
+Write a JWT verification middleware.
+
+Then try to break it:
+- What happens with an expired token?
+- What if the algorithm header is changed to 'none'?
+- What if the signature is stripped?
+- What if the payload is modified after signing?
+- What if a token from a different service is used?
+
+Fix any weaknesses you find.
+```
+
+## Composing Patterns
+
+These patterns become most powerful when combined. Here's an example that uses three patterns together:
+
+```
+[Role stacking + Structured CoT + Self-verification]
+
+You are a senior full-stack engineer AND a database performance
+specialist.
+
+Design a notification system for our app. Think step by step:
+
+1. Define the data model (tables, relationships, indexes)
+2. Design the API endpoints (REST, with request/response schemas)
+3. Plan the delivery pipeline (email, push, in-app)
+4. Address scalability (we'll grow from 10K to 1M users)
+
+After completing the design:
+- As the database specialist, verify the indexes are optimal
+  for the query patterns
+- As the backend engineer, verify the API design follows
+  REST best practices
+- Check for any inconsistencies between the data model
+  and the API design
+- Fix any issues you find
+```
+
+Three patterns, one prompt, and you get an output that would take a junior engineer a full day of design work.
+
+## Key Takeaway
+
+Advanced prompt patterns are force multipliers on top of the fundamentals. Meta-prompting lets Claude write better prompts for you. Self-verification catches errors before they reach you. Constraint chaining handles complex requirements systematically. Role stacking provides multi-perspective analysis. Output structuring gives you machine-ready results. Adversarial self-testing hardens security-critical code. The real power comes from combining these patterns for specific use cases.

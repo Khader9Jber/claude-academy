@@ -1,0 +1,12 @@
+{
+  "title": "Session & Context Management",
+  "slug": "session-and-context",
+  "description": "Understand how Claude Code manages context windows, session history, and memory. Learn to work within token limits and keep Claude focused on what matters.",
+  "arc": "practitioner",
+  "order": 6,
+  "icon": "layers",
+  "color": "#5e9ed6",
+  "estimatedHours": 3,
+  "prerequisites": ["claude-md-and-config"],
+  "lessonCount": 5
+}

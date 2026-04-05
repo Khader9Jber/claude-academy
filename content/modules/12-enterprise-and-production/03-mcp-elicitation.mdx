@@ -1,0 +1,292 @@
+---
+title: "MCP Elicitation: Interactive Server Input"
+slug: "mcp-elicitation"
+order: 3
+difficulty: "expert"
+duration: 14
+tags: ["mcp", "elicitation", "interactive", "input"]
+objectives:
+  - "Understand MCP elicitation and its purpose"
+  - "Build interactive workflows with mid-task input"
+  - "Use Elicitation and ElicitationResult hook events"
+  - "Implement approval flows and parameter collection"
+quiz:
+  - id: "elicit-1"
+    question: "What is MCP elicitation?"
+    type: "multiple-choice"
+    options:
+      - "A way for Claude to ask questions"
+      - "A feature where MCP servers request structured input from Claude during a task"
+      - "A form of authentication"
+      - "A testing framework"
+    correct: 1
+    explanation: "Elicitation allows MCP servers to request structured input from Claude mid-task. Instead of the server having all information upfront, it can ask for additional parameters, confirmations, or choices during execution — enabling interactive workflows."
+  - id: "elicit-2"
+    question: "When would an MCP server use elicitation?"
+    type: "multiple-choice"
+    options:
+      - "Never — all input should be provided upfront"
+      - "When it needs confirmation before a destructive action, or additional parameters it couldn't know in advance"
+      - "Only for authentication"
+      - "Only during server startup"
+    correct: 1
+    explanation: "Elicitation is used when the server needs information it couldn't have upfront: 'Confirm deletion of 47 records?', 'Which of these 3 matching users did you mean?', 'This deploy will affect 5 services — proceed?'. It enables interactive decision points in automated workflows."
+  - id: "elicit-3"
+    question: "What hook events are related to elicitation?"
+    type: "multiple-choice"
+    options:
+      - "PreToolUse and PostToolUse"
+      - "Elicitation (when input is requested) and ElicitationResult (when response is provided)"
+      - "SessionStart and SessionEnd"
+      - "There are no elicitation hooks"
+    correct: 1
+    explanation: "Two hook events: Elicitation fires when an MCP server requests input (you can log, transform, or redirect the request), and ElicitationResult fires when the response is provided (you can log, validate, or post-process the result)."
+---
+
+## Beyond One-Shot Tools
+
+Most MCP tools are one-shot: Claude sends a request, the server processes it, and returns a result. But some workflows need a conversation between Claude and the server.
+
+**Elicitation** is the MCP feature that enables this. An MCP server can pause mid-execution and request structured input — a confirmation, a choice, additional parameters — before continuing.
+
+## How Elicitation Works
+
+```
+Claude: "Deploy v2.3.0 to production"
+  ↓
+Claude calls: mcp__deploy__trigger_deploy(service: "api", version: "v2.3.0")
+  ↓
+Deploy Server: "This will affect 3 services. Confirm?"
+  ↓ [Elicitation request]
+Claude/User: "Yes, proceed"
+  ↓ [Elicitation result]
+Deploy Server: Continues deployment
+  ↓
+Result: "Deployment started for api v2.3.0"
+```
+
+The server paused mid-execution to ask for confirmation. This is elicitation.
+
+## Use Cases
+
+### Confirmation Dialogs
+
+Before destructive actions:
+
+```
+Server: "This will delete 47 user records matching the filter. 
+         Proceed? [yes/no]"
+```
+
+### Parameter Collection
+
+When the server needs additional info:
+
+```
+Server: "Found 3 users matching 'John':
+         1. John Smith (john.smith@company.com)
+         2. John Doe (john.doe@company.com)
+         3. John Williams (john.w@company.com)
+         Which user? [1/2/3]"
+```
+
+### Approval Flows
+
+For multi-step processes requiring sign-off:
+
+```
+Server: "Migration plan:
+         - Rename column 'name' to 'full_name' (affects 50K rows)
+         - Add column 'first_name' (nullable)
+         - Backfill 'first_name' from 'full_name'
+         Approve migration? [approve/reject]"
+```
+
+## Building Elicitation in Your Server
+
+In your custom MCP server, use the SDK's elicitation feature:
+
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  if (name === "delete_records") {
+    // Count affected records first
+    const count = await countMatchingRecords(args.filter as string);
+
+    // Request confirmation via elicitation
+    const confirmation = await server.requestElicitation({
+      type: "confirmation",
+      message: `This will delete ${count} records matching "${args.filter}". Proceed?`,
+      options: ["yes", "no"],
+    });
+
+    if (confirmation.value === "no") {
+      return {
+        content: [{ type: "text", text: "Deletion cancelled." }],
+      };
+    }
+
+    // Proceed with deletion
+    const result = await deleteRecords(args.filter as string);
+    return {
+      content: [{
+        type: "text",
+        text: `Deleted ${result.count} records.`,
+      }],
+    };
+  }
+});
+```
+
+### Structured Input Collection
+
+```typescript
+if (name === "search_user") {
+  const matches = await findUsers(args.query as string);
+
+  if (matches.length > 1) {
+    // Ask which user they meant
+    const selection = await server.requestElicitation({
+      type: "selection",
+      message: "Multiple users found. Which one?",
+      options: matches.map((u, i) => ({
+        label: `${u.name} (${u.email})`,
+        value: String(i),
+      })),
+    });
+
+    const selectedUser = matches[parseInt(selection.value)];
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify(selectedUser, null, 2),
+      }],
+    };
+  }
+
+  return {
+    content: [{
+      type: "text",
+      text: JSON.stringify(matches[0], null, 2),
+    }],
+  };
+}
+```
+
+## Hook Events
+
+### Elicitation Event
+
+Fires when an MCP server requests input:
+
+```json
+{
+  "hooks": {
+    "Elicitation": [
+      {
+        "command": "echo \"$(date): Elicitation requested by $server\" >> ~/.claude/elicitation.log"
+      }
+    ]
+  }
+}
+```
+
+Use cases:
+- **Logging**: Track when servers request input for auditing
+- **Validation**: Check that the elicitation request is expected
+- **Routing**: Redirect elicitation to a specific approval system
+
+### ElicitationResult Event
+
+Fires when the response to an elicitation is provided:
+
+```json
+{
+  "hooks": {
+    "ElicitationResult": [
+      {
+        "command": "echo \"$(date): Elicitation responded\" >> ~/.claude/elicitation.log"
+      }
+    ]
+  }
+}
+```
+
+Use cases:
+- **Logging**: Record what was approved/rejected
+- **Post-processing**: Trigger follow-up actions based on the response
+- **Notification**: Alert team members about approvals
+
+## Interactive Workflows
+
+### Deploy with Approval
+
+```
+User: "Deploy the API to production"
+Claude → Deploy MCP Server:
+  Server: "Current production version: v2.2.0
+           New version: v2.3.0
+           Changes: 5 commits (2 features, 3 fixes)
+           Affected services: api, worker, scheduler
+           
+           Approve production deployment? [approve/reject]"
+  
+User (via Claude): "approve"
+
+  Server: Deploying...
+           → api: deployed ✓
+           → worker: deployed ✓
+           → scheduler: deployed ✓
+           
+  Server: "Deployment complete. Running health checks..."
+  
+  Server: "All services healthy. Deployment successful."
+```
+
+### Data Migration with Review
+
+```
+User: "Migrate user emails to lowercase"
+Claude → DB MCP Server:
+  Server: "Analysis:
+           - 10,247 users in database
+           - 342 have uppercase letters in email
+           - 3 would create duplicates after lowercasing
+           
+           Show duplicates? [yes/no]"
+
+User: "yes"
+  Server: "Duplicates:
+           - JOHN@example.com ↔ john@example.com (user IDs: 42, 1087)
+           - ADMIN@test.org ↔ admin@test.org (user IDs: 5, 5003)
+           - BOB@email.com ↔ bob@email.com (user IDs: 100, 100)
+           
+           How to handle duplicates? [skip/merge/abort]"
+
+User: "skip"
+  Server: "Migrating 339 emails (skipping 3 duplicates)..."
+  Server: "Migration complete. 339 emails lowercased."
+```
+
+## Design Guidelines
+
+### When to Use Elicitation
+
+- **Destructive actions**: Deletions, overrides, irreversible changes
+- **Ambiguous inputs**: Multiple matches, unclear parameters
+- **High-impact operations**: Production deployments, data migrations
+- **Cost-significant actions**: Operations that consume resources
+
+### When NOT to Use Elicitation
+
+- **Read-only operations**: Queries, searches, status checks
+- **Idempotent operations**: Actions that are safe to repeat
+- **Low-impact operations**: Creating test data, generating reports
+- **Automated pipelines**: CI/CD where no human is available to respond
+
+## Key Takeaway
+
+MCP elicitation enables interactive workflows where servers request structured input mid-execution — confirmations, selections, and additional parameters. Build it into destructive operations (deletions, deployments, migrations) to require explicit approval. Use the Elicitation and ElicitationResult hook events for logging and post-processing. Elicitation turns one-shot tools into conversational workflows, adding safety and precision to high-impact operations.

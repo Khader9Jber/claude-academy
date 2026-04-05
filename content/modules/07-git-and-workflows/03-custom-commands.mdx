@@ -1,0 +1,310 @@
+---
+title: "Custom Slash Commands: Build Your Own"
+slug: "custom-slash-commands"
+order: 3
+difficulty: "intermediate"
+duration: 15
+tags: ["commands", "customization", "automation", "workflows"]
+objectives:
+  - "Create custom slash commands with .claude/commands/"
+  - "Use the $ARGUMENTS placeholder for dynamic commands"
+  - "Configure command frontmatter (tools, description, hints)"
+  - "Set up project and global command locations"
+quiz:
+  - id: "commands-1"
+    question: "Where do project-level custom commands go?"
+    type: "multiple-choice"
+    options:
+      - "~/.claude/commands/"
+      - ".claude/commands/"
+      - "src/commands/"
+      - "package.json scripts"
+    correct: 1
+    explanation: "Project-level custom commands go in .claude/commands/ — a directory in your project root. These commands are specific to the project and can be committed to git so the whole team has access to them."
+  - id: "commands-2"
+    question: "How do you use dynamic arguments in a custom command?"
+    type: "multiple-choice"
+    options:
+      - "Use ${args} syntax"
+      - "Use the $ARGUMENTS placeholder in the command markdown file"
+      - "Use process.argv"
+      - "Arguments aren't supported"
+    correct: 1
+    explanation: "$ARGUMENTS is the placeholder that gets replaced with whatever the user types after the slash command. For example, if fix-issue.md contains 'Fix issue $ARGUMENTS', typing /fix-issue 42 becomes 'Fix issue 42'."
+  - id: "commands-3"
+    question: "What frontmatter can you add to a custom command?"
+    type: "multiple-choice"
+    options:
+      - "Only the command name"
+      - "allowed-tools, description, and argument-hint"
+      - "Only a description"
+      - "Frontmatter isn't supported in commands"
+    correct: 1
+    explanation: "Custom command frontmatter supports: allowed-tools (which tools the command can use), description (shown in /help), and argument-hint (describes what the argument should be). This lets you create well-documented, scoped commands."
+  - id: "commands-4"
+    question: "Where do global custom commands go?"
+    type: "multiple-choice"
+    options:
+      - ".claude/commands/"
+      - "~/.claude/commands/"
+      - "/etc/claude/commands/"
+      - "~/commands/"
+    correct: 1
+    explanation: "Global custom commands go in ~/.claude/commands/ — in your home directory. These commands are available in every project, every session. Use them for personal workflow commands that aren't project-specific."
+---
+
+## Why Custom Commands?
+
+Slash commands are Claude Code's macro system. Instead of typing the same complex instructions repeatedly, you package them as a command and invoke them with a single `/command-name`.
+
+Some things you might ask Claude regularly:
+
+- "Fix the issue described in GitHub issue #X"
+- "Review the current diff for security issues"
+- "Generate a migration for this schema change"
+- "Run the deploy checklist"
+
+Each of these can become a slash command you invoke in one word.
+
+## Creating Your First Command
+
+Custom commands are Markdown files in `.claude/commands/`. The filename (minus .md) becomes the command name.
+
+### Step 1: Create the Directory
+
+```bash
+mkdir -p .claude/commands
+```
+
+### Step 2: Create a Command File
+
+Create `.claude/commands/fix-issue.md`:
+
+```markdown
+---
+description: "Fix a GitHub issue by number"
+argument-hint: "issue-number"
+---
+
+Look up GitHub issue #$ARGUMENTS in this repository.
+
+1. Read the issue title and description
+2. Understand the reported problem
+3. Find the relevant files in our codebase
+4. Implement a fix that addresses the issue
+5. Write tests for the fix
+6. Create a commit with a message referencing the issue: "fix: description (closes #$ARGUMENTS)"
+```
+
+### Step 3: Use It
+
+```bash
+/fix-issue 42
+```
+
+The `$ARGUMENTS` placeholder is replaced with `42`, so Claude sees:
+
+```
+Look up GitHub issue #42 in this repository.
+1. Read the issue title and description
+2. Understand the reported problem
+...
+```
+
+That's it. A reusable workflow in a markdown file.
+
+## Command Frontmatter
+
+The YAML frontmatter at the top of a command file configures its behavior:
+
+### description
+
+Shown when users type `/help` or browse available commands:
+
+```yaml
+---
+description: "Review the current branch for security vulnerabilities"
+---
+```
+
+### argument-hint
+
+Describes what the argument should be — shown as a hint in the UI:
+
+```yaml
+---
+argument-hint: "issue-number"
+---
+```
+
+### allowed-tools
+
+Restricts which tools the command can use:
+
+```yaml
+---
+allowed-tools: ["Read", "Bash(git *)", "Bash(pnpm test)"]
+---
+```
+
+This is useful for creating safe commands that can't accidentally modify files or run dangerous operations.
+
+## Example Commands
+
+### Code Review
+
+`.claude/commands/review.md`:
+
+```markdown
+---
+description: "Review the current branch diff for issues"
+---
+
+Review all changes on the current branch compared to main.
+
+Check for:
+1. Security issues (SQL injection, XSS, auth bypass, data exposure)
+2. Performance problems (N+1 queries, missing indexes, unnecessary loops)
+3. Error handling gaps (uncaught errors, missing validation)
+4. Code style violations (check CLAUDE.md conventions)
+5. Missing or inadequate tests
+
+For each issue found, provide:
+- File and line number
+- Severity (critical / warning / suggestion)
+- Description of the issue
+- Recommended fix
+
+If no issues are found, say so explicitly.
+```
+
+Usage: `/review`
+
+### Test Generation
+
+`.claude/commands/test.md`:
+
+```markdown
+---
+description: "Generate tests for a file"
+argument-hint: "file-path"
+---
+
+Generate comprehensive tests for $ARGUMENTS.
+
+1. Read the file and understand what it does
+2. Identify all public functions and methods
+3. Write tests covering:
+   - Happy path (normal usage)
+   - Edge cases (empty inputs, boundary values)
+   - Error cases (invalid inputs, failures)
+   - If the file interacts with a database, test with the test DB helper
+
+Follow our testing conventions from CLAUDE.md.
+Place the test file next to the source file with .test.ts extension.
+```
+
+Usage: `/test src/services/order-service.ts`
+
+### Quick Explain
+
+`.claude/commands/explain.md`:
+
+```markdown
+---
+description: "Explain a file or function in plain language"
+argument-hint: "file-path or function-name"
+allowed-tools: ["Read"]
+---
+
+Explain $ARGUMENTS in plain language.
+
+- What does it do?
+- Why does it exist?
+- How does it fit into the broader system?
+- Any non-obvious behavior or gotchas?
+
+Keep the explanation under 200 words. Target audience: a developer
+who is new to this codebase.
+```
+
+Usage: `/explain src/lib/hmac.ts`
+
+### Dependency Check
+
+`.claude/commands/deps.md`:
+
+```markdown
+---
+description: "Check for outdated or vulnerable dependencies"
+allowed-tools: ["Read", "Bash(pnpm *)", "Bash(npm audit *)"]
+---
+
+Check the project's dependency health:
+
+1. Run `pnpm outdated` to find outdated packages
+2. Run `pnpm audit` to find security vulnerabilities
+3. Read package.json for any dependencies that should be replaced
+
+Report:
+- Critical vulnerabilities (must fix now)
+- Outdated major versions (plan to update)
+- Suggestions for replacements (deprecated packages)
+```
+
+Usage: `/deps`
+
+## Two Command Locations
+
+### Project Commands: .claude/commands/
+
+Specific to this project. Committed to git. Available to all team members.
+
+```
+.claude/commands/
+├── fix-issue.md
+├── review.md
+├── test.md
+├── deploy.md
+└── migrate.md
+```
+
+### Global Commands: ~/.claude/commands/
+
+Available in every project. Personal to you.
+
+```
+~/.claude/commands/
+├── explain.md
+├── summarize.md
+├── standup.md
+└── review-security.md
+```
+
+Put project-specific commands (deploy, migrate, fix-issue) in the project directory. Put personal workflow commands (explain, summarize) in the global directory.
+
+## Organizing Commands
+
+As your command library grows, organize with subdirectories:
+
+```
+.claude/commands/
+├── git/
+│   ├── pr.md
+│   ├── changelog.md
+│   └── release.md
+├── dev/
+│   ├── test.md
+│   ├── lint.md
+│   └── migrate.md
+└── review/
+    ├── security.md
+    ├── performance.md
+    └── accessibility.md
+```
+
+Access with: `/git/pr`, `/dev/test`, `/review/security`
+
+## Key Takeaway
+
+Custom slash commands are markdown files in `.claude/commands/` (project) or `~/.claude/commands/` (global). Use `$ARGUMENTS` for dynamic input, frontmatter for configuration (description, argument-hint, allowed-tools). Commands turn multi-step workflows into single-word invocations. Start with 3-5 commands for your most common workflows — code review, test generation, and issue fixing are great starting points — and grow your library as you identify repetitive patterns.

@@ -1,0 +1,335 @@
+---
+title: "Keyboard Shortcuts That Save You Hours"
+slug: "keyboard-shortcuts"
+order: 4
+difficulty: "beginner"
+duration: 12
+tags: ["claude-code", "keyboard-shortcuts", "productivity", "reference"]
+objectives:
+  - "Memorize the core keyboard shortcuts for daily Claude Code use"
+  - "Know the input shortcuts for multiline editing and quick navigation"
+  - "Use session and agent management shortcuts"
+  - "Navigate the session picker efficiently"
+quiz:
+  - id: "keyboard-1"
+    question: "What does Alt+T toggle?"
+    type: "multiple-choice"
+    options:
+      - "The terminal theme"
+      - "Extended thinking (internal reasoning before responding)"
+      - "Tab completion"
+      - "Text wrapping"
+    correct: 1
+    explanation: "Alt+T toggles extended thinking on and off. When enabled, Claude allocates tokens for internal reasoning before generating its visible response, improving accuracy on complex tasks."
+  - id: "keyboard-2"
+    question: "How do you enter multiline input in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Ctrl+Enter"
+      - "Shift+Enter"
+      - "Alt+Enter"
+      - "You can't — each input must be one line"
+    correct: 1
+    explanation: "Shift+Enter inserts a newline without sending the message. This lets you write multi-paragraph prompts, paste code blocks, or structure complex instructions before pressing Enter to send."
+  - id: "keyboard-3"
+    question: "What does pressing Esc twice (Esc Esc) do?"
+    type: "multiple-choice"
+    options:
+      - "Exits Claude Code"
+      - "Clears the input"
+      - "Opens the rewind menu to go back to a previous point in the conversation"
+      - "Toggles full-screen mode"
+    correct: 2
+    explanation: "Double-pressing Esc opens the rewind menu, showing conversation checkpoints you can return to. This effectively lets you 'undo' parts of the conversation."
+  - id: "keyboard-4"
+    question: "How do you interrupt Claude mid-response?"
+    type: "multiple-choice"
+    options:
+      - "Press Esc"
+      - "Press Ctrl+C"
+      - "Press Ctrl+Z"
+      - "Close the terminal"
+    correct: 1
+    explanation: "Ctrl+C interrupts Claude's current response. Claude stops generating, and you can immediately send a new message to redirect."
+---
+
+## Why Shortcuts Matter
+
+Every time you reach for a mouse or type a full command instead of a shortcut, you lose a few seconds. Multiply that by hundreds of interactions per day, and keyboard shortcuts save you real, measurable time.
+
+Claude Code's shortcuts are designed for a terminal-native workflow. Most follow standard Unix terminal conventions, with some custom additions for Claude-specific features.
+
+## Core Shortcuts
+
+These are the shortcuts you'll use most:
+
+### Ctrl+C — Interrupt / Cancel
+
+```
+Ctrl+C
+```
+
+Stops whatever Claude is currently doing:
+- If Claude is generating a response, it stops mid-sentence
+- If Claude is running a command, it interrupts the command
+- Your session continues — you can immediately send a new message
+
+This is your "wait, stop" button. Use it when:
+- Claude is going in the wrong direction
+- A command is taking too long
+- You want to rephrase your question
+
+### Ctrl+D — Exit Session
+
+```
+Ctrl+D
+```
+
+Cleanly exits the Claude Code session. Equivalent to typing `/exit`. This is the standard Unix "end of input" signal.
+
+### Tab — Autocomplete / Permission Cycle
+
+```
+Tab
+```
+
+Tab does double duty:
+
+1. **In the prompt:** Autocomplete file paths, command names, and slash commands
+2. **During a permission request:** Cycle between permission modes:
+   - Ask (approve each action)
+   - Auto-accept reads (reads are automatic, writes need approval)
+   - Auto-accept all (everything is automatic)
+
+## Toggle Shortcuts
+
+### Alt+T — Toggle Extended Thinking
+
+```
+Alt+T
+```
+
+Toggles extended thinking on or off. When enabled, Claude does internal reasoning (not shown to you) before generating its response. You'll see a "thinking..." indicator.
+
+Extended thinking improves accuracy on complex problems but uses additional tokens. Toggle it on for hard problems, off for simple ones.
+
+### Ctrl+O — Verbose Output
+
+```
+Ctrl+O
+```
+
+Toggles verbose output mode. When enabled, Claude shows more detail about its internal operations — which tools it's using, what searches it's performing, and how it's reasoning about your request.
+
+### Shift+Tab — Auto-Accept Toggle
+
+```
+Shift+Tab
+```
+
+Quick toggle for the auto-accept permission level. Press once to enable auto-accept for all operations, press again to return to the ask-before-acting mode.
+
+## Input Shortcuts
+
+### Shift+Enter — Multiline Input
+
+```
+Shift+Enter
+```
+
+Inserts a newline without sending the message. Essential for:
+
+```
+Write a function that:          ← type this
+[Shift+Enter]                   ← new line, doesn't send
+- Takes an array of users       ← continue typing
+[Shift+Enter]                   ← another new line
+- Filters by active status      ← continue
+[Shift+Enter]
+- Returns sorted by last login
+[Enter]                         ← NOW it sends
+```
+
+Without this, Enter sends immediately. Use Shift+Enter to compose multi-line prompts, paste formatted text, or structure complex instructions.
+
+### \ + Enter — Newline Quick
+
+```
+\ + Enter
+```
+
+Alternative to Shift+Enter — type a backslash at the end of a line and press Enter to continue on a new line without sending. Familiar to anyone who uses line continuation in shell scripts.
+
+### Ctrl+Z — Control Sequence
+
+```
+Ctrl+Z
+```
+
+Sends the standard Unix suspend signal. In most contexts within Claude Code, this can be used for undo operations on the input line.
+
+## Session Shortcuts
+
+### Esc Esc — Rewind Menu
+
+```
+Esc Esc  (press Escape twice quickly)
+```
+
+Opens the rewind menu showing conversation checkpoints. Navigate to a checkpoint and select it to "undo" all messages after that point. This is the keyboard shortcut for the `/rewind` command.
+
+### Ctrl+B — Background Session
+
+```
+Ctrl+B
+```
+
+Sends the current session to the background. The session continues running (Claude finishes its current task), and you get your terminal back. You'll be notified when the background task completes.
+
+This is useful for long-running operations:
+
+```
+You: "Run the full test suite and fix any failures"
+[Ctrl+B]  ← session goes to background
+# You continue other work in the terminal
+# Notification when Claude finishes
+```
+
+## Agent Team Shortcuts (Max Feature)
+
+When working with multi-agent setups:
+
+### Shift+Up / Shift+Down — Select Teammate
+
+```
+Shift+Up    — Move to previous teammate
+Shift+Down  — Move to next teammate
+```
+
+Navigate between active sub-agents in a multi-agent session.
+
+### Enter — View Teammate
+
+```
+Enter  (when a teammate is selected)
+```
+
+View the selected teammate's output and status.
+
+### Esc — Interrupt Teammate
+
+```
+Esc  (when viewing a teammate)
+```
+
+Interrupt the selected teammate's current task.
+
+## Voice Shortcuts
+
+### Space — Push-to-Talk
+
+```
+Space  (hold)
+```
+
+When voice mode is active (`/voice`), hold Space to record audio. Release to send. This is push-to-talk, like a walkie-talkie.
+
+## Prefix Shortcuts
+
+These aren't keyboard shortcuts in the traditional sense, but character prefixes that change how your input is interpreted:
+
+### / — Slash Command
+
+```
+/help
+/model opus
+/compact
+```
+
+Any input starting with `/` is interpreted as a slash command, not a message to Claude.
+
+### ! — Direct Bash
+
+```
+!git status
+!npm test
+!ls -la src/
+```
+
+Any input starting with `!` runs the rest as a shell command. The output is shown in the terminal and included in Claude's context. This is faster than asking Claude to run a command for you.
+
+### @ — File Mention (with Autocomplete)
+
+```
+@src/auth/middleware.ts
+@package.json
+```
+
+The `@` prefix references a file. Tab completion works after `@` — start typing a path and press Tab to autocomplete.
+
+## Session Picker Shortcuts
+
+When the session picker is open (from `claude -r` or `/resume`):
+
+| Shortcut | Action |
+|----------|--------|
+| `Up/Down` | Navigate between sessions |
+| `Left/Right` | Expand or collapse session details |
+| `P` | Preview the selected session |
+| `R` | Rename the selected session |
+| `A` | Show sessions from all projects (not just current) |
+| `Enter` | Resume the selected session |
+
+## The Shortcuts Cheat Sheet
+
+Print this out or pin it until muscle memory kicks in:
+
+```
+─── Core ───────────────────────
+Ctrl+C        Interrupt/cancel
+Ctrl+D        Exit session
+Tab           Autocomplete / permission cycle
+
+─── Toggles ────────────────────
+Alt+T         Toggle extended thinking
+Ctrl+O        Toggle verbose output
+Shift+Tab     Toggle auto-accept
+
+─── Input ──────────────────────
+Shift+Enter   New line (don't send)
+\ + Enter     New line (alternative)
+Enter         Send message
+
+─── Session ────────────────────
+Esc Esc       Rewind menu
+Ctrl+B        Background session
+
+─── Agents ─────────────────────
+Shift+Up/Down Select teammate
+Enter         View teammate
+Esc           Interrupt teammate
+
+─── Voice ──────────────────────
+Space (hold)  Push-to-talk
+
+─── Prefixes ───────────────────
+/             Slash command
+!             Shell command
+@             File reference
+```
+
+## Building Muscle Memory
+
+You don't need to memorize all of these at once. Start with the essentials:
+
+**Week 1:** Ctrl+C (interrupt), Ctrl+D (exit), Shift+Enter (multiline), Tab (autocomplete)
+
+**Week 2:** Add Alt+T (thinking toggle), Esc Esc (rewind), Shift+Tab (auto-accept)
+
+**Week 3:** Add Ctrl+B (background), the `!` and `@` prefixes, and the session picker shortcuts
+
+By week 3, these will be automatic. You'll switch between models, toggle thinking, background long tasks, and navigate sessions without conscious thought.
+
+## Key Takeaway
+
+Keyboard shortcuts are the difference between using Claude Code and being fast at Claude Code. The essentials are Ctrl+C (interrupt), Ctrl+D (exit), Tab (autocomplete/permissions), Alt+T (toggle thinking), Shift+Enter (multiline input), and Esc Esc (rewind). The prefix shortcuts (/ for commands, ! for shell, @ for files) are equally important for efficient interaction. Build muscle memory in stages — start with the core shortcuts and add more each week.

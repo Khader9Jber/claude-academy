@@ -1,0 +1,281 @@
+---
+title: "Agent Teams: Multi-Agent Orchestration"
+slug: "agent-teams"
+order: 5
+difficulty: "advanced"
+duration: 17
+tags: ["agents", "teams", "multi-agent", "orchestration"]
+objectives:
+  - "Enable and configure agent teams"
+  - "Understand lead and teammate roles"
+  - "Use direct messages and broadcasts"
+  - "Be aware of the token cost of agent teams"
+quiz:
+  - id: "teams-1"
+    question: "How do you enable agent teams?"
+    type: "multiple-choice"
+    options:
+      - "Install a plugin"
+      - "Set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable"
+      - "Add a team section to CLAUDE.md"
+      - "It's enabled by default"
+    correct: 1
+    explanation: "Agent teams are an experimental feature enabled with the CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable. Set it in your shell profile or settings.json env key."
+  - id: "teams-2"
+    question: "What's the role of the 'lead' agent in a team?"
+    type: "multiple-choice"
+    options:
+      - "It does all the work"
+      - "It coordinates the team: decomposes tasks, assigns work to teammates, and integrates results"
+      - "It only reviews code"
+      - "There's no lead agent"
+    correct: 1
+    explanation: "The lead agent (typically using Opus for planning capability) coordinates the team. It decomposes large tasks into subtasks, assigns them to appropriate teammates, monitors progress, and integrates the results. It's the project manager of the agent team."
+  - id: "teams-3"
+    question: "How do you communicate with a specific teammate?"
+    type: "multiple-choice"
+    options:
+      - "Direct message using Shift+Up/Down to select the teammate"
+      - "Type their name"
+      - "Use @mention syntax"
+      - "You can only talk to the lead"
+    correct: 0
+    explanation: "Use Shift+Up or Shift+Down to cycle through available teammates, then send your message directly to the selected one. You can also broadcast to all teammates. This lets you give specific instructions to individual team members."
+  - id: "teams-4"
+    question: "What's the approximate token cost multiplier for agent teams?"
+    type: "multiple-choice"
+    options:
+      - "Same as a single agent"
+      - "2x"
+      - "~7x tokens in the planning phase"
+      - "100x"
+    correct: 2
+    explanation: "Agent teams use approximately 7x the tokens of a single agent during the planning phase, because the lead agent reasons about task decomposition, teammate assignments, and coordination. The implementation phase is more efficient since teammates work in parallel. Use teams only for tasks large enough to justify the overhead."
+---
+
+## What Are Agent Teams?
+
+Agent teams are multiple Claude instances working together on a task. One agent leads — decomposing work, assigning tasks, and integrating results. The others are teammates — specialized workers that implement their assigned tasks in parallel.
+
+This is the most powerful and most expensive feature in Claude Code. It's designed for large, complex tasks that benefit from parallel work: migrating a codebase, implementing a feature across many files, or running comprehensive reviews.
+
+## Enabling Agent Teams
+
+Agent teams are experimental. Enable them with:
+
+```bash
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+Or in settings.json:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
+
+## How Teams Work
+
+### 1. You Describe the Task
+
+```bash
+"Migrate all API endpoints from Express to Fastify. There are 15 route files
+in src/routes/. Each needs to be converted to Fastify syntax, and their tests
+need to be updated."
+```
+
+### 2. The Lead Decomposes
+
+The lead agent (Opus) analyzes the task and creates a plan:
+
+```
+Lead Agent Plan:
+├── Teammate 1: Convert src/routes/auth.ts + update tests
+├── Teammate 2: Convert src/routes/users.ts + update tests
+├── Teammate 3: Convert src/routes/orders.ts + update tests
+├── Teammate 4: Convert src/routes/payments.ts + update tests
+├── Teammate 5: Convert src/routes/products.ts + update tests
+└── Lead: Review all conversions, fix conflicts, update shared code
+```
+
+### 3. Teammates Work in Parallel
+
+Each teammate gets its own context window, instructions, and potentially its own worktree. They work simultaneously — while Teammate 1 converts auth routes, Teammate 2 converts user routes.
+
+### 4. Lead Integrates
+
+When teammates finish, the lead reviews their work, resolves conflicts, and integrates the results.
+
+## Team Architecture
+
+```
+┌─────────────────┐
+│   Lead Agent    │  Model: Opus (planning + coordination)
+│   (Coordinator)  │  Role: Decompose, assign, integrate
+└────────┬────────┘
+         │
+    ┌────┼────┬────────��
+    ▼    ▼    ▼        ▼
+┌──────┐┌──────┐┌──────┐┌──────┐
+│Team 1││Team 2││Team 3││Team 4│  Model: Sonnet (implementation)
+│      ││      ││      ││      │  Role: Implement assigned tasks
+└──────┘└──────┘└──────┘└──────┘
+```
+
+## Communication
+
+### Direct Messages (1:1)
+
+Send a message to a specific teammate:
+
+```
+Shift+Up / Shift+Down → Select teammate
+Type your message → Send
+```
+
+Example:
+```
+[To Teammate 2]: "The user routes need to handle the new pagination
+format. Check src/lib/pagination.ts for the interface."
+```
+
+### Broadcasts (to all)
+
+Send a message to all teammates at once:
+
+```
+[Broadcast]: "All teammates: make sure to use the new error handler
+from src/lib/errors.ts, not the old one."
+```
+
+### Agent-to-Agent
+
+Teammates can message each other and the lead:
+
+```
+[Teammate 1 → Lead]: "I've finished the auth routes. Found a shared
+utility that needs updating — should I handle it or assign it?"
+
+[Lead → Teammate 1]: "Go ahead and update it. I'll tell the others
+to pull your changes."
+```
+
+## Setting Up a Team
+
+### Using Custom Agents as Teammates
+
+Your custom agents become available as teammates:
+
+```
+.claude/agents/
+├── security-reviewer.md    → Available as teammate
+├── test-writer.md          → Available as teammate
+├── doc-writer.md           → Available as teammate
+```
+
+When the lead decomposes a task, it can assign security review to the security-reviewer agent, test writing to the test-writer, and documentation to the doc-writer.
+
+### Team Configuration
+
+In your agent frontmatter, you can configure team behavior:
+
+```yaml
+---
+name: Feature Implementer
+description: Implements features in assigned files
+model: sonnet
+isolation: worktree
+permissionMode: acceptEdits
+---
+```
+
+The `isolation: worktree` is particularly important for teams — each teammate works in its own worktree, preventing file conflicts.
+
+## When to Use Agent Teams
+
+### Good Use Cases
+
+- **Large migrations**: Converting 20+ files from one pattern to another
+- **Feature implementation across modules**: A feature that touches auth, API, database, and tests
+- **Comprehensive reviews**: Security + quality + performance review in parallel
+- **Test generation at scale**: Generating tests for an entire untested module
+
+### Bad Use Cases
+
+- **Simple tasks**: A single file change doesn't need a team
+- **Quick fixes**: Bug fixes are faster with a single session
+- **Exploration**: Understanding code is faster with one agent
+- **Cost-sensitive work**: Teams are ~7x more expensive
+
+### The Cost Reality
+
+Agent teams are expensive. Here's the math:
+
+```
+Single agent session (50 messages):
+  ~50,000-150,000 tokens
+  
+Agent team (lead + 4 teammates):
+  Lead planning phase:     ~200,000 tokens (decomposition, coordination)
+  4 teammates × 50,000:   ~200,000 tokens (parallel implementation)
+  Lead integration phase:  ~100,000 tokens (review, merge, conflicts)
+  Total:                   ~500,000 tokens
+```
+
+That's roughly 3-5x a single agent for the same total work, plus the coordination overhead. The trade-off is parallel execution — four teammates finish in 1/4 the time of a single agent doing everything sequentially.
+
+Use teams when **time savings** justify the **token cost**.
+
+## Best Practices
+
+### 1. Clear Task Boundaries
+
+Give the lead a task with clear boundaries between subtasks:
+
+```bash
+# Good: Clear boundaries
+"Migrate all route files from Express to Fastify. Each file in src/routes/ 
+is independent. Convert the file and update its test."
+
+# Bad: Unclear boundaries
+"Improve the codebase" (How does the lead decompose this?)
+```
+
+### 2. Use Worktree Isolation
+
+Configure teammates with `isolation: worktree` to prevent file conflicts:
+
+```yaml
+---
+isolation: worktree
+---
+```
+
+### 3. Set Max Turns
+
+Prevent teammates from running too long:
+
+```yaml
+---
+maxTurns: 25
+---
+```
+
+### 4. Use the Right Models
+
+Lead should be Opus (planning). Teammates should be Sonnet (implementation).
+
+```yaml
+# Lead
+model: opus
+
+# Teammates
+model: sonnet
+```
+
+## Key Takeaway
+
+Agent teams enable parallel multi-agent work on large tasks. The lead (Opus) decomposes and coordinates; teammates (Sonnet) implement in parallel. Enable with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Use Shift+Up/Down for direct messages, broadcasts for team-wide instructions. The trade-off is ~7x token cost for parallel execution. Use teams for large migrations, cross-module features, and scale-out reviews — not for simple tasks where a single session is faster and cheaper.

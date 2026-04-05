@@ -1,0 +1,375 @@
+---
+title: "All 55+ Slash Commands Explained"
+slug: "slash-commands"
+order: 1
+difficulty: "beginner"
+duration: 20
+tags: ["claude-code", "slash-commands", "reference", "navigation"]
+objectives:
+  - "Know every slash command category in Claude Code"
+  - "Memorize the 15 most important commands for daily use"
+  - "Understand when to use each command category"
+  - "Navigate Claude Code efficiently using commands instead of natural language"
+quiz:
+  - id: "slash-1"
+    question: "What does the /compact command do?"
+    type: "multiple-choice"
+    options:
+      - "Minimizes the terminal window"
+      - "Compresses conversation history to free up context window space"
+      - "Deletes all project files"
+      - "Switches to a smaller model"
+    correct: 1
+    explanation: "/compact compresses your conversation history into a condensed summary, freeing up context window space. You can optionally provide a hint about what to preserve: /compact 'keep the database schema decisions'."
+  - id: "slash-2"
+    question: "What is the difference between /clear and /compact?"
+    type: "multiple-choice"
+    options:
+      - "They do the same thing"
+      - "/clear wipes ALL history completely; /compact compresses history into a summary"
+      - "/clear compresses; /compact deletes"
+      - "/clear is faster than /compact"
+    correct: 1
+    explanation: "/clear erases all conversation history — it's a complete reset. /compact preserves a compressed summary of the conversation so Claude retains key context. Use /clear for totally new tasks; /compact when you want to free space but keep context."
+  - id: "slash-3"
+    question: "Which command would you use to see how much of your context window is consumed?"
+    type: "multiple-choice"
+    options:
+      - "/status"
+      - "/context"
+      - "/tokens"
+      - "/usage"
+    correct: 1
+    explanation: "/context shows your current context window usage — how many tokens are consumed by conversation history, file references, system prompts, and MCP tool definitions. It helps you decide when to /compact."
+  - id: "slash-4"
+    question: "How do you switch to Opus model mid-session?"
+    type: "multiple-choice"
+    options:
+      - "/switch opus"
+      - "/model opus"
+      - "/use opus"
+      - "/set model=opus"
+    correct: 1
+    explanation: "/model opus switches to the Opus model for subsequent messages. You can also use /model sonnet, /model haiku, or /model opusplan."
+---
+
+## The Command Landscape
+
+Claude Code has over 55 slash commands organized into functional categories. You don't need to memorize all of them — but knowing the categories and the essential commands in each makes you dramatically more efficient.
+
+Every slash command starts with `/` and is typed directly in the Claude Code prompt. Tab completion works for most commands.
+
+## Essential Commands
+
+These are the commands you'll use in almost every session:
+
+### /help
+Shows all available commands with brief descriptions. Your quick reference when you forget a command name.
+
+```
+/help
+```
+
+### /clear
+Wipes **all** conversation history. Complete reset. Claude forgets everything from the current session.
+
+```
+/clear
+```
+
+Use this when you're switching to a completely unrelated task and don't need any previous context.
+
+### /compact [hint]
+Compresses conversation history into a condensed summary, freeing context window space while preserving key information.
+
+```
+/compact
+
+# With a hint about what to preserve
+/compact "keep the auth architecture decisions and the API schema"
+```
+
+Use this when your context window is getting full (~80% capacity) but you still need Claude to remember important decisions from earlier in the conversation.
+
+### /exit
+Exits the Claude Code session. Same as `Ctrl+D`.
+
+```
+/exit
+```
+
+### /status
+Shows current session information: model, plan, authentication method, context usage, and version.
+
+```
+/status
+```
+
+## Context and Cost Commands
+
+### /context
+Detailed breakdown of your context window usage — how many tokens are consumed by conversation history, system prompts, CLAUDE.md, MCP tools, and file references.
+
+```
+/context
+```
+
+This is your token budget dashboard. Check it when sessions feel expensive or when you're approaching limits.
+
+### /cost
+Shows the estimated cost of the current session in dollars (for API users) or tokens consumed (for subscribers).
+
+```
+/cost
+```
+
+### /insights
+Shows Claude Code's internal understanding of your project — what it knows about the codebase, patterns it has noticed, and context it has accumulated.
+
+```
+/insights
+```
+
+## Planning and Model Commands
+
+### /plan
+Asks Claude to create a plan before taking action. Instead of jumping into implementation, Claude outlines the steps first and waits for your approval.
+
+```
+/plan "add real-time notifications using WebSockets"
+```
+
+Claude will output a detailed plan — files to modify, the approach, potential risks — before writing any code.
+
+### /execute
+Tells Claude to execute the plan that was previously created with /plan.
+
+```
+/execute
+```
+
+Used after reviewing and approving a /plan output.
+
+### /model [name]
+Switch the active model. Takes effect on the next message.
+
+```
+/model opus      # Deep reasoning
+/model sonnet    # Daily driver (default)
+/model haiku     # Quick tasks
+/model opusplan  # Opus plans, Sonnet implements
+```
+
+### /fast
+Quick toggle to Haiku for the next message, then switches back. Useful for a one-off quick task.
+
+```
+/fast
+```
+
+### /effort [level]
+Set the effort level: low, medium, high, or max.
+
+```
+/effort high     # For complex tasks
+/effort low      # For simple, mechanical tasks
+```
+
+## Session Commands
+
+### /fork
+Branch the current conversation. Creates a copy of the session at the current point, letting you explore a different direction without losing the original.
+
+```
+/fork
+```
+
+Use this when you want to try an experimental approach but keep the option to go back to the current state.
+
+### /rewind
+Go back to a previous point in the conversation, undoing messages and changes after that point.
+
+```
+/rewind
+```
+
+Opens a picker showing conversation checkpoints. Select one to rewind to that state.
+
+### /resume
+Interactive session picker to resume a previous session.
+
+```
+/resume
+```
+
+### /rename [name]
+Rename the current session.
+
+```
+/rename "auth-refactor-v2"
+```
+
+### /teleport
+Jump to a specific point in conversation history.
+
+```
+/teleport
+```
+
+## Multi-Agent Commands
+
+These commands manage agent teams (Max feature):
+
+### /batch
+Send the same prompt to multiple agents in parallel.
+
+```
+/batch "run the test suite"
+```
+
+### /simplify
+Review changed code across agents for reuse opportunities and quality improvements.
+
+```
+/simplify
+```
+
+### /agents
+List active sub-agents and their status.
+
+```
+/agents
+```
+
+### /tasks
+View and manage pending tasks across agents.
+
+```
+/tasks
+```
+
+### /loop [interval] [command]
+Run a command on a recurring interval.
+
+```
+/loop 5m /status    # Check status every 5 minutes
+/loop 10m npm test  # Run tests every 10 minutes
+```
+
+## Configuration Commands
+
+### /config
+Open configuration options — edit settings, manage permissions, and adjust preferences.
+
+```
+/config
+```
+
+### /allowed-tools
+View and manage which tools Claude is allowed to use.
+
+```
+/allowed-tools
+```
+
+### /permissions
+View and edit the current permission settings.
+
+```
+/permissions
+```
+
+### /hooks
+Manage hooks — scripts that run before or after specific Claude Code events.
+
+```
+/hooks
+```
+
+### /mcp
+Manage MCP (Model Context Protocol) servers — add, remove, configure.
+
+```
+/mcp
+```
+
+### /vim
+Toggle vim-style keybindings in the input.
+
+```
+/vim
+```
+
+### /voice
+Toggle voice input mode.
+
+```
+/voice
+```
+
+## Skill Commands
+
+### /btw
+Report feedback or bugs to the Claude Code team.
+
+```
+/btw "the /compact command seems to lose function signatures"
+```
+
+### /claude-api
+Get help building applications with the Claude API or Anthropic SDK.
+
+```
+/claude-api
+```
+
+### /debug
+Enter debug mode for troubleshooting Claude Code issues.
+
+```
+/debug
+```
+
+## In-Session Shortcuts
+
+These aren't slash commands but are part of the prompt syntax:
+
+### @file — File References
+Reference files directly in your prompt:
+
+```
+Look at @src/auth/jwt.ts and find the bug
+```
+
+### !command — Shell Commands
+Run a shell command and include output in context:
+
+```
+Fix the errors in !npm test 2>&1
+```
+
+## The 15 Commands to Memorize
+
+If you only memorize 15 commands, make it these:
+
+| Command | What It Does | When to Use |
+|---------|-------------|-------------|
+| `/help` | List all commands | When you forget a command |
+| `/clear` | Wipe all history | Switching to an unrelated task |
+| `/compact` | Compress history | Context window getting full |
+| `/context` | Show token usage | When sessions feel expensive |
+| `/cost` | Show session cost | Budget monitoring |
+| `/model` | Switch model | Need different capability level |
+| `/plan` | Create a plan first | Before complex implementations |
+| `/execute` | Execute the plan | After reviewing a /plan |
+| `/fork` | Branch conversation | Trying an experimental approach |
+| `/rewind` | Undo messages | Claude went wrong, want to go back |
+| `/resume` | Pick a session | Resuming previous work |
+| `/status` | Session info | Checking model, plan, auth |
+| `/effort` | Set effort level | Matching computation to task |
+| `/mcp` | Manage MCP servers | Setting up integrations |
+| `/exit` | Leave session | Done working |
+
+## Key Takeaway
+
+Claude Code's 55+ slash commands are organized into categories: essentials (/help, /clear, /compact), context management (/context, /cost), planning (/plan, /execute), model control (/model, /effort), session management (/fork, /rewind, /resume), multi-agent (/batch, /agents), and configuration (/config, /mcp, /hooks). You don't need all 55 on day one — start with the 15 most important commands and expand as your workflow demands.

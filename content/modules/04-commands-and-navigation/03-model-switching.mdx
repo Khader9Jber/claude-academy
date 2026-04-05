@@ -1,0 +1,240 @@
+---
+title: "Model Switching: Opus for Thinking, Sonnet for Doing"
+slug: "model-switching"
+order: 3
+difficulty: "beginner"
+duration: 12
+tags: ["claude-code", "models", "opus", "sonnet", "haiku", "opusplan"]
+objectives:
+  - "Switch models mid-session with the /model command"
+  - "Know which model to use for which task"
+  - "Master the opusplan strategy for complex features"
+  - "Understand the cost implications of model switching"
+quiz:
+  - id: "switch-1"
+    question: "What does /model opusplan do?"
+    type: "multiple-choice"
+    options:
+      - "Only uses Opus"
+      - "Uses Opus for planning and architecture, then auto-switches to Sonnet for implementation"
+      - "Uses Sonnet for planning, Opus for implementation"
+      - "Alternates between Opus and Sonnet on each message"
+    correct: 1
+    explanation: "opusplan is a hybrid strategy where Opus handles the high-level planning, architecture, and design decisions, then Claude automatically switches to Sonnet for the actual code implementation. This gives you Opus-quality thinking with Sonnet-speed execution."
+  - id: "switch-2"
+    question: "How much more of your usage budget does Opus consume compared to Sonnet?"
+    type: "multiple-choice"
+    options:
+      - "The same amount"
+      - "About 1.7x more"
+      - "About 5x more"
+      - "About 10x more"
+    correct: 1
+    explanation: "Opus consumes approximately 1.7x the tokens compared to Sonnet for the same task, due to its deeper reasoning process. This means a session on Opus drains your rolling 5-hour budget roughly 1.7x faster than the same session on Sonnet."
+  - id: "switch-3"
+    question: "Which model would you choose for generating boilerplate CRUD endpoints?"
+    type: "multiple-choice"
+    options:
+      - "Opus — quality matters"
+      - "Sonnet — it's the default"
+      - "Haiku — the task is mechanical and well-defined"
+      - "opusplan — always use opusplan"
+    correct: 2
+    explanation: "CRUD endpoint generation is mechanical and repetitive — there's no deep reasoning required. Haiku is the fastest and cheapest option, perfect for boilerplate where the pattern is well-established."
+  - id: "switch-4"
+    question: "When you switch models mid-session, what happens to your conversation history?"
+    type: "multiple-choice"
+    options:
+      - "It's deleted"
+      - "It's compressed"
+      - "It's preserved — only the model processing future messages changes"
+      - "It's converted to the new model's format"
+    correct: 2
+    explanation: "Switching models preserves your entire conversation history. The switch only affects which model processes your next message. This means you can have Opus analyze a problem and then switch to Sonnet for implementation — Sonnet inherits all of Opus's analysis."
+---
+
+## Model Switching Is Your Superpower
+
+Most Claude Code users pick a model once and stick with it. That's like owning a toolbox but only using the hammer. The developers who get the most value from Claude Code switch models strategically throughout their sessions — matching the model's strengths to the task at hand.
+
+This isn't about being cheap (though it does save budget). It's about getting **better results faster**. Opus on a simple task is slower than Sonnet. Haiku on a complex task gives worse results. Matching model to task optimizes both speed and quality.
+
+## The /model Command
+
+Switching is instant. Type `/model` followed by the model name:
+
+```bash
+/model opus      # Switch to Opus
+/model sonnet    # Switch to Sonnet (default)
+/model haiku     # Switch to Haiku
+/model opusplan  # Hybrid: Opus plans, Sonnet implements
+```
+
+The switch takes effect on your next message. Your conversation history is preserved — the new model inherits all the context from the previous one.
+
+You can also see a model picker UI with the effort level slider by just typing:
+
+```bash
+/model
+```
+
+This opens an interactive picker where you can select the model and adjust the effort level using arrow keys.
+
+## When to Use Each Model
+
+### Opus: The Deep Thinker
+
+Switch to Opus when the task requires:
+
+- **Architectural decisions** — "should we use a queue or event sourcing?"
+- **Complex debugging** — the bug that spans multiple files and involves race conditions
+- **Security analysis** — finding vulnerabilities that require understanding system interactions
+- **Design reviews** — evaluating tradeoffs in someone's proposed approach
+- **Root cause analysis** — symptoms are far removed from the actual cause
+
+```bash
+/model opus
+"We're getting intermittent 502 errors on the payment endpoint.
+They happen ~5% of the time, only during peak hours. The endpoint
+calls Stripe, our user service, and our notification service.
+Analyze the architecture in @src/api/payments/ and @src/services/
+to find the root cause."
+```
+
+Opus will take longer to respond but will consider timeout cascades, connection pool exhaustion, circuit breaker absence, and other subtle issues that Sonnet might miss.
+
+### Sonnet: The Daily Driver
+
+Stay on Sonnet (the default) for:
+
+- **Feature implementation** — writing functions, components, endpoints
+- **Test writing** — generating test suites from implementation
+- **Code review** — analyzing diffs and suggesting improvements
+- **Documentation** — writing docs, comments, README sections
+- **Routine refactoring** — extracting functions, cleaning up code
+
+```bash
+/model sonnet
+"Implement the user profile update endpoint. Accept name, email,
+avatar URL, and timezone. Validate with Zod. Use the patterns
+in @src/api/users.ts"
+```
+
+Sonnet handles 70-80% of daily coding tasks at a good quality level and responds in seconds.
+
+### Haiku: The Speed Runner
+
+Drop to Haiku for:
+
+- **Mechanical edits** — renaming variables, fixing imports, adding semicolons
+- **Boilerplate** — CRUD endpoints, interface definitions, repetitive patterns
+- **Simple formatting** — sorting imports, fixing indentation
+- **Quick lookups** — "what's the syntax for X?"
+- **Grep-and-summarize** — "find all TODO comments and list them"
+
+```bash
+/model haiku
+"Add the auth middleware import to all route files in @src/api/routes/"
+```
+
+Haiku responds almost instantly and costs a fraction of what Opus would for the same task.
+
+## The opusplan Strategy
+
+This is the most powerful model switching strategy in Claude Code. When you run:
+
+```bash
+/model opusplan
+```
+
+Claude Code enters a hybrid mode:
+
+1. **Opus handles planning** — when Claude is analyzing requirements, understanding the codebase, making design decisions, or creating an implementation plan, it uses Opus
+2. **Sonnet handles execution** — when Claude is writing actual code, making edits, running commands, or doing implementation work, it switches to Sonnet
+3. **The transition is automatic** — you don't have to manually switch between modes
+
+### When to Use opusplan
+
+opusplan shines for **complex, multi-step features** where the planning matters as much as the implementation:
+
+```bash
+/model opusplan
+"Build a real-time notification system. We need:
+1. WebSocket server for push notifications
+2. Database table for notification storage and read status
+3. API endpoints for marking notifications as read
+4. Background worker for email fallback when users are offline
+5. Rate limiting to prevent notification spam
+
+Analyze the current codebase first, then design and implement."
+```
+
+With opusplan:
+- Opus analyzes your codebase structure and existing patterns
+- Opus designs the notification system architecture
+- Opus creates the implementation plan with file changes
+- Sonnet takes over and writes each component
+- If Sonnet hits an ambiguous decision, it can escalate back to Opus
+
+### opusplan vs. Manual Switching
+
+You can achieve similar results with manual `/model opus` and `/model sonnet` switches. The advantage of opusplan is that Claude makes the transitions automatically, based on whether the current sub-task requires reasoning or execution. The disadvantage is less control over exactly when the transitions happen.
+
+For most complex features, opusplan is the right default. Only manually switch when you need explicit control over which model handles specific messages.
+
+## Cost Implications
+
+Model choice directly affects how fast you burn through your usage budget.
+
+Relative token consumption for the same task:
+
+| Model | Relative Cost | Relative Speed |
+|-------|--------------|---------------|
+| Haiku | 1x (baseline) | Fastest |
+| Sonnet | ~3x | Fast |
+| Opus | ~5x (and uses ~1.7x more tokens due to deeper reasoning) | Slowest |
+
+On a Max 5x plan (~225 Sonnet-equivalent messages per 5 hours), model choice means:
+
+- **All Sonnet:** ~225 messages
+- **All Opus:** ~75-90 messages (Opus is more expensive AND generates more reasoning tokens)
+- **All Haiku:** ~675+ messages
+- **Smart switching (70% Sonnet, 20% Haiku, 10% Opus):** ~250-280 effective messages
+
+Smart switching actually gives you **more** total messages than sticking with Sonnet for everything, because the Haiku messages are so cheap they offset the expensive Opus ones.
+
+## A Real Session: Model Switching in Practice
+
+Here's how model switching looks in a realistic development session:
+
+```bash
+# Start the session — analyze a bug report
+/model opus
+"Users report that search results are wrong when they include special
+characters like & and +. Analyze @src/services/search.ts and
+@src/utils/queryParser.ts to find the root cause."
+
+# Opus identifies: URL encoding issue in query parameter parsing
+
+# Switch to Sonnet for the fix
+/model sonnet
+"Fix the URL encoding issue you identified. Update the queryParser
+to properly encode special characters before sending to Elasticsearch."
+
+# Sonnet implements the fix quickly
+
+# Switch to Haiku for the mechanical work
+/model haiku
+"Add a JSDoc comment to the encodeSearchQuery function you just wrote"
+
+# Switch to Sonnet for tests
+/model sonnet
+"Write tests for the search query encoding. Cover: &, +, spaces,
+unicode characters, empty strings, and very long queries."
+
+# Done — total session used models efficiently
+```
+
+## Key Takeaway
+
+Model switching is about matching the right brain to the right task. Use `/model opus` when the cost of being wrong is high (architecture, security, complex debugging). Stay on `/model sonnet` for daily coding tasks. Drop to `/model haiku` for mechanical, repetitive work. Use `/model opusplan` for complex features where you want Opus-quality planning with Sonnet-speed implementation. Smart model switching gives you better results AND stretches your usage budget further.

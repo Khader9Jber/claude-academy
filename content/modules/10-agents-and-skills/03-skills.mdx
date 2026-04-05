@@ -1,0 +1,338 @@
+---
+title: "Skills: Reusable Knowledge Packages"
+slug: "skills"
+order: 3
+difficulty: "advanced"
+duration: 15
+tags: ["skills", "packages", "reusable", "knowledge"]
+objectives:
+  - "Understand the difference between skills and agents"
+  - "Create a skill with SKILL.md structure"
+  - "Use frontmatter for auto-invocation control"
+  - "Leverage progressive disclosure for token efficiency"
+quiz:
+  - id: "skills-1"
+    question: "What is a skill in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "A keyboard shortcut"
+      - "A reusable knowledge package with instructions, templates, and scripts that Claude loads on demand"
+      - "A model upgrade"
+      - "A programming language"
+    correct: 1
+    explanation: "A skill is a reusable knowledge package stored in .claude/skills/. It contains instructions (SKILL.md), optional templates, and optional scripts. When a matching task is detected, Claude loads the skill's knowledge to handle it with specialized expertise."
+  - id: "skills-2"
+    question: "How does progressive disclosure work with skills?"
+    type: "multiple-choice"
+    options:
+      - "Skills load everything at once"
+      - "Only the skill frontmatter (~100 tokens) is loaded initially; the full body loads only when the skill is triggered"
+      - "Skills never load automatically"
+      - "Progressive disclosure is a UI feature, not a skill feature"
+    correct: 1
+    explanation: "Progressive disclosure means Claude initially only reads the skill's frontmatter — name, description, and trigger conditions (about 100 tokens). The full body (instructions, templates, references) loads only when the skill is actually triggered. This saves thousands of tokens when skills aren't needed."
+  - id: "skills-3"
+    question: "What's the difference between a skill and an agent?"
+    type: "multiple-choice"
+    options:
+      - "They're the same thing"
+      - "Skills are knowledge packages (instructions + templates); agents are independent Claude instances with their own context"
+      - "Skills are more powerful"
+      - "Agents can't read files"
+    correct: 1
+    explanation: "Skills add knowledge and instructions to the current context — like giving Claude a handbook. Agents are independent Claude instances with their own context window, model, and permissions. Skills enhance the current session; agents work in parallel."
+  - id: "skills-4"
+    question: "What does disableAutoInvocation: true do?"
+    type: "multiple-choice"
+    options:
+      - "Prevents the skill from working"
+      - "Prevents automatic triggering — the skill must be invoked explicitly with /skillname"
+      - "Disables the skill permanently"
+      - "Stops notifications"
+    correct: 1
+    explanation: "disableAutoInvocation: true means the skill won't trigger automatically based on task matching. It can only be used when you explicitly invoke it with /skillname. This is useful for skills that should only run on demand — like deployment or migration skills."
+---
+
+## Skills vs. Agents vs. Commands
+
+Before we build skills, let's clarify how they differ from agents and commands:
+
+| Feature | Skill | Agent | Command |
+|---|---|---|---|
+| What it is | Knowledge package | Independent AI instance | Task macro |
+| Context | Adds to current context | Own context window | Adds to current context |
+| Triggers | Auto or manual | Routing or manual | Manual (/command) |
+| Contains | Instructions + templates + scripts | Instructions + config | Instructions + args |
+| Token cost | Progressive disclosure (~100 initial) | Full separate context | Full content on invoke |
+| Best for | Specialized knowledge domains | Specialized roles | Repeatable task sequences |
+
+**Skills** are the right choice when Claude needs specialized knowledge to perform a task — not a different identity (that's an agent) and not a fixed sequence (that's a command).
+
+## Skill Structure
+
+Skills live in `.claude/skills/`:
+
+```
+.claude/skills/
+└── db-migrate/
+    ├── SKILL.md         ← Main skill file (required)
+    ├── templates/       ← Template files
+    │   └── migration.ts.template
+    ├── scripts/         ← Helper scripts
+    │   └── validate-schema.sh
+    └── references/      ← Reference docs
+        └── naming-conventions.md
+```
+
+## SKILL.md Anatomy
+
+The SKILL.md file has frontmatter and a body:
+
+```markdown
+---
+name: Database Migration
+description: Creates and validates Prisma database migrations
+disableAutoInvocation: false
+disableModelInvocation: false
+---
+
+## When to Use This Skill
+
+Use this skill when the user wants to:
+- Create a new database migration
+- Modify the Prisma schema
+- Add or remove tables, columns, or indexes
+
+## Steps
+
+1. Read the current prisma/schema.prisma
+2. Apply the requested changes
+3. Run `npx prisma migrate dev --name <migration-name>`
+4. Validate the generated SQL
+5. Update repository files if schema changed
+6. Run tests to verify
+
+## Templates
+
+Use the migration template at templates/migration.ts.template for
+any custom migration scripts.
+
+## Naming Conventions
+
+Reference references/naming-conventions.md for table and column
+naming rules.
+
+## Common Patterns
+
+### Adding a Column
+1. Add to schema.prisma
+2. Set a default value for existing rows
+3. Run migrate dev
+4. Update related types and DTOs
+
+### Creating a Relation
+1. Add the foreign key column
+2. Add the @relation directive
+3. Run migrate dev
+4. Verify foreign key constraint in generated SQL
+```
+
+## Frontmatter Options
+
+### name
+
+Display name for the skill:
+
+```yaml
+---
+name: Database Migration
+---
+```
+
+### description
+
+What the skill does — used for auto-triggering:
+
+```yaml
+---
+description: Creates and validates Prisma database migrations
+---
+```
+
+Claude uses this description to decide when to auto-invoke the skill.
+
+### disableAutoInvocation
+
+Prevents automatic triggering:
+
+```yaml
+---
+disableAutoInvocation: true
+---
+```
+
+When `true`, the skill only activates if you explicitly invoke it. Useful for skills you only want on demand (like deployment or destructive operations).
+
+### disableModelInvocation
+
+Prevents Claude from invoking the skill on its own:
+
+```yaml
+---
+disableModelInvocation: true
+---
+```
+
+The skill can only be invoked by you, never by Claude's own decision.
+
+## Progressive Disclosure
+
+This is the killer feature of skills. Here's how it works:
+
+### Initial Load (~100 tokens)
+
+When a session starts, Claude reads only the frontmatter of each skill:
+
+```yaml
+---
+name: Database Migration
+description: Creates and validates Prisma database migrations
+---
+```
+
+That's about 100 tokens per skill. If you have 10 skills, that's 1,000 tokens — compared to the thousands of tokens the full skill bodies would cost.
+
+### On-Demand Load (full body)
+
+When a task matches a skill's description, Claude loads the full SKILL.md body — all the instructions, patterns, and references. This happens only for the triggered skill.
+
+```
+Session starts
+  ↓
+Load frontmatter for all skills: ~100 tokens each
+  ↓
+User: "Create a migration to add a status column to orders"
+  ↓
+Claude: Matches "Database Migration" skill description
+  ↓
+Load full SKILL.md body: ~2,000 tokens
+  ↓
+Claude follows the skill's instructions
+```
+
+If the user never asks about migrations, the full skill body is never loaded. Zero wasted tokens.
+
+## Building a Complete Skill
+
+### API Endpoint Skill
+
+`.claude/skills/api-endpoint/SKILL.md`:
+
+```markdown
+---
+name: API Endpoint Creator
+description: Creates new API endpoints following project conventions
+---
+
+## When Triggered
+
+When the user wants to create a new API endpoint, route, or handler.
+
+## Steps
+
+1. Read the existing routes in src/routes/ for conventions
+2. Create the route file in src/routes/
+3. Create the handler in src/handlers/
+4. Create the service method in src/services/
+5. Create the Zod input/output schemas
+6. Add to the route registration
+7. Create tests
+
+## File Templates
+
+### Route File (src/routes/<resource>.ts)
+```typescript
+import { FastifyInstance } from 'fastify';
+import { createHandler, getHandler, listHandler } from '../handlers/<resource>';
+
+export default async function (fastify: FastifyInstance) {
+  fastify.post('/', createHandler);
+  fastify.get('/:id', getHandler);
+  fastify.get('/', listHandler);
+}
+```
+
+### Handler Template
+```typescript
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { CreateResourceDto, createResourceSchema } from '../schemas/<resource>';
+import { <Resource>Service } from '../services/<resource>';
+
+export async function createHandler(
+  request: FastifyRequest<{ Body: CreateResourceDto }>,
+  reply: FastifyReply
+) {
+  const dto = createResourceSchema.parse(request.body);
+  const result = await <Resource>Service.create(dto);
+  return reply.status(201).send(result);
+}
+```
+
+## Rules
+
+- Always validate input with Zod
+- Always use DTOs between layers
+- Handler → Service → Repository flow
+- Include error handling with AppError
+```
+
+### Code Review Skill
+
+`.claude/skills/code-review/SKILL.md`:
+
+```markdown
+---
+name: Code Review
+description: Reviews code changes for quality, security, and conventions
+disableAutoInvocation: true
+---
+
+## Review Checklist
+
+### Security
+- [ ] Input validation on all user-facing endpoints
+- [ ] No SQL injection risks
+- [ ] No XSS vulnerabilities
+- [ ] Authentication/authorization checks present
+- [ ] No sensitive data in logs
+
+### Quality
+- [ ] Single responsibility per function
+- [ ] Error handling is comprehensive
+- [ ] No duplicated logic
+- [ ] Types are explicit and correct
+
+### Performance
+- [ ] No N+1 queries
+- [ ] Appropriate indexes exist
+- [ ] No unnecessary database calls
+- [ ] Pagination for list endpoints
+
+### Testing
+- [ ] Tests exist for new code
+- [ ] Edge cases are covered
+- [ ] Tests are meaningful (not just coverage)
+
+## Output Format
+
+For each finding:
+- **Category**: Security / Quality / Performance / Testing
+- **Severity**: Critical / Warning / Suggestion
+- **File:Line**: Exact location
+- **Finding**: Description
+- **Fix**: Recommended change
+```
+
+## Key Takeaway
+
+Skills are reusable knowledge packages that give Claude specialized expertise on demand. They use progressive disclosure — only frontmatter loads at session start (~100 tokens), and the full body loads only when triggered. This makes skills extremely token-efficient compared to putting everything in CLAUDE.md. Store skills in `.claude/skills/<name>/SKILL.md` with optional templates, scripts, and references. Use skills for knowledge domains (migrations, endpoint creation, code review) and agents for independent roles (security reviewer, test writer).

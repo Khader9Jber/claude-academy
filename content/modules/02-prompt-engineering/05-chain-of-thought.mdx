@@ -1,0 +1,251 @@
+---
+title: "Chain of Thought Reasoning"
+slug: "chain-of-thought"
+order: 5
+difficulty: "beginner"
+duration: 14
+tags: ["prompt-engineering", "chain-of-thought", "reasoning"]
+objectives:
+  - "Understand what chain of thought (CoT) reasoning is and why it improves accuracy"
+  - "Know when CoT helps and when it wastes tokens"
+  - "Use both simple and structured CoT techniques"
+  - "Apply CoT to debugging, analysis, and multi-step problems"
+quiz:
+  - id: "cot-1"
+    question: "Why does chain of thought prompting improve Claude's accuracy?"
+    type: "multiple-choice"
+    options:
+      - "It makes Claude use a larger model internally"
+      - "It forces Claude to reason sequentially, reducing errors from skipping logical steps"
+      - "It activates a hidden 'deep think' mode"
+      - "It has no effect on accuracy — it only affects response length"
+    correct: 1
+    explanation: "Chain of thought works because it forces Claude to work through the problem step by step rather than jumping to an answer. This sequential reasoning process catches errors that would occur if Claude tried to solve everything in one leap."
+  - id: "cot-2"
+    question: "When is chain of thought reasoning LEAST useful?"
+    type: "multiple-choice"
+    options:
+      - "Debugging a complex race condition"
+      - "Analyzing a multi-step business problem"
+      - "Reformatting a JSON file into YAML"
+      - "Evaluating architectural tradeoffs"
+    correct: 2
+    explanation: "Chain of thought wastes tokens on simple, mechanical tasks like format conversion. There's nothing to reason about — the transformation is deterministic. Save CoT for problems that actually require logical deduction."
+  - id: "cot-3"
+    question: "What is 'structured CoT'?"
+    type: "multiple-choice"
+    options:
+      - "Using JSON to format the thinking process"
+      - "Explicitly numbering the reasoning steps in your prompt"
+      - "A paid feature of Claude"
+      - "Asking Claude to think in a specific programming language"
+    correct: 1
+    explanation: "Structured CoT goes beyond 'think step by step' by explicitly defining the reasoning steps you want Claude to follow, such as 'Step 1: Identify the inputs. Step 2: Trace the data flow. Step 3: Find where the logic diverges from expectations.'"
+  - id: "cot-4"
+    question: "Which phrase is the simplest way to trigger chain of thought reasoning?"
+    type: "multiple-choice"
+    options:
+      - "Be smart about this"
+      - "Think step by step"
+      - "Use your best judgment"
+      - "Answer carefully"
+    correct: 1
+    explanation: "The phrase 'think step by step' is the classic CoT trigger. It's simple, well-studied, and reliably causes Claude to show its reasoning process rather than jumping to conclusions."
+---
+
+## What Is Chain of Thought?
+
+**Chain of thought (CoT)** prompting asks Claude to show its reasoning process — to think through a problem step by step before giving a final answer. Instead of jumping straight to a conclusion, Claude works through the logic sequentially, much like a developer talking through a bug with a colleague.
+
+Here's the core insight: when you ask Claude to solve a complex problem in one shot, it sometimes skips steps and makes errors. When you ask it to think step by step, it catches those errors because each step depends on the previous one being correct.
+
+This isn't a hack or a trick. It's grounded in how language models work. Generating intermediate reasoning tokens gives the model more "computation" between the question and the answer, which leads to more accurate results on problems that require logical deduction.
+
+## The Simplest CoT: "Think Step by Step"
+
+The most basic CoT technique is appending "think step by step" to your prompt:
+
+```
+This function is supposed to return the median of an array, but
+it returns incorrect values for even-length arrays. Think step by
+step to identify and fix the bug.
+
+```javascript
+function median(arr) {
+  arr.sort();
+  const mid = Math.floor(arr.length / 2);
+  return arr[mid];
+}
+```
+```
+
+Without CoT, Claude might just spot one issue and fix it. With CoT, Claude will:
+
+1. Trace through the function with an even-length example
+2. Notice that `arr.sort()` does lexicographic sorting, not numeric (`[1, 10, 2, 3]`)
+3. Notice that for even-length arrays, the median should be the average of the two middle values
+4. Identify both bugs and fix them
+
+The step-by-step process catches the sort bug that a quick glance might miss.
+
+## Structured CoT
+
+"Think step by step" is the entry-level technique. **Structured CoT** explicitly defines the reasoning steps:
+
+```
+Debug this authentication failure. Follow these steps exactly:
+
+Step 1: Trace the request from the client to the auth endpoint.
+        What headers are sent? What body?
+Step 2: Identify where in the middleware chain the request is
+        processed. List each middleware function it passes through.
+Step 3: For each middleware, determine whether the request passes
+        or fails. If it fails, explain why.
+Step 4: Compare the expected behavior with the actual behavior.
+        Where does the divergence happen?
+Step 5: Propose a fix and explain what it changes in the flow.
+
+The failing request:
+POST /api/auth/login
+Headers: Content-Type: application/json
+Body: { "email": "user@example.com", "password": "correct-password" }
+Response: 401 Unauthorized (but credentials are valid in the database)
+
+Relevant files:
+@src/middleware/auth.ts
+@src/routes/auth.ts
+@src/services/auth.service.ts
+```
+
+By defining the steps, you control Claude's reasoning process. You ensure it doesn't skip the middleware trace (Step 2) and jump straight to guessing at a fix.
+
+## When CoT Helps
+
+Chain of thought is your go-to technique for problems that require **multiple logical steps** or **deductive reasoning**:
+
+### Debugging Complex Bugs
+
+```
+This React component re-renders infinitely. Think step by step:
+1. What triggers the initial render?
+2. What state changes or effects run after render?
+3. Which of those could trigger another render?
+4. Trace the cycle until you find the infinite loop.
+
+@src/components/Dashboard.tsx
+```
+
+### Multi-Step Mathematical or Logical Problems
+
+```
+We need to calculate the optimal batch size for our data pipeline.
+Think step by step.
+
+Constraints:
+- Each record is ~2KB after serialization
+- The API accepts max 10MB per request
+- We have 1 million records to process
+- The API rate limit is 100 requests per minute
+- We need to finish within 30 minutes
+- Failed batches must be retried (assume 5% failure rate)
+
+What batch size should we use, and how long will the full
+import take?
+```
+
+Without CoT, Claude might give a rough estimate. With CoT, it'll calculate: records per batch (10MB / 2KB = 5,000), total batches (1M / 5K = 200), time at rate limit (200 / 100 = 2 minutes), factor in retries (200 * 1.05 = 210 batches), and arrive at a precise answer.
+
+### Analyzing Security Vulnerabilities
+
+```
+Analyze this authentication flow for security vulnerabilities.
+Think step by step through each stage of the flow:
+
+1. User submits credentials
+2. Server validates against database
+3. Server generates JWT
+4. Client stores JWT
+5. Client sends JWT with subsequent requests
+6. Server validates JWT on each request
+
+For each stage, identify what could go wrong and what an attacker
+could exploit.
+
+@src/auth/flow.ts
+```
+
+### Evaluating Tradeoffs
+
+```
+We're deciding between PostgreSQL and MongoDB for our new
+notification service. Think step by step:
+
+1. What are the data access patterns? (read-heavy? write-heavy? both?)
+2. What's the data model? (relational? document? time-series?)
+3. What are the scalability requirements? (users, events/day)
+4. What does our team know? (existing expertise)
+5. What integrates with our current stack? (Prisma, existing services)
+6. Based on steps 1-5, which database is the better fit and why?
+
+Context: We send ~10M notifications/day, each notification has
+a recipient, channel (email/push/sms), content, status, and
+timestamp. Notifications are written once and read rarely
+(mostly for audit logs). We already use PostgreSQL for everything else.
+```
+
+## When CoT Wastes Tokens
+
+Not every task benefits from step-by-step reasoning. Here are cases where CoT adds token cost without improving quality:
+
+- **Simple format conversions.** "Convert this JSON to YAML" — no reasoning needed.
+- **Direct lookups.** "What's the syntax for a TypeScript interface?" — Claude knows this instantly.
+- **Boilerplate generation.** "Create a new Express router file" — it's a template, not a logic puzzle.
+- **Simple string operations.** "Rename all instances of `userId` to `accountId`" — mechanical, not logical.
+
+For these tasks, CoT just pads the response with unnecessary "Let me think about this..." text that wastes tokens and time.
+
+**The rule of thumb:** If the task requires deduction, analysis, or evaluation, use CoT. If the task is mechanical or the answer is a known fact, skip it.
+
+## CoT + Extended Thinking
+
+Claude Code has a built-in feature called **extended thinking** (toggled with `Alt+T`) that's essentially automatic CoT. When enabled, Claude allocates tokens for internal reasoning before generating its response.
+
+The difference between manual CoT and extended thinking:
+
+| Feature | Manual CoT ("think step by step") | Extended Thinking (Alt+T) |
+|---------|----------------------------------|--------------------------|
+| Visibility | Claude's reasoning is in the response | Reasoning happens internally (you see a thinking indicator) |
+| Token cost | Reasoning tokens are part of the output | Thinking tokens are separate from the output |
+| Control | You define the steps | Claude decides its own reasoning process |
+| Best for | When you want to see/guide the reasoning | When you trust Claude to reason on its own |
+
+You can combine both: enable extended thinking AND use structured CoT. Claude will think internally first, then follow your structured steps in the visible response. This is the maximum reasoning power — use it for the hardest problems.
+
+## Real-World Example: Full Debug Session
+
+Here's a complete CoT prompt for a real-world debugging scenario:
+
+```
+Our e-commerce checkout is charging customers twice for single
+orders. This started after last week's deployment. Think through
+this step by step:
+
+1. Trace the checkout flow from button click to payment confirmation
+2. Identify every point where a charge could be initiated
+3. Check for race conditions (double-click, retry logic, webhook handlers)
+4. Look for idempotency issues (are we checking for duplicate charges?)
+5. Examine the recent diff for changes to payment-related code
+6. Propose a fix with an explanation of the root cause
+
+Key files:
+@src/pages/checkout.tsx
+@src/api/payments/charge.ts
+@src/api/webhooks/stripe.ts
+@src/services/order.service.ts
+```
+
+Claude will methodically work through each step, and by step 3, it'll likely find that the Stripe webhook handler creates a charge confirmation AND the API endpoint also confirms the charge — resulting in double processing when the webhook arrives before the API response.
+
+## Key Takeaway
+
+Chain of thought prompting forces Claude to reason sequentially, dramatically improving accuracy on complex problems. Use "think step by step" for a quick boost, or define explicit reasoning steps for maximum control. Apply CoT to debugging, multi-step analysis, and tradeoff evaluations. Skip it for mechanical tasks where reasoning adds no value. For the hardest problems, combine structured CoT with Claude's extended thinking feature.

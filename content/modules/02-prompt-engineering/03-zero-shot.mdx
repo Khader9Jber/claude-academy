@@ -1,0 +1,239 @@
+---
+title: "Zero-Shot Prompting"
+slug: "zero-shot"
+order: 3
+difficulty: "beginner"
+duration: 12
+tags: ["prompt-engineering", "zero-shot", "techniques"]
+objectives:
+  - "Understand what zero-shot prompting is and when to use it"
+  - "Learn techniques for maximizing zero-shot accuracy"
+  - "See real zero-shot prompt examples across coding domains"
+  - "Know the limitations of zero-shot and when to switch to few-shot"
+quiz:
+  - id: "zero-shot-1"
+    question: "What does 'zero-shot' mean in the context of prompting?"
+    type: "multiple-choice"
+    options:
+      - "Using zero tokens in your prompt"
+      - "Providing no examples — the model must perform the task from instructions alone"
+      - "Getting the answer in zero tries"
+      - "Using the cheapest model possible"
+    correct: 1
+    explanation: "Zero-shot means giving Claude a task without providing any examples of the desired input/output. Claude must understand what you want purely from the instruction and its training."
+  - id: "zero-shot-2"
+    question: "When is zero-shot prompting most effective?"
+    type: "multiple-choice"
+    options:
+      - "When the task is ambiguous and subjective"
+      - "When the task is well-defined with a clear, standard output format"
+      - "When you need to match a very specific style"
+      - "When you're classifying data into custom categories"
+    correct: 1
+    explanation: "Zero-shot works best when the task is clear and well-defined — write a function, explain a concept, find a bug. When the expected output is standard and unambiguous, Claude's training is sufficient without examples."
+  - id: "zero-shot-3"
+    question: "What is the most important technique for improving zero-shot results?"
+    type: "multiple-choice"
+    options:
+      - "Using more tokens"
+      - "Adding emojis to your prompt"
+      - "Being hyper-specific about format and constraints"
+      - "Repeating the question multiple times"
+    correct: 2
+    explanation: "When you can't show examples, you need to compensate with extreme specificity about what you want, how it should be formatted, and what constraints apply. The clearer your instructions, the less Claude has to guess."
+---
+
+## What Is Zero-Shot Prompting?
+
+**Zero-shot prompting** means asking Claude to perform a task without providing any examples of the expected input/output. You give an instruction, Claude executes it based on its training alone.
+
+This is the most natural way to interact with Claude. When you type "write a function that validates email addresses," you're doing zero-shot prompting. You haven't shown Claude an example of what a validated email looks like — you trust that Claude knows what email validation means.
+
+Most of your interactions with Claude will be zero-shot. It's the default mode. Understanding when it works well (and when it doesn't) is fundamental.
+
+## When Zero-Shot Works Best
+
+Zero-shot prompting excels when:
+
+- **The task is well-defined.** "Write a binary search function in Python" has a clear, objective answer. Claude doesn't need examples.
+- **The output format is standard.** "Write a SQL query" or "create a JSON schema" — these have well-known formats.
+- **The domain is well-represented in training.** Claude has seen millions of code examples, API docs, and technical explanations. For common programming tasks, zero-shot is usually sufficient.
+- **You're specific about constraints.** The less ambiguity in your prompt, the better zero-shot performs.
+
+## When Zero-Shot Struggles
+
+Zero-shot has trouble when:
+
+- **The output format is custom.** If you need a very specific output structure that isn't standard, Claude might not guess it correctly.
+- **The task involves subjective judgment.** "Write in my team's coding style" — Claude doesn't know your style without examples.
+- **Classification into custom categories.** If you've invented categories ("Priority: Moon / Star / Cloud"), Claude needs to see examples to learn what each means.
+- **Tone matching.** "Write like our marketing team" is too vague without examples of that team's actual writing.
+
+When you hit these walls, switch to few-shot prompting (next lesson).
+
+## 5 Real Zero-Shot Examples
+
+### Example 1: Code Generation
+
+```
+Write a TypeScript function called `retry` that:
+- Takes an async function and a max retry count
+- Retries the function on failure with exponential backoff
+- Starting delay: 1000ms, multiplied by 2 each retry
+- Returns the successful result or throws the last error
+- Includes proper TypeScript generics for the return type
+```
+
+This works zero-shot because retry-with-backoff is a well-known pattern. Claude has seen thousands of implementations and can synthesize a correct one from the description alone.
+
+### Example 2: Debugging
+
+```
+This Express middleware is supposed to log request duration,
+but it always logs 0ms:
+
+```typescript
+app.use((req, res, next) => {
+  const start = Date.now();
+  next();
+  const duration = Date.now() - start;
+  console.log(`${req.method} ${req.path} - ${duration}ms`);
+});
+```
+
+Explain why the duration is always 0 and provide the corrected version.
+```
+
+The bug is clear (measuring time synchronously around an async operation), and the fix is well-known (listen for the `finish` event on the response). Zero-shot nails this.
+
+### Example 3: Data Analysis
+
+```
+Given this PostgreSQL EXPLAIN ANALYZE output, identify the
+performance bottleneck and suggest an index to fix it:
+
+```sql
+Seq Scan on orders  (cost=0.00..45892.00 rows=2150000 width=44)
+  (actual time=0.015..523.412 rows=2150000 loops=1)
+  Filter: (status = 'pending' AND created_at > '2025-01-01')
+  Rows Removed by Filter: 1850000
+Planning Time: 0.089 ms
+Execution Time: 891.234 ms
+```
+```
+
+Zero-shot works here because query optimization follows well-known principles. A sequential scan filtering 2M rows is a textbook case for a composite index.
+
+### Example 4: Security Review
+
+```
+Review this Node.js endpoint for security vulnerabilities.
+List each vulnerability with severity (Critical/High/Medium/Low)
+and the fix:
+
+```javascript
+app.get('/api/users/:id', async (req, res) => {
+  const query = `SELECT * FROM users WHERE id = ${req.params.id}`;
+  const user = await db.raw(query);
+  res.json(user);
+});
+```
+```
+
+The SQL injection is obvious, but Claude will also catch returning `SELECT *` (potentially exposing sensitive fields), missing authentication, and no input validation — all from zero-shot.
+
+### Example 5: Documentation
+
+```
+Write JSDoc comments for this function. Include @param, @returns,
+@throws, and @example:
+
+```typescript
+async function batchProcess<T>(
+  items: T[],
+  processor: (item: T) => Promise<void>,
+  concurrency: number = 5
+): Promise<{ succeeded: number; failed: Array<{ item: T; error: Error }> }> {
+  // ... implementation
+}
+```
+```
+
+Documentation generation is one of zero-shot's strongest use cases. The function signature contains everything Claude needs to write accurate docs.
+
+## Key Techniques for Better Zero-Shot
+
+### Be Hyper-Specific About Format
+
+Without examples, format is the biggest source of mismatch between what you want and what Claude gives you. Compensate by being extremely explicit:
+
+```
+# Vague (Claude guesses format)
+Analyze this code for issues
+
+# Specific (Claude knows exactly what to produce)
+Analyze this code for issues. For each issue, output:
+- **Line**: the line number
+- **Severity**: Critical | High | Medium | Low
+- **Issue**: one-sentence description
+- **Fix**: the corrected code (as a code block)
+```
+
+### Use Explicit Constraints
+
+Constraints eliminate the most common zero-shot failures:
+
+```
+Generate a REST API design for a blog. Constraints:
+- Use plural nouns for resources (/posts, not /post)
+- All list endpoints must support cursor-based pagination
+- Use HTTP status codes correctly (201 for creation, 204 for deletion)
+- Include rate limit headers in the response design
+- Authentication via Bearer token in Authorization header
+- Do NOT include any GraphQL — REST only
+```
+
+### Specify the Output Boundary
+
+Tell Claude where the useful output starts and ends:
+
+```
+Write the migration file and nothing else.
+No explanation, no commentary, just the code.
+```
+
+Or conversely:
+
+```
+Explain the approach first, then show the implementation.
+I want to understand the reasoning before I see the code.
+```
+
+### Include Negative Instructions
+
+Tell Claude what NOT to do. This is surprisingly powerful for zero-shot:
+
+```
+Rewrite this function. Rules:
+- Do NOT change the function signature
+- Do NOT use lodash or any utility library
+- Do NOT add new parameters
+- Do NOT change the return type
+- DO improve readability and remove the nested ternary
+```
+
+## Zero-Shot vs. Few-Shot: The Decision
+
+The decision tree is simple:
+
+1. **Is the task well-defined with a standard output?** → Zero-shot
+2. **Does it involve custom formatting or classification?** → Few-shot
+3. **Is Claude not matching the style/tone you want?** → Few-shot
+4. **Did zero-shot give you 80%+ correct results?** → Stick with zero-shot, refine the prompt
+5. **Did zero-shot miss completely?** → Try few-shot before blaming the model
+
+In practice, you'll start zero-shot (it's the default), evaluate the result, and escalate to few-shot only when needed. Most coding tasks work fine zero-shot. Style matching and custom classification almost always need few-shot.
+
+## Key Takeaway
+
+Zero-shot prompting is your default tool — give Claude a clear instruction and let its training do the work. It excels for well-defined coding tasks, standard formats, and common patterns. When it falls short, compensate with hyper-specific format instructions, explicit constraints, and negative instructions before escalating to few-shot prompting. Master zero-shot first; it covers 70-80% of daily use cases.

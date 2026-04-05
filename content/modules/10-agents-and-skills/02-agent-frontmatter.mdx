@@ -1,0 +1,328 @@
+---
+title: "Agent Frontmatter: Every Option"
+slug: "agent-frontmatter"
+order: 2
+difficulty: "advanced"
+duration: 14
+tags: ["agents", "configuration", "frontmatter", "options"]
+objectives:
+  - "Know all agent frontmatter options"
+  - "Choose the right permission mode for each agent"
+  - "Configure memory, background, and turn limits"
+  - "Use SendMessage for agent communication"
+quiz:
+  - id: "frontmatter-1"
+    question: "What does permissionMode: dontAsk do?"
+    type: "multiple-choice"
+    options:
+      - "Asks permission for everything"
+      - "The agent never asks for permission and auto-approves all actions"
+      - "Denies all actions"
+      - "Only asks for dangerous actions"
+    correct: 1
+    explanation: "permissionMode: dontAsk means the agent auto-approves all tool uses without asking. This is useful for trusted agents doing routine work (like running tests), but dangerous for agents with write access. Use with caution and combine with restricted tool lists."
+  - id: "frontmatter-2"
+    question: "What does background: true do?"
+    type: "multiple-choice"
+    options:
+      - "Changes the terminal background color"
+      - "Runs the agent as a background process so you can continue working"
+      - "Hides the agent's output"
+      - "Reduces priority"
+    correct: 1
+    explanation: "background: true runs the agent as a background process. You can continue working in your terminal while the agent runs independently. This is useful for long-running tasks like test generation, security reviews, or refactoring."
+  - id: "frontmatter-3"
+    question: "What does isolation: worktree do?"
+    type: "multiple-choice"
+    options:
+      - "Isolates the agent's network"
+      - "Creates a separate git worktree so the agent's changes don't affect your working directory"
+      - "Runs in a Docker container"
+      - "Prevents file access"
+    correct: 1
+    explanation: "isolation: worktree creates a new git worktree for the agent. The agent works on a separate branch in a separate directory. Its changes are completely isolated from your main working directory. When done, you can review and merge the agent's work or discard it."
+  - id: "frontmatter-4"
+    question: "What is the effort option in agent frontmatter?"
+    type: "multiple-choice"
+    options:
+      - "How much physical effort the user should put in"
+      - "Controls the agent's reasoning depth: low, medium, high, or max"
+      - "Sets the number of files to process"
+      - "Controls response length"
+    correct: 1
+    explanation: "effort sets the reasoning depth for the agent: low (quick, minimal tokens), medium (balanced), high (deep reasoning), or max (no token limits, Opus only). Match effort to the agent's task — security review should be high, code formatting should be low."
+---
+
+## The Full Frontmatter Reference
+
+Agent frontmatter is the YAML block at the top of an agent markdown file. It controls everything about how the agent operates — permissions, model, isolation, memory, and more.
+
+Here's every option:
+
+## Core Options
+
+### name
+
+The agent's display name:
+
+```yaml
+---
+name: Security Reviewer
+---
+```
+
+### description
+
+What the agent does — used for auto-routing:
+
+```yaml
+---
+description: Reviews code for security vulnerabilities and auth issues
+---
+```
+
+Claude uses this description to decide when to route tasks to the agent. Make it specific.
+
+### model
+
+Which Claude model the agent uses:
+
+```yaml
+---
+model: opus    # Most capable — complex analysis
+model: sonnet  # Balanced — general tasks (default)
+model: haiku   # Fastest — simple lookups
+---
+```
+
+Choose based on the task complexity:
+- **opus**: Security review, architecture, complex debugging
+- **sonnet**: Code generation, testing, standard tasks
+- **haiku**: Code exploration, simple queries, lookups
+
+## Permission Modes
+
+### permissionMode
+
+Controls how the agent handles tool permissions:
+
+```yaml
+---
+permissionMode: default      # Ask for permission like normal
+permissionMode: acceptEdits  # Auto-approve file edits, ask for Bash
+permissionMode: plan         # Read-only, no edits allowed
+permissionMode: dontAsk      # Auto-approve everything (dangerous!)
+permissionMode: bypass       # Skip all permission checks (extremely dangerous)
+---
+```
+
+| Mode | File Reads | File Writes | Bash Commands | Use Case |
+|---|---|---|---|---|
+| default | Ask | Ask | Ask | General use |
+| acceptEdits | Allow | Allow | Ask | Trusted code generator |
+| plan | Allow | Block | Block | Read-only analysis |
+| dontAsk | Allow | Allow | Allow | Fully automated agent |
+| bypass | Allow | Allow | Allow | Testing only |
+
+**Recommendation**: Use `plan` for analysis agents, `acceptEdits` for code generation agents, and `dontAsk` only for agents with restricted tool access.
+
+## Isolation
+
+### isolation
+
+Determines how the agent's work environment is separated:
+
+```yaml
+---
+isolation: worktree  # Separate git worktree
+---
+```
+
+When set to `worktree`:
+1. A new git worktree is created at `.claude/worktrees/<agent-name>/`
+2. A new branch is auto-created
+3. The agent works in isolation from your main directory
+4. When done, you review and merge (or discard)
+5. Empty worktrees auto-cleanup
+
+This is essential for agents that make extensive changes — their work can be reviewed before affecting your codebase.
+
+## Memory and Context
+
+### memory
+
+Controls which memory types the agent has access to:
+
+```yaml
+---
+memory: user|project  # Access both user and project memories
+memory: project       # Only project memories
+memory: user          # Only user preferences
+---
+```
+
+### context
+
+How the agent receives conversation context:
+
+```yaml
+---
+context: fork  # Agent gets a copy of the current conversation context
+---
+```
+
+With `fork`, the agent starts with the same context as the current conversation. Without it, the agent starts with a clean context (just its instructions and the task).
+
+## Execution Control
+
+### maxTurns
+
+Limits how many tool-use cycles the agent can perform:
+
+```yaml
+---
+maxTurns: 20
+---
+```
+
+Prevents the agent from running indefinitely. Good defaults:
+- Simple tasks (review, analyze): 10
+- Moderate tasks (implement, test): 20
+- Complex tasks (refactor, migrate): 50
+
+### effort
+
+Sets the agent's reasoning depth:
+
+```yaml
+---
+effort: high   # Deep reasoning
+effort: medium # Balanced (default)
+effort: low    # Quick and direct
+effort: max    # No token limit (Opus only)
+---
+```
+
+### background
+
+Runs the agent as a background process:
+
+```yaml
+---
+background: true
+---
+```
+
+You can continue working while the agent runs. The TaskCompleted hook fires when it finishes.
+
+## Visual
+
+### color
+
+Sets a color label for the agent in the UI:
+
+```yaml
+---
+color: "#e74c3c"  # Red for security agents
+color: "#2ecc71"  # Green for test agents
+color: "#3498db"  # Blue for documentation agents
+---
+```
+
+## Communication
+
+### SendMessage
+
+Agents can communicate with each other and with the lead agent using SendMessage:
+
+```
+"SendMessage to security-reviewer: Please review the auth changes 
+I just made in src/services/auth.ts"
+```
+
+This enables coordination in multi-agent workflows (covered in the Agent Teams lesson).
+
+## Putting It All Together
+
+### Security Reviewer — Full Config
+
+```yaml
+---
+name: Security Reviewer
+description: Reviews code changes for security vulnerabilities
+model: opus
+permissionMode: plan
+isolation: worktree
+effort: high
+maxTurns: 30
+color: "#e74c3c"
+memory: project
+---
+
+You are a security reviewer. Focus exclusively on security issues...
+```
+
+### Test Generator — Full Config
+
+```yaml
+---
+name: Test Generator
+description: Generates comprehensive tests for source files
+model: sonnet
+permissionMode: acceptEdits
+effort: medium
+maxTurns: 25
+background: true
+color: "#2ecc71"
+---
+
+You write comprehensive tests for source files...
+```
+
+### Code Explorer — Full Config
+
+```yaml
+---
+name: Code Explorer
+description: Explores and explains codebase structure
+model: haiku
+permissionMode: plan
+effort: low
+maxTurns: 10
+color: "#3498db"
+---
+
+You explore codebases and explain what you find...
+```
+
+## Design Patterns
+
+### Pattern 1: Analyst + Implementer
+
+Create two agents — one plans (read-only), one implements:
+
+- **Analyst**: model: opus, permissionMode: plan, effort: high
+- **Implementer**: model: sonnet, permissionMode: acceptEdits, effort: medium
+
+The analyst reviews and plans, the implementer executes.
+
+### Pattern 2: Worker + Reviewer
+
+- **Worker**: model: sonnet, permissionMode: acceptEdits, isolation: worktree
+- **Reviewer**: model: opus, permissionMode: plan, effort: high
+
+The worker implements in a worktree, the reviewer checks the work.
+
+### Pattern 3: Specialist Pool
+
+Multiple specialists for different concerns:
+
+- **Security**: model: opus, effort: high, focus on vulnerabilities
+- **Performance**: model: sonnet, effort: high, focus on efficiency
+- **Tests**: model: sonnet, background: true, focus on coverage
+
+Route different aspects of a review to different specialists.
+
+## Key Takeaway
+
+Agent frontmatter gives you precise control over each agent's behavior. The most important options are: model (match capability to task), permissionMode (plan for read-only, acceptEdits for code gen, dontAsk for fully automated), isolation: worktree (safe experimentation), maxTurns (prevent runaway agents), and effort (match reasoning depth to complexity). Combine these options into patterns like analyst+implementer or worker+reviewer for structured multi-agent workflows.

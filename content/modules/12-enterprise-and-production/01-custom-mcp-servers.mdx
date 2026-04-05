@@ -1,0 +1,393 @@
+---
+title: "Building Custom MCP Servers"
+slug: "custom-mcp-servers"
+order: 1
+difficulty: "expert"
+duration: 18
+tags: ["mcp", "custom", "server", "typescript", "integration"]
+objectives:
+  - "Build an MCP server from scratch in TypeScript"
+  - "Define tools and handle requests"
+  - "Connect internal APIs to Claude Code"
+  - "Test and deploy your custom server"
+quiz:
+  - id: "custom-mcp-1"
+    question: "What is the core structure of an MCP server?"
+    type: "multiple-choice"
+    options:
+      - "A REST API"
+      - "A process that defines tools (name, description, parameters, handler) and communicates via MCP protocol"
+      - "A database"
+      - "A web application"
+    correct: 1
+    explanation: "An MCP server is a process that defines tools — each with a name, description, input parameters schema, and a handler function. It communicates using the MCP protocol (typically over stdio). When Claude invokes a tool, the server receives the request, executes the handler, and returns structured results."
+  - id: "custom-mcp-2"
+    question: "Why would you build a custom MCP server?"
+    type: "multiple-choice"
+    options:
+      - "For fun"
+      - "To connect internal APIs, proprietary databases, or custom tooling to Claude Code"
+      - "MCP servers are required for Claude to work"
+      - "To replace built-in tools"
+    correct: 1
+    explanation: "Custom MCP servers let you connect anything to Claude Code — internal APIs, proprietary databases, custom monitoring tools, legacy systems, or any service that doesn't have a public MCP server. This bridges the gap between Claude's capabilities and your organization's unique infrastructure."
+  - id: "custom-mcp-3"
+    question: "What SDK do you use to build an MCP server in TypeScript?"
+    type: "multiple-choice"
+    options:
+      - "express"
+      - "@modelcontextprotocol/sdk"
+      - "fastify"
+      - "socket.io"
+    correct: 1
+    explanation: "The official MCP TypeScript SDK (@modelcontextprotocol/sdk) provides the Server class, tool definition helpers, and protocol handling. It manages the communication layer so you only need to define your tools and their handlers."
+  - id: "custom-mcp-4"
+    question: "How do you connect a custom MCP server to Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Upload it to Anthropic"
+      - "claude mcp add server-name --transport stdio node path/to/server.js"
+      - "Install it globally"
+      - "Put it in CLAUDE.md"
+    correct: 1
+    explanation: "Connect your custom server with: claude mcp add server-name --transport stdio node path/to/server.js. This tells Claude Code to start your server as a local process and communicate over stdio. Your tools immediately appear in the session."
+---
+
+## When You Need Custom
+
+The MCP ecosystem has servers for popular services — GitHub, databases, Slack. But your organization has tools that are unique to you:
+
+- Internal deployment API
+- Custom monitoring dashboard
+- Legacy database with a proprietary query language
+- Internal user management system
+- Custom CI/CD pipeline
+
+A custom MCP server bridges Claude Code to any of these.
+
+## Building a Server: Step by Step
+
+### Project Setup
+
+```bash
+mkdir my-mcp-server && cd my-mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk zod
+npm install -D typescript @types/node
+```
+
+Create `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true
+  },
+  "include": ["src/**/*"]
+}
+```
+
+### Server Implementation
+
+Create `src/index.ts`:
+
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
+// Create the server
+const server = new Server(
+  {
+    name: "internal-deploy",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+// Define available tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      {
+        name: "get_deploy_status",
+        description: "Get the deployment status of a service",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            service: {
+              type: "string",
+              description: "Service name (e.g., 'api', 'web', 'worker')",
+            },
+            environment: {
+              type: "string",
+              enum: ["staging", "production"],
+              description: "Target environment",
+            },
+          },
+          required: ["service", "environment"],
+        },
+      },
+      {
+        name: "trigger_deploy",
+        description: "Trigger a deployment for a service",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            service: {
+              type: "string",
+              description: "Service name",
+            },
+            environment: {
+              type: "string",
+              enum: ["staging", "production"],
+              description: "Target environment",
+            },
+            version: {
+              type: "string",
+              description: "Version tag to deploy",
+            },
+          },
+          required: ["service", "environment", "version"],
+        },
+      },
+      {
+        name: "get_service_health",
+        description: "Check the health of a deployed service",
+        inputSchema: {
+          type: "object" as const,
+          properties: {
+            service: { type: "string" },
+            environment: { type: "string", enum: ["staging", "production"] },
+          },
+          required: ["service", "environment"],
+        },
+      },
+    ],
+  };
+});
+
+// Handle tool calls
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  switch (name) {
+    case "get_deploy_status": {
+      // Call your internal API
+      const status = await fetchDeployStatus(
+        args.service as string,
+        args.environment as string
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(status, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "trigger_deploy": {
+      const result = await triggerDeploy(
+        args.service as string,
+        args.environment as string,
+        args.version as string
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    }
+
+    case "get_service_health": {
+      const health = await checkHealth(
+        args.service as string,
+        args.environment as string
+      );
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(health, null, 2),
+          },
+        ],
+      };
+    }
+
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
+});
+
+// Your internal API functions
+async function fetchDeployStatus(service: string, env: string) {
+  const response = await fetch(
+    `https://deploy.internal.company.com/api/status/${env}/${service}`,
+    { headers: { Authorization: `Bearer ${process.env.DEPLOY_TOKEN}` } }
+  );
+  return response.json();
+}
+
+async function triggerDeploy(service: string, env: string, version: string) {
+  const response = await fetch(
+    `https://deploy.internal.company.com/api/deploy`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.DEPLOY_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ service, environment: env, version }),
+    }
+  );
+  return response.json();
+}
+
+async function checkHealth(service: string, env: string) {
+  const response = await fetch(
+    `https://${service}.${env}.company.com/health`
+  );
+  return {
+    status: response.ok ? "healthy" : "unhealthy",
+    statusCode: response.status,
+    responseTime: `${Date.now()}ms`,
+  };
+}
+
+// Start the server
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("Internal Deploy MCP server running");
+}
+
+main().catch(console.error);
+```
+
+### Build and Connect
+
+```bash
+# Build
+npx tsc
+
+# Connect to Claude Code
+claude mcp add internal-deploy \
+  -e DEPLOY_TOKEN=$DEPLOY_TOKEN \
+  --transport stdio \
+  node dist/index.js
+```
+
+### Use It
+
+```bash
+claude
+
+"What's the deployment status of the API service in production?"
+# Claude calls mcp__internal-deploy__get_deploy_status
+
+"Deploy version v2.3.0 of the API to staging"
+# Claude calls mcp__internal-deploy__trigger_deploy
+
+"Check if staging is healthy after the deploy"
+# Claude calls mcp__internal-deploy__get_service_health
+```
+
+## Tool Design Best Practices
+
+### Clear Descriptions
+
+Claude uses tool descriptions to decide when and how to use them. Be specific:
+
+```typescript
+// Bad
+{ name: "query", description: "Run a query" }
+
+// Good
+{ name: "search_users", description: "Search internal user database by email, name, or team. Returns user profile, role, and team membership." }
+```
+
+### Structured Input Schemas
+
+Use Zod-compatible JSON Schema for input validation:
+
+```typescript
+{
+  inputSchema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "Search query (email, name, or team name)"
+      },
+      limit: {
+        type: "number",
+        description: "Maximum results (default 10, max 50)"
+      }
+    },
+    required: ["query"]
+  }
+}
+```
+
+### Structured Return Values
+
+Return JSON that Claude can easily parse:
+
+```typescript
+return {
+  content: [{
+    type: "text",
+    text: JSON.stringify({
+      results: users,
+      total: count,
+      query: args.query,
+      timestamp: new Date().toISOString()
+    }, null, 2)
+  }]
+};
+```
+
+## Testing Your Server
+
+### Manual Testing
+
+```bash
+# Start the server directly
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node dist/index.js
+```
+
+### In Claude Code
+
+```bash
+# Connect and test
+claude mcp add test-server --transport stdio node dist/index.js
+
+# In session
+/mcp
+# Should show your server and tools
+
+"List the available tools from the internal deploy server"
+# Claude should list your tools
+```
+
+## Key Takeaway
+
+Custom MCP servers connect any internal tool or API to Claude Code. Use the `@modelcontextprotocol/sdk` to build a server that defines tools with names, descriptions, input schemas, and handlers. Connect with `claude mcp add`. The investment in building a custom server pays off every time you or your team uses Claude with your internal infrastructure — eliminating manual data copying and giving Claude direct access to your tools.

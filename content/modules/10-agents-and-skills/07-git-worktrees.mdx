@@ -1,0 +1,263 @@
+---
+title: "Git Worktrees: Parallel Isolation"
+slug: "git-worktrees"
+order: 7
+difficulty: "advanced"
+duration: 14
+tags: ["git", "worktrees", "isolation", "parallel"]
+objectives:
+  - "Create and use git worktrees with Claude Code"
+  - "Configure agent isolation with worktrees"
+  - "Use sparse paths for monorepo worktrees"
+  - "Know when to use worktrees vs fork"
+quiz:
+  - id: "worktrees-1"
+    question: "What does claude -w feature-auth do?"
+    type: "multiple-choice"
+    options:
+      - "Opens the auth feature"
+      - "Creates a new git worktree at .claude/worktrees/feature-auth/ with an auto-created branch"
+      - "Watches the auth directory"
+      - "Switches to the auth branch"
+    correct: 1
+    explanation: "claude -w feature-auth creates a new git worktree in .claude/worktrees/feature-auth/, auto-creates a new branch, and starts a Claude Code session in that worktree. Your main working directory is untouched — all changes happen in the isolated worktree."
+  - id: "worktrees-2"
+    question: "What happens to an empty worktree when the session ends?"
+    type: "multiple-choice"
+    options:
+      - "It persists forever"
+      - "If no changes were made, the worktree is automatically cleaned up"
+      - "It becomes the main worktree"
+      - "The session can't end with an empty worktree"
+    correct: 1
+    explanation: "Empty worktrees (no changes, no commits) are automatically cleaned up when the session ends. This prevents accumulation of unused worktrees from experiments that didn't pan out. Worktrees with changes persist for later review."
+  - id: "worktrees-3"
+    question: "What are sparsePaths for monorepo worktrees?"
+    type: "multiple-choice"
+    options:
+      - "Paths that are rarely used"
+      - "Paths that specify which portions of a monorepo to check out in the worktree, saving disk space"
+      - "Encrypted file paths"
+      - "Network paths"
+    correct: 1
+    explanation: "sparsePaths in settings.json specify which directories to include when creating a worktree in a monorepo. Instead of checking out the entire 50GB monorepo, the worktree only contains the specified paths — saving disk space and making operations faster."
+  - id: "worktrees-4"
+    question: "When should you use a worktree instead of /fork?"
+    type: "multiple-choice"
+    options:
+      - "Always"
+      - "When you need file-level isolation — worktrees create separate directories; forks only branch the conversation"
+      - "Never — they're the same"
+      - "Only for monorepos"
+    correct: 1
+    explanation: "Worktrees provide file-level isolation — a separate directory with its own file state. Forks only branch the conversation — they share the same files. Use worktrees when you need Claude to make experimental changes without affecting your working directory. Use forks when you want to explore different conversational approaches."
+---
+
+## What Are Git Worktrees?
+
+A **git worktree** is a separate working directory linked to the same repository. It has its own branch, its own file state, and its own index — but shares the same git history and objects.
+
+In Claude Code, worktrees provide **file-level isolation**. When an agent or session works in a worktree, its file changes are completely separate from your main working directory. This means:
+
+- Claude can experiment freely without breaking your work
+- Multiple agents can work in parallel without file conflicts
+- Failed experiments are discarded without cleanup
+- Successful work can be merged via normal git workflow
+
+## Creating a Worktree Session
+
+### From the Command Line
+
+```bash
+claude -w feature-auth
+```
+
+This:
+1. Creates `.claude/worktrees/feature-auth/`
+2. Creates a new branch `worktree/feature-auth`
+3. Checks out the branch in the worktree
+4. Starts a Claude Code session in the worktree directory
+
+Your main working directory is untouched. All of Claude's file operations happen in the worktree.
+
+### During a Session
+
+```bash
+/branch feature-auth
+```
+
+Creates a worktree and switches to it mid-session.
+
+## Worktree Lifecycle
+
+```
+1. Create:  claude -w my-experiment
+             └── .claude/worktrees/my-experiment/ created
+             └── Branch worktree/my-experiment created
+
+2. Work:    Claude reads/writes files in the worktree
+             └── Main directory unaffected
+
+3. Review:  You review changes in the worktree
+             └── git diff in .claude/worktrees/my-experiment/
+
+4. Merge:   If good, merge the branch
+             └── git merge worktree/my-experiment
+
+5. Cleanup: If no changes, auto-cleanup on session end
+             └── Worktree and branch removed
+```
+
+## Worktrees for Agent Isolation
+
+The primary use of worktrees is agent isolation. When a sub-agent has `isolation: worktree` in its frontmatter, it automatically gets its own worktree:
+
+```yaml
+---
+name: Refactoring Agent
+description: Performs large-scale refactoring
+model: sonnet
+isolation: worktree
+permissionMode: acceptEdits
+---
+```
+
+When this agent is invoked:
+1. A worktree is created for it
+2. The agent works in its own isolated directory
+3. When done, its changes are on a separate branch
+4. You review and merge (or discard)
+
+This is critical for agents that make extensive changes — you don't want a refactoring agent modifying files you're actively working on.
+
+## Multiple Parallel Worktrees
+
+You can have multiple worktrees active simultaneously:
+
+```bash
+# Terminal 1
+claude -w feature-auth
+# Working on authentication
+
+# Terminal 2
+claude -w feature-payments
+# Working on payments
+
+# Terminal 3 (your main directory)
+claude
+# Working on something else entirely
+```
+
+Three Claude sessions, three branches, three directories — zero conflicts.
+
+## Sparse Paths for Monorepos
+
+In a monorepo, checking out the entire repo for each worktree is wasteful. **sparsePaths** let you specify which parts of the repo to include:
+
+```json
+// .claude/settings.json
+{
+  "sparsePaths": [
+    "packages/api/**",
+    "packages/shared/**",
+    "package.json",
+    "tsconfig.json"
+  ]
+}
+```
+
+When a worktree is created, only these paths are checked out:
+
+```
+.claude/worktrees/feature-auth/
+├── packages/
+│   ├── api/          ← Only the packages you need
+│   └── shared/
+├── package.json
+└── tsconfig.json
+```
+
+Instead of checking out the entire monorepo (which might be gigabytes), the worktree only contains what's relevant. This saves:
+- Disk space (10GB monorepo → 500MB sparse worktree)
+- Time (checkout is faster)
+- Context (Claude only sees relevant code)
+
+## Worktree vs. Fork
+
+These are easy to confuse. Here's the difference:
+
+| Aspect | Worktree | Fork |
+|---|---|---|
+| What's isolated | Files (separate directory) | Conversation (separate session) |
+| File changes | Completely isolated | Shared file system |
+| Git branch | New branch created | Same branch |
+| Use case | Claude making experimental changes | Exploring conversational approaches |
+| Cleanup | Auto-cleanup if empty | Manual /resume |
+
+### When to Use Worktrees
+
+- Claude is going to make **extensive file changes** you want to review
+- **Multiple agents** need to work on the same repo in parallel
+- You want to **experiment** with a refactoring without risk
+- You're in a **monorepo** and want isolated work on a package
+
+### When to Use Fork
+
+- You want to **explore different approaches** conversationally
+- The code changes are **small** and you can Esc Esc to rewind
+- You want to **preserve conversation context** between branches
+
+## Real-World Worktree Workflow
+
+```bash
+# Start a worktree for the refactoring
+claude -w refactor-auth-service
+
+# In the worktree session
+"Refactor the auth service to use the new JWT library. 
+Read the current implementation, migrate all JWT operations,
+and update tests."
+
+# Claude works in .claude/worktrees/refactor-auth-service/
+# Your main directory is untouched
+
+# Review the work
+cd .claude/worktrees/refactor-auth-service/
+git diff HEAD
+
+# If it looks good, merge
+git checkout main
+git merge worktree/refactor-auth-service
+
+# If it doesn't look good, just delete the worktree
+rm -rf .claude/worktrees/refactor-auth-service/
+git worktree prune
+git branch -D worktree/refactor-auth-service
+```
+
+## WorktreeCreate and WorktreeRemove Hooks
+
+You can automate worktree setup and cleanup with hooks:
+
+```json
+{
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "command": "cd $worktree_path && pnpm install && echo 'Dependencies installed'"
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "command": "echo 'Worktree cleaned up: $worktree_path'"
+      }
+    ]
+  }
+}
+```
+
+The WorktreeCreate hook runs `pnpm install` in every new worktree — ensuring the agent has all dependencies available.
+
+## Key Takeaway
+
+Git worktrees provide file-level isolation for Claude Code sessions and agents. Create them with `claude -w name` or via agent frontmatter (`isolation: worktree`). Each worktree is a separate directory with its own branch — Claude's changes don't affect your main working directory. Use sparsePaths for monorepo efficiency. Empty worktrees auto-cleanup. Worktrees are essential for multi-agent parallel work and any scenario where you want to review Claude's changes before they affect your codebase.

@@ -1,0 +1,319 @@
+---
+title: "Advanced Custom Commands"
+slug: "advanced-custom-commands"
+order: 4
+difficulty: "intermediate"
+duration: 16
+tags: ["commands", "shell-injection", "automation", "advanced"]
+objectives:
+  - "Use shell injection with !`command` syntax in command files"
+  - "Build deploy pipelines as slash commands"
+  - "Add model overrides to command frontmatter"
+  - "Create context-aware commands that read live data"
+quiz:
+  - id: "adv-commands-1"
+    question: "What does !`git status` do inside a command markdown file?"
+    type: "multiple-choice"
+    options:
+      - "Displays the text 'git status'"
+      - "Runs git status at invocation time and injects the output into the command prompt"
+      - "Creates a git alias"
+      - "Nothing — it's treated as code formatting"
+    correct: 1
+    explanation: "The !`command` syntax runs a shell command when the slash command is invoked and injects the output into the prompt. So !`git status` becomes the actual output of git status — Claude sees the current state of your working tree, not the literal text 'git status'."
+  - id: "adv-commands-2"
+    question: "Why use shell injection in custom commands?"
+    type: "multiple-choice"
+    options:
+      - "To make commands look more technical"
+      - "To inject live, dynamic context (current branch, changed files, test results) into the command prompt"
+      - "To bypass permissions"
+      - "To run commands faster"
+    correct: 1
+    explanation: "Shell injection gives commands live context. A deploy command can inject the current branch name, recent commits, and test results — so Claude makes decisions based on the actual state of the project, not assumptions."
+  - id: "adv-commands-3"
+    question: "How do you override the model for a specific command?"
+    type: "multiple-choice"
+    options:
+      - "Add model: opus to the frontmatter"
+      - "It's not possible"
+      - "Use /model before the command"
+      - "Set an environment variable"
+    correct: 0
+    explanation: "Add model: opus (or sonnet, haiku) to the command's YAML frontmatter. This makes the command always use the specified model, regardless of what model the session is currently using. Useful for complex commands that need Opus-level reasoning."
+  - id: "adv-commands-4"
+    question: "What's a practical use of combining shell injection with $ARGUMENTS?"
+    type: "multiple-choice"
+    options:
+      - "There's no way to combine them"
+      - "A deploy command that checks the target environment (argument) against the current branch and recent commits (shell injection)"
+      - "It creates a loop"
+      - "It enables voice commands"
+    correct: 1
+    explanation: "Combining $ARGUMENTS (user input) with shell injection (live data) creates powerful context-aware commands. A deploy command can take a target environment as argument while injecting the current branch, last commit, and test status — giving Claude everything it needs to make safe deployment decisions."
+---
+
+## Beyond Simple Commands
+
+In the previous lesson, you built straightforward custom commands — markdown files with instructions and `$ARGUMENTS`. Now we'll level up with two powerful features: **shell injection** and **model overrides**.
+
+These transform commands from static templates into dynamic, context-aware automation pipelines.
+
+## Shell Injection: !`command`
+
+The `!`\``command`\` syntax runs a shell command when the slash command is invoked and replaces itself with the output. Claude sees the result, not the command.
+
+### Basic Example
+
+`.claude/commands/status.md`:
+
+```markdown
+---
+description: "Summarize the current project state"
+---
+
+Here's the current state of the project:
+
+## Git Status
+!`git status`
+
+## Recent Commits
+!`git log --oneline -10`
+
+## Current Branch
+!`git branch --show-current`
+
+Based on this information, give me a brief summary of:
+1. What's been worked on recently
+2. What's currently in progress (unstaged changes)
+3. Any concerns (uncommitted work, diverged branches)
+```
+
+When you type `/status`, Claude sees the actual output of those commands — the real files that changed, the real commit messages, the real branch name. The command is dynamic, reflecting the current state every time it's invoked.
+
+### Live Context Injection
+
+Shell injection is most powerful when it provides context Claude needs to make decisions:
+
+`.claude/commands/deploy.md`:
+
+```markdown
+---
+description: "Run the deploy checklist for a target environment"
+argument-hint: "staging|production"
+---
+
+Deploy to $ARGUMENTS environment.
+
+## Current Context
+- Branch: !`git branch --show-current`
+- Last commit: !`git log --oneline -1`
+- Uncommitted changes: !`git status --short`
+- Test status: !`pnpm test --run 2>&1 | tail -5`
+
+## Deploy Checklist
+
+1. **Verify branch**: We should be on `main` for production deploys, 
+   `develop` for staging. Check the current branch above.
+
+2. **Verify clean working tree**: There should be no uncommitted changes.
+   If there are changes listed above, abort and commit first.
+
+3. **Verify tests pass**: Check the test output above. If tests fail, 
+   abort and fix them first.
+
+4. **Build**: Run `pnpm build` and verify it succeeds.
+
+5. **Tag** (production only): Create a version tag.
+   Read package.json for the current version.
+
+6. **Push**: Push the branch and tags.
+
+7. **Deploy**: Run the appropriate deploy command:
+   - staging: `pnpm deploy:staging`
+   - production: `pnpm deploy:production`
+
+8. **Verify**: After deploy, run `pnpm health-check:$ARGUMENTS`
+
+If any step fails, stop immediately and report the issue.
+```
+
+Usage:
+```bash
+/deploy staging
+/deploy production
+```
+
+Claude sees the real branch, the real last commit, the real uncommitted changes, and the real test results. It makes deployment decisions based on actual data, not assumptions.
+
+## Model Overrides in Commands
+
+Some commands need more reasoning power than others. A simple renaming command works fine with Sonnet. A complex security review needs Opus.
+
+Add `model` to the frontmatter:
+
+```yaml
+---
+description: "Deep security review of the current branch"
+model: opus
+---
+```
+
+### When to Override Models
+
+| Command Type | Recommended Model |
+|---|---|
+| Security review, architecture analysis | opus |
+| Code generation, testing, general review | sonnet |
+| Simple formatting, renaming, boilerplate | haiku |
+
+### Example: Tiered Review System
+
+`.claude/commands/review-quick.md`:
+
+```yaml
+---
+description: "Quick code review (Sonnet)"
+model: sonnet
+---
+
+Quick review of changes on the current branch:
+!`git diff main --stat`
+
+Focus on obvious issues only: syntax errors, missing imports, 
+broken tests. Don't deep-dive into architecture.
+```
+
+`.claude/commands/review-deep.md`:
+
+```yaml
+---
+description: "Deep security and architecture review (Opus)"
+model: opus
+---
+
+Comprehensive review of all changes on the current branch:
+
+## Changed Files
+!`git diff main --stat`
+
+## Full Diff
+!`git diff main`
+
+Review for:
+1. Security vulnerabilities (injection, auth bypass, data exposure)
+2. Architecture violations (check CLAUDE.md rules)
+3. Performance issues (N+1 queries, missing indexes)
+4. Race conditions and concurrency issues
+5. Error handling completeness
+6. Test coverage gaps
+
+For each issue, provide severity, location, and fix.
+```
+
+Two commands: `/review-quick` for daily reviews (fast, cheap), `/review-deep` for pre-release reviews (thorough, uses Opus).
+
+## Advanced Patterns
+
+### Command Chaining
+
+Build commands that reference other commands or build on each other:
+
+`.claude/commands/release.md`:
+
+```markdown
+---
+description: "Full release workflow"
+argument-hint: "version (e.g., 2.3.0)"
+model: opus
+---
+
+Execute the full release workflow for version $ARGUMENTS:
+
+## Pre-Release State
+- Current version: !`node -p "require('./package.json').version"`
+- Branch: !`git branch --show-current`
+- Unreleased commits: !`git log $(git describe --tags --abbrev=0)..HEAD --oneline`
+
+## Steps
+
+1. Verify we're on the `main` branch
+2. Verify all tests pass: `pnpm test`
+3. Verify the build succeeds: `pnpm build`
+4. Update version in package.json to $ARGUMENTS
+5. Generate changelog from commits since last tag
+6. Create a commit: "chore: release v$ARGUMENTS"
+7. Tag: `git tag v$ARGUMENTS`
+8. Push branch and tags
+9. Create a GitHub release with the changelog
+
+Execute each step sequentially. If any step fails, stop and report.
+```
+
+### Database Migration Command
+
+`.claude/commands/migrate.md`:
+
+```markdown
+---
+description: "Create and apply a database migration"
+argument-hint: "migration-name"
+---
+
+Create a Prisma migration named $ARGUMENTS.
+
+## Current Schema State
+!`npx prisma migrate status 2>&1`
+
+## Steps
+1. Review the current schema changes in prisma/schema.prisma
+2. Create the migration: `npx prisma migrate dev --name $ARGUMENTS`
+3. Review the generated SQL in prisma/migrations/
+4. Verify the migration is reversible
+5. Run `npx prisma generate` to update the client
+6. Update any affected repository files in src/repos/
+7. Run tests to verify nothing broke
+```
+
+### PR Description Generator
+
+`.claude/commands/pr-desc.md`:
+
+```markdown
+---
+description: "Generate a PR description from the current branch"
+---
+
+Generate a pull request description for the current branch.
+
+## Context
+- Branch: !`git branch --show-current`
+- Commits: !`git log main..HEAD --oneline`
+- Changed files: !`git diff main --stat`
+
+## Template
+
+Write a PR description with:
+1. **Summary**: 1-2 sentences about what this PR does
+2. **Changes**: Bulleted list of key changes (from the commits)
+3. **Testing**: How to test these changes
+4. **Screenshots**: (placeholder if UI changes)
+5. **Checklist**: 
+   - [ ] Tests added/updated
+   - [ ] Documentation updated
+   - [ ] No breaking changes (or documented)
+```
+
+## Debugging Commands
+
+If a command isn't working as expected, check:
+
+1. **File location**: Is it in `.claude/commands/` (project) or `~/.claude/commands/` (global)?
+2. **File extension**: Must be `.md`
+3. **Frontmatter syntax**: Valid YAML between `---` markers
+4. **Shell injection**: The command between backticks must be valid shell
+5. **$ARGUMENTS**: Only works if the user provides arguments
+
+## Key Takeaway
+
+Advanced commands use shell injection (`!`\``command`\``) to inject live context — current branch, changed files, test results — into the command prompt. Model overrides in frontmatter let you assign the right model to each command. Combined with `$ARGUMENTS`, these features create powerful, context-aware automation: deploy pipelines, release workflows, database migrations, and PR generators that work with real data, not assumptions.

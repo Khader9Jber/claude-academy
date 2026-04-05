@@ -1,0 +1,321 @@
+---
+title: "Headless Pipelines at Scale"
+slug: "headless-at-scale"
+order: 5
+difficulty: "expert"
+duration: 16
+tags: ["headless", "scale", "pipelines", "batch-processing"]
+objectives:
+  - "Process large numbers of files with headless Claude"
+  - "Build parallel execution pipelines"
+  - "Manage rate limits and costs at scale"
+  - "Design real-world code analysis pipelines"
+quiz:
+  - id: "headless-scale-1"
+    question: "How do you process many files in parallel with Claude?"
+    type: "multiple-choice"
+    options:
+      - "Send all files in one prompt"
+      - "Use xargs -P for parallel execution: find . -name '*.ts' | xargs -P 4 -I {} claude -p 'analyze {}'"
+      - "Parallel processing isn't possible"
+      - "Use multiple terminals"
+    correct: 1
+    explanation: "xargs -P runs multiple Claude instances in parallel. -P 4 runs 4 parallel processes, each analyzing a different file. This is much faster than sequential processing, though you need to manage rate limits."
+  - id: "headless-scale-2"
+    question: "What's the main concern when running headless Claude at scale?"
+    type: "multiple-choice"
+    options:
+      - "Disk space"
+      - "Rate limits and API costs — each invocation is an API call with token costs"
+      - "CPU usage"
+      - "Network bandwidth"
+    correct: 1
+    explanation: "At scale, each Claude invocation costs tokens and counts against rate limits. Processing 1,000 files at 2,000 tokens each is 2 million tokens — significant API cost. You need to manage parallelism (don't overwhelm rate limits), batch when possible, and monitor costs."
+  - id: "headless-scale-3"
+    question: "Why batch related files into single Claude calls instead of one-per-file?"
+    type: "multiple-choice"
+    options:
+      - "It doesn't matter"
+      - "Batching reduces API calls and overhead — 10 files in 1 call uses fewer tokens than 10 separate calls due to shared context"
+      - "Batching is slower"
+      - "Claude can only handle one file"
+    correct: 1
+    explanation: "Each API call has overhead: system prompt, tool definitions, CLAUDE.md. Processing 10 files in one call shares this overhead across all 10 files. Ten separate calls each pay the overhead independently. Batching can reduce total tokens by 30-50%."
+  - id: "headless-scale-4"
+    question: "How should you handle failures in a batch pipeline?"
+    type: "multiple-choice"
+    options:
+      - "Stop everything on first failure"
+      - "Log failures, continue processing remaining items, and retry failures at the end"
+      - "Ignore failures"
+      - "Restart from the beginning"
+    correct: 1
+    explanation: "In a batch pipeline, log failures with the file name and error, continue processing the remaining items, and retry failed items at the end. This ensures one failure doesn't block the entire batch, and retries handle transient errors."
+---
+
+## Scaling Beyond Single Files
+
+Headless mode (`claude -p`) processes one prompt at a time. But real-world pipelines need to process hundreds or thousands of files. This lesson covers patterns for scaling headless Claude reliably and cost-effectively.
+
+## Sequential Processing
+
+The simplest approach — process files one at a time:
+
+```bash
+#!/bin/bash
+# Sequential analysis of all TypeScript files
+
+results_dir="analysis-results"
+mkdir -p "$results_dir"
+
+for file in src/**/*.ts; do
+  echo "Analyzing: $file"
+  claude -p "Analyze @$file for code quality issues. \
+    Output: file path, issues found, severity." \
+    --output-format json \
+    --max-turns 5 \
+    > "$results_dir/$(basename "$file" .ts).json"
+done
+
+echo "Analysis complete. Results in $results_dir/"
+```
+
+### Pros
+
+- Simple, no concurrency issues
+- Easy error handling
+- Predictable cost
+
+### Cons
+
+- Slow (2-10 seconds per file)
+- 100 files = 200-1,000 seconds
+
+## Parallel Processing with xargs
+
+Speed up with parallel execution:
+
+```bash
+#!/bin/bash
+# Parallel analysis — 4 concurrent processes
+
+find src -name "*.ts" -type f | \
+  xargs -P 4 -I {} bash -c '
+    result=$(claude -p "Analyze {} for issues" \
+      --output-format json \
+      --max-turns 5 2>/dev/null)
+    echo "{}: $(echo "$result" | jq -r ".result" | head -1)"
+  '
+```
+
+`-P 4` runs 4 Claude instances simultaneously. With 100 files, this takes ~25% of the sequential time.
+
+### Choosing Parallelism
+
+| Files | Recommended -P | Why |
+|---|---|---|
+| < 10 | 1-2 | Low overhead, not worth parallelizing |
+| 10-50 | 3-4 | Good balance of speed and rate limits |
+| 50-200 | 4-6 | Watch rate limits |
+| 200+ | 4-8 | Rate limits are the bottleneck |
+
+Don't go above 8 parallel instances — you'll hit API rate limits and get errors.
+
+## Batching for Efficiency
+
+Instead of one file per call, batch related files:
+
+```bash
+#!/bin/bash
+# Batch analysis — group files by directory
+
+for dir in src/services src/routes src/repos; do
+  files=$(ls "$dir"/*.ts 2>/dev/null | tr '\n' ' ')
+  if [ -n "$files" ]; then
+    echo "Analyzing batch: $dir/"
+    claude -p "Analyze these files for code quality: $files" \
+      --output-format json \
+      --max-turns 20 \
+      > "analysis-$(basename $dir).json"
+  fi
+done
+```
+
+### Why Batching Is More Efficient
+
+```
+Per-file approach (10 files):
+  Call 1: system prompt (500) + file 1 (1500) = 2,000 tokens
+  Call 2: system prompt (500) + file 2 (1500) = 2,000 tokens
+  ...
+  Total: 20,000 tokens + 10 API calls
+
+Batched approach (10 files in 1 call):
+  Call 1: system prompt (500) + 10 files (15,000) = 15,500 tokens
+  Total: 15,500 tokens + 1 API call
+  Savings: 22.5% fewer tokens, 90% fewer API calls
+```
+
+The system prompt and overhead is paid once per call. Batching amortizes it across multiple files.
+
+## A Real Pipeline: Codebase Quality Report
+
+```bash
+#!/bin/bash
+# generate-quality-report.sh
+# Comprehensive codebase quality analysis
+
+set -e
+
+REPORT="quality-report-$(date +%Y-%m-%d).md"
+echo "# Code Quality Report — $(date +%Y-%m-%d)" > "$REPORT"
+
+echo "Starting quality analysis..."
+
+# Phase 1: Security scan
+echo "## Security Analysis" >> "$REPORT"
+echo "" >> "$REPORT"
+
+claude -p "Scan all files in src/ for security vulnerabilities. \
+  Check for: SQL injection, XSS, auth bypass, data exposure, \
+  hardcoded secrets, input validation gaps. \
+  Output findings as a markdown table: File | Severity | Issue" \
+  --max-turns 25 >> "$REPORT"
+
+echo "" >> "$REPORT"
+
+# Phase 2: Complexity analysis
+echo "## Complexity Analysis" >> "$REPORT"
+echo "" >> "$REPORT"
+
+claude -p "Analyze complexity of all files in src/services/. \
+  For each file, report: lines of code, number of functions, \
+  and a complexity rating (low/medium/high). \
+  Output as a markdown table." \
+  --max-turns 15 >> "$REPORT"
+
+echo "" >> "$REPORT"
+
+# Phase 3: Test coverage gaps
+echo "## Test Coverage Gaps" >> "$REPORT"
+echo "" >> "$REPORT"
+
+claude -p "Compare files in src/services/ with files in tests/. \
+  Identify service files that have no corresponding test file, \
+  and service functions that lack test coverage. \
+  Output as a markdown list." \
+  --max-turns 15 >> "$REPORT"
+
+echo "" >> "$REPORT"
+
+# Phase 4: Dependency health
+echo "## Dependency Health" >> "$REPORT"
+echo "" >> "$REPORT"
+
+pnpm outdated 2>/dev/null | claude -p "Summarize these outdated \
+  dependencies. Group by severity: \
+  - Critical: major version behind with known vulnerabilities \
+  - Warning: major version behind \
+  - Info: minor/patch behind \
+  Output as markdown." \
+  --max-turns 3 >> "$REPORT"
+
+echo "Report generated: $REPORT"
+```
+
+Run weekly via cron:
+
+```bash
+# In crontab
+0 9 * * 1 /path/to/generate-quality-report.sh
+```
+
+## Error Handling
+
+At scale, some calls will fail. Handle gracefully:
+
+```bash
+#!/bin/bash
+# Robust batch processing with error handling
+
+failed_files=""
+processed=0
+failed=0
+
+for file in src/services/*.ts; do
+  result=$(claude -p "Analyze @$file" \
+    --output-format json \
+    --max-turns 5 2>&1)
+
+  is_error=$(echo "$result" | jq -r '.is_error' 2>/dev/null)
+
+  if [ "$is_error" = "true" ] || [ -z "$result" ]; then
+    failed=$((failed + 1))
+    failed_files="$failed_files $file"
+    echo "FAILED: $file"
+  else
+    processed=$((processed + 1))
+    echo "OK: $file"
+  fi
+done
+
+echo "Processed: $processed | Failed: $failed"
+
+# Retry failed files
+if [ -n "$failed_files" ]; then
+  echo "Retrying failed files..."
+  for file in $failed_files; do
+    echo "Retry: $file"
+    claude -p "Analyze @$file" --output-format json --max-turns 5
+  done
+fi
+```
+
+## Cost Management
+
+### Estimate Before Running
+
+```bash
+# Count files and estimate cost
+file_count=$(find src -name "*.ts" | wc -l)
+echo "Files to process: $file_count"
+echo "Estimated tokens: $((file_count * 3000)) (~$(echo "$file_count * 0.01" | bc) USD)"
+echo "Continue? [y/n]"
+read confirm
+```
+
+### Monitor During Execution
+
+```bash
+# Track cumulative cost
+total_cost=0
+for file in src/**/*.ts; do
+  result=$(claude -p "Analyze @$file" --output-format json --max-turns 5)
+  cost=$(echo "$result" | jq -r '.cost_usd')
+  total_cost=$(echo "$total_cost + $cost" | bc)
+  echo "$file: \$$cost (total: \$$total_cost)"
+done
+```
+
+### Set a Budget
+
+```bash
+#!/bin/bash
+MAX_COST=5.00  # $5 budget
+total_cost=0
+
+for file in src/**/*.ts; do
+  if (( $(echo "$total_cost >= $MAX_COST" | bc -l) )); then
+    echo "Budget exceeded ($total_cost >= $MAX_COST). Stopping."
+    break
+  fi
+  
+  result=$(claude -p "Analyze @$file" --output-format json --max-turns 5)
+  cost=$(echo "$result" | jq -r '.cost_usd // 0')
+  total_cost=$(echo "$total_cost + $cost" | bc)
+done
+```
+
+## Key Takeaway
+
+Headless pipelines at scale require three strategies: parallelism (xargs -P for concurrent processing), batching (group related files to reduce API call overhead), and error handling (log failures, continue, retry). Always estimate costs before running large batches, monitor during execution, and set budgets to prevent runaway spending. The pattern is: sequential for small batches, parallel with 4-8 workers for medium batches, and batched grouping for maximum efficiency.

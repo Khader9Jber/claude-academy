@@ -1,0 +1,326 @@
+---
+title: "Session Management: Clear, Compact, Resume"
+slug: "session-management"
+order: 2
+difficulty: "beginner"
+duration: 16
+tags: ["claude-code", "sessions", "context-management", "compact"]
+objectives:
+  - "Know the difference between /clear, /compact, new session, /fork, and /rewind"
+  - "Use the right context management strategy for each situation"
+  - "Understand what survives each operation (the survival table)"
+  - "Master the golden rule: CLAUDE.md always survives everything"
+quiz:
+  - id: "session-1"
+    question: "You've been debugging auth for an hour and now need to work on an unrelated payments feature. What should you do?"
+    type: "multiple-choice"
+    options:
+      - "Type /compact to keep the auth context"
+      - "Type /clear to wipe history, then start the payments task"
+      - "Open a new terminal and start a fresh 'claude' session"
+      - "Either /clear or a new session — both work for a fully unrelated task"
+    correct: 3
+    explanation: "For a completely unrelated task, either /clear or a new session works. A new session is slightly cleaner since it reloads your CLAUDE.md fresh. /compact would be wrong here because you don't need the auth context for payments."
+  - id: "session-2"
+    question: "What is the golden rule of session management?"
+    type: "multiple-choice"
+    options:
+      - "Always use /compact before /clear"
+      - "Never close the terminal"
+      - "CLAUDE.md always survives everything — /clear, /compact, new session, /fork, /rewind"
+      - "Save your work before every command"
+    correct: 2
+    explanation: "CLAUDE.md is reloaded from disk on every turn, regardless of what session operation you perform. This means your project-level instructions, coding conventions, and context always survive. This is why putting important information in CLAUDE.md is so powerful."
+  - id: "session-3"
+    question: "When should you use /compact instead of /clear?"
+    type: "multiple-choice"
+    options:
+      - "When you want Claude to forget everything"
+      - "When the context window is filling up but you still need Claude to remember key decisions from the conversation"
+      - "When you want to switch models"
+      - "/compact and /clear do the same thing"
+    correct: 1
+    explanation: "/compact compresses the conversation into a summary, preserving key information while freeing space. Use it when you're deep in a task and running low on context but still need Claude to remember the decisions, architecture, and context from the session."
+  - id: "session-4"
+    question: "What does /fork do?"
+    type: "multiple-choice"
+    options:
+      - "Exits the session"
+      - "Creates a Git fork of the repository"
+      - "Branches the conversation — creates a copy you can take in a different direction without losing the original"
+      - "Splits the terminal into two panes"
+    correct: 2
+    explanation: "/fork creates a branch of your conversation at the current point. You can experiment with a different approach in the fork, and if it doesn't work out, you still have the original conversation intact."
+---
+
+## The Context Management Problem
+
+Every Claude Code session accumulates context: your messages, Claude's responses, file contents, command outputs. Over time, this fills your context window. At some point, you need to manage it — free up space, start fresh, or reorganize.
+
+The challenge is knowing **which tool to use when**. Claude Code gives you five options, and using the wrong one can lose important context or waste tokens carrying irrelevant history.
+
+## The Five Operations
+
+### 1. /clear — Nuclear Reset
+
+`/clear` wipes **everything**. All conversation history, all accumulated context, all decisions. It's as if the session just started.
+
+```
+/clear
+```
+
+**What happens:**
+- All conversation history is deleted
+- Claude forgets every decision, every file it read, every analysis it made
+- The session continues (you don't exit)
+- CLAUDE.md is reloaded on the next turn
+
+**When to use /clear:**
+- Switching to a **completely unrelated** task
+- The conversation has gone off the rails and you want a clean slate
+- You realize you've been giving Claude wrong information and want to start over
+
+**When NOT to use /clear:**
+- When you still need Claude to remember architectural decisions
+- Mid-way through a multi-step task
+- When /compact would suffice
+
+### 2. /compact [hint] — Smart Compression
+
+`/compact` compresses the conversation history into a condensed summary. Claude retains the key information but the raw messages are replaced with a synopsis.
+
+```
+# Basic compact
+/compact
+
+# Compact with guidance on what to preserve
+/compact "keep the database schema, API design decisions, and the
+list of files we've modified"
+```
+
+**What happens:**
+- Conversation history is summarized into a compact representation
+- Key decisions, code changes, and context are preserved (especially with hints)
+- Token usage drops significantly (often 60-80% reduction)
+- Some nuance and detail is lost in the compression
+
+**When to use /compact:**
+- Context window is ~80% full and you need more room
+- You're deep in a multi-hour task and don't want to lose progress
+- Before a complex operation that will generate lots of output
+- Proactively, before you hit limits
+
+**When NOT to use /compact:**
+- When you need Claude to remember exact code snippets from earlier
+- For a completely new task (use /clear or new session instead)
+
+**Pro tip:** The hint parameter is powerful. Without a hint, Claude decides what's important to keep. With a hint, you direct the compression:
+
+```
+# Claude might discard the error analysis you need
+/compact
+
+# Claude keeps exactly what you need
+/compact "preserve: 1) the root cause analysis of the payment bug,
+2) the three files we identified as affected, 3) the fix strategy
+we decided on"
+```
+
+### 3. New Session — Clean Start
+
+Open a new terminal (or new tab) and run `claude` again.
+
+```bash
+# In a new terminal
+claude
+```
+
+**What happens:**
+- Completely fresh start with zero history
+- New session ID
+- CLAUDE.md is loaded fresh from disk
+- No carry-over of any kind
+
+**When to use a new session:**
+- Starting a genuinely new task
+- When you want the cleanest possible start
+- Switching between projects (cd to different directory first)
+
+**Why new session over /clear:**
+A new session reloads everything from scratch — CLAUDE.md, MCP server connections, configuration. /clear only wipes conversation history within the existing session. For a new project or major task switch, a new session is cleaner.
+
+### 4. /fork — Branch the Conversation
+
+`/fork` creates a copy of the current conversation. Both the original and the fork continue independently from the same point.
+
+```
+/fork
+```
+
+**What happens:**
+- A new session is created with all current conversation history copied
+- You continue in the fork
+- The original session is preserved (you can resume it later with `claude -r`)
+- File changes made in the fork are real (they affect your actual files)
+
+**When to use /fork:**
+- You want to try an experimental approach without losing your current state
+- Claude suggested two possible solutions and you want to explore both
+- You're about to make a risky change and want a safe rollback point
+
+**Example workflow:**
+
+```
+You: "Should we use cursor-based or offset-based pagination?"
+
+Claude: Both are viable. Cursor-based is better for our use case
+        because [reasons]. Want me to implement it?
+
+You: /fork
+
+# In the fork: try cursor-based
+You: "Implement cursor-based pagination"
+
+# If it doesn't work well, resume original session
+# claude -r → pick the original → try offset-based instead
+```
+
+### 5. /rewind — Undo Messages
+
+`/rewind` lets you go back to a previous point in the conversation, effectively undoing everything after that point.
+
+```
+/rewind
+```
+
+**What happens:**
+- Opens a picker showing conversation checkpoints
+- You select a checkpoint to return to
+- All messages after that checkpoint are removed
+- File changes made after that checkpoint are **NOT automatically reverted** (the files on disk still have the changes)
+
+**When to use /rewind:**
+- Claude went in the wrong direction and you want to redirect
+- You asked the wrong question and want to re-ask
+- Claude made changes you don't like and you want to "undo" the conversation (but remember to manually revert file changes if needed)
+
+**Important:** /rewind undoes the *conversation* history, not the *file* changes. If Claude edited 5 files before you rewound, those files still have the edits on disk. Use `git checkout -- .` or `git stash` if you also want to revert file changes.
+
+## The Survival Table
+
+This table shows what survives each operation:
+
+| | Chat History | File Edits (on disk) | CLAUDE.md | MCP Connections | Session ID |
+|---|---|---|---|---|---|
+| **/clear** | Deleted | Preserved | Reloaded next turn | Preserved | Same |
+| **/compact** | Compressed | Preserved | Preserved | Preserved | Same |
+| **New Session** | Gone | Preserved | Loaded fresh | Reconnected | New |
+| **/fork** | Copied to fork | Preserved | Preserved | Preserved | New (fork) |
+| **/rewind** | Rolled back | **Still on disk** | Preserved | Preserved | Same |
+
+The critical row to internalize: **File edits always survive**. Claude writes to your actual filesystem. No session operation undoes file changes — only git can do that.
+
+## The Golden Rule
+
+**CLAUDE.md always survives everything.**
+
+Whether you /clear, /compact, start a new session, /fork, or /rewind — CLAUDE.md is reloaded from disk. This makes it the single most reliable place to store information that Claude needs across sessions:
+
+- Project conventions and coding standards
+- Architecture decisions
+- Important context ("we use Prisma, not TypeORM")
+- Commands for building, testing, and deploying
+
+If something is important enough that Claude should always know it, put it in CLAUDE.md.
+
+## The Decision Tree
+
+When you need to manage context, follow this decision tree:
+
+```
+Context window filling up?
+  ├── Still working on the same task?
+  │   └── /compact (with a hint about what to keep)
+  │
+  ├── Switching to an unrelated task in the same project?
+  │   └── /clear (or new session)
+  │
+  ├── Switching to a different project?
+  │   └── New session (cd to the new project first)
+  │
+  ├── Want to try an experimental approach?
+  │   └── /fork (preserves the original)
+  │
+  └── Claude went in the wrong direction?
+      └── /rewind (undo conversation, manually revert files if needed)
+```
+
+## Practical Session Workflows
+
+### The Long Debug Session
+
+```
+# Start debugging
+claude "debug the payment double-charge issue"
+
+# ... 30 minutes of investigation ...
+# Context getting full
+
+/compact "preserve: root cause is Stripe webhook + API both creating
+charges. We've identified 3 affected files. Fix strategy: add
+idempotency keys."
+
+# Continue with compressed context
+"Now implement the fix based on our analysis"
+```
+
+### The Exploration Pattern
+
+```
+# Exploring two approaches
+claude "design the notification system"
+
+# Claude suggests approach A
+/fork  # Save this conversation state
+
+# Explore approach A in the fork
+"implement approach A: event-driven with Redis pub/sub"
+
+# Doesn't feel right? Resume the original
+# claude -r → pick original session
+
+# Explore approach B
+"implement approach B: polling with database queue"
+
+# Compare the results from both branches
+```
+
+### The Daily Workflow
+
+```bash
+# Morning: start fresh
+claude -n "sprint-day-3"
+
+# Work through the morning on feature X
+# ...
+
+# Lunch: exit
+Ctrl+D
+
+# Afternoon: continue
+claude -c
+
+# If context is full after a long morning
+/compact "keep today's decisions about the API schema changes"
+
+# End of day: exit
+Ctrl+D
+
+# Tomorrow: resume or start fresh
+claude -c   # if continuing the same work
+claude      # if starting something new
+```
+
+## Key Takeaway
+
+Session management in Claude Code comes down to five operations: /clear (nuclear reset), /compact (smart compression), new session (clean start), /fork (branch for experiments), and /rewind (undo messages). The golden rule is that CLAUDE.md always survives everything, making it the ideal place for persistent project context. Use /compact to preserve context while freeing space, /clear or new sessions for task switches, and /fork when you want to explore without risk.

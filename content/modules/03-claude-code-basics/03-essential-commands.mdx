@@ -1,0 +1,262 @@
+---
+title: "10 Commands You'll Use Every Day"
+slug: "essential-commands"
+order: 3
+difficulty: "beginner"
+duration: 15
+tags: ["claude-code", "commands", "cli", "reference"]
+objectives:
+  - "Know the 10 most important Claude Code CLI commands and flags"
+  - "Understand when to use each command"
+  - "Master session management from the command line"
+  - "Run headless queries for quick answers"
+quiz:
+  - id: "commands-1"
+    question: "What does 'claude -c' do?"
+    type: "multiple-choice"
+    options:
+      - "Clears the terminal"
+      - "Creates a new configuration file"
+      - "Continues the most recent Claude Code session"
+      - "Checks for updates"
+    correct: 2
+    explanation: "The -c flag continues your most recent session. If you exited Claude Code and want to pick up where you left off, 'claude -c' restores the conversation history and context."
+  - id: "commands-2"
+    question: "What is the difference between 'claude -p' and 'claude' with a prompt?"
+    type: "multiple-choice"
+    options:
+      - "There is no difference"
+      - "'claude -p' runs headless (outputs result and exits); 'claude \"prompt\"' starts an interactive session"
+      - "'claude -p' uses a different model"
+      - "'claude -p' is faster"
+    correct: 1
+    explanation: "The -p flag runs in 'pipe' or headless mode — Claude processes your query, outputs the result, and exits without starting an interactive session. This is perfect for scripting and quick one-off questions."
+  - id: "commands-3"
+    question: "How do you update Claude Code to the latest version?"
+    type: "multiple-choice"
+    options:
+      - "Reinstall from scratch"
+      - "claude update"
+      - "npm outdated"
+      - "claude --upgrade"
+    correct: 1
+    explanation: "The 'claude update' command updates Claude Code to the latest version. It's worth running regularly — Claude Code gets frequent updates with new features and improvements."
+  - id: "commands-4"
+    question: "What does 'claude --from-pr 42' do?"
+    type: "multiple-choice"
+    options:
+      - "Creates pull request #42"
+      - "Starts a session with the diff from PR #42 loaded as context"
+      - "Reviews PR #42 and posts comments"
+      - "Merges PR #42"
+    correct: 1
+    explanation: "The --from-pr flag starts a Claude Code session pre-loaded with the context from a specific pull request — its diff, description, and comments. This is ideal for reviewing PRs or picking up work from a PR."
+---
+
+## Your CLI Toolkit
+
+Claude Code is a command-line tool, and like all good CLI tools, it has flags and subcommands that make it powerful beyond the basic interactive mode. Here are the 10 commands and flags you'll reach for every day.
+
+## 1. `claude` — Start a Session
+
+The most basic command. Start an interactive REPL in the current directory:
+
+```bash
+# Start in the current directory
+claude
+
+# Start with an initial prompt
+claude "what does this project do?"
+
+# Start with file context
+claude "explain @src/auth/middleware.ts"
+```
+
+**When to use:** Every time you want to start working with Claude Code. Navigate to your project directory first.
+
+## 2. `claude -c` — Continue Last Session
+
+Resume your most recent session with full conversation history:
+
+```bash
+# Continue where you left off
+claude -c
+```
+
+This restores the entire conversation — everything you discussed, every file Claude read, every decision made. It's as if you never left.
+
+**When to use:** You closed the terminal, went to lunch, or got pulled into a meeting, and now you want to pick up exactly where you left off. This is different from starting a new session because Claude retains all the context from your previous conversation.
+
+## 3. `claude -r` — Resume a Specific Session
+
+When you have multiple sessions and want to resume a specific one:
+
+```bash
+# Open the interactive session picker
+claude -r
+
+# Resume a session by ID (shown in session picker)
+claude -r session_abc123
+```
+
+The session picker shows your recent sessions with timestamps, the first message, and the project directory. Navigate with arrow keys, press Enter to resume.
+
+**When to use:** You've been switching between multiple tasks or projects and want to jump back to a specific conversation. The session picker makes it easy to find the right one.
+
+## 4. `claude -n "name"` — Named Session
+
+Create a session with a memorable name:
+
+```bash
+# Start a named session
+claude -n "auth-refactor"
+
+# Later, find it easily in the session picker
+claude -r
+# You'll see "auth-refactor" in the list
+```
+
+**When to use:** For multi-day tasks where you'll resume the session multiple times. Named sessions are easier to find in the session picker than sessions identified by their first message. Good names: "payment-v2", "migration-postgres", "onboarding-flow".
+
+## 5. `claude -p "query"` — Headless / Pipe Mode
+
+Run a query without starting an interactive session. Claude processes the query, outputs the result, and exits:
+
+```bash
+# Quick question
+claude -p "what's the TypeScript syntax for a generic constraint?"
+
+# Pipe content into Claude
+cat error.log | claude -p "summarize the errors in this log"
+
+# Use in scripts
+SUMMARY=$(claude -p "summarize @CHANGELOG.md in one paragraph")
+echo "$SUMMARY"
+
+# Chain with other commands
+git diff HEAD~1 | claude -p "write a commit message for this diff"
+```
+
+**When to use:** Quick one-off questions, scripting, CI/CD pipelines, or any time you want an answer without an interactive session. This is Claude as a Unix tool — it reads stdin, processes, and writes to stdout.
+
+## 6. `claude -w name` — Worktree Session
+
+Start a session in a git worktree for isolated, parallel work:
+
+```bash
+# Start Claude in a worktree (creates the worktree if needed)
+claude -w feature-auth
+
+# Claude works in a separate copy of the codebase
+# Your main working directory is untouched
+```
+
+**When to use:** When you want Claude to work on a feature branch without affecting your current working directory. Worktrees let Claude make changes, run tests, and iterate — all in an isolated copy of your repo. You review the results and merge when satisfied.
+
+## 7. `claude update` — Update Claude Code
+
+Check for and install the latest version:
+
+```bash
+# Update to latest
+claude update
+
+# Check current version
+claude --version
+```
+
+**When to use:** Regularly — at least once a week. Claude Code ships updates frequently. New model capabilities, slash commands, bug fixes, and performance improvements drop in these updates. If something isn't working as expected, updating is often the fix.
+
+## 8. `claude doctor` — Run Diagnostics
+
+Health check your installation:
+
+```bash
+claude doctor
+```
+
+This checks:
+- Node.js version
+- Claude Code version (is it current?)
+- Authentication status
+- Network connectivity to Anthropic's API
+- Configuration file validity
+- MCP server health
+
+**When to use:** When something isn't working. "Claude is slow," "I keep getting errors," "my MCP server isn't connecting" — run `claude doctor` first. It's the equivalent of checking if the device is plugged in.
+
+## 9. `claude mcp list` — MCP Servers
+
+List configured MCP (Model Context Protocol) servers:
+
+```bash
+# List all configured MCP servers and their tools
+claude mcp list
+```
+
+MCP servers extend Claude Code's capabilities — connecting to databases, APIs, GitHub, Slack, and more. This command shows which servers are configured, whether they're running, and what tools they provide.
+
+**When to use:** When setting up MCP servers, debugging MCP connections, or checking what tools are available in your current session. You'll learn much more about MCP in Module 8.
+
+## 10. `claude --from-pr 42` — PR Session
+
+Start a session pre-loaded with a pull request's context:
+
+```bash
+# Start with PR context
+claude --from-pr 42
+
+# Claude starts with the PR's diff, description, and comments
+# already in context. You can immediately ask:
+"Review this PR for bugs and security issues"
+```
+
+This loads the PR diff, title, description, and any comments as context before your first message. Claude can immediately reason about the changes without you having to explain what the PR does.
+
+**When to use:** Code reviews, picking up someone else's PR for fixes, or understanding what a PR changes. Instead of reading the diff yourself and then explaining it to Claude, this does it in one step.
+
+## Quick Reference Card
+
+Here's the cheat sheet:
+
+```bash
+# Starting sessions
+claude                       # New interactive session
+claude "prompt"              # New session with initial prompt
+claude -c                    # Continue last session
+claude -r                    # Resume specific session (picker)
+claude -n "name"             # Named session
+claude -w branch-name        # Worktree session (isolated)
+
+# One-off queries
+claude -p "question"         # Headless mode (no REPL)
+cat file | claude -p "task"  # Pipe mode
+
+# Maintenance
+claude update                # Update to latest version
+claude doctor                # Run diagnostics
+claude --version             # Check version
+
+# Integrations
+claude --from-pr 42          # Start with PR context
+claude mcp list              # List MCP servers
+```
+
+## Combining Flags
+
+Some flags combine naturally:
+
+```bash
+# Named session with initial prompt
+claude -n "auth-fix" "debug the JWT refresh flow"
+
+# Headless with specific model
+claude -p --model opus "design a caching strategy for @src/api/"
+
+# Continue with worktree
+claude -c -w feature-branch
+```
+
+## Key Takeaway
+
+These 10 commands cover 95% of daily Claude Code usage: `claude` to start, `-c` to continue, `-r` to resume, `-n` for named sessions, `-p` for headless queries, `-w` for worktrees, `update` and `doctor` for maintenance, `mcp list` for tooling, and `--from-pr` for pull request reviews. Memorize these and you'll navigate Claude Code like a pro.

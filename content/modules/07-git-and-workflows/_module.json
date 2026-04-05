@@ -1,0 +1,12 @@
+{
+  "title": "Git & Development Workflows",
+  "slug": "git-and-workflows",
+  "description": "Integrate Claude Code into your Git workflow. Learn commit generation, PR reviews, branch management, and how to use Claude as a pair programming partner.",
+  "arc": "practitioner",
+  "order": 7,
+  "icon": "git-branch",
+  "color": "#5e9ed6",
+  "estimatedHours": 4,
+  "prerequisites": ["session-and-context"],
+  "lessonCount": 6
+}

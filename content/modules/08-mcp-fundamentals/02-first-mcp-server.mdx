@@ -1,0 +1,319 @@
+---
+title: "Your First MCP Server: GitHub"
+slug: "first-mcp-server"
+order: 2
+difficulty: "intermediate"
+duration: 16
+tags: ["mcp", "github", "setup", "tools"]
+objectives:
+  - "Set up the GitHub MCP server with authentication"
+  - "Use GitHub tools for PRs, issues, and repo management"
+  - "Manage MCP servers: add, list, remove"
+  - "Build a real workflow using GitHub MCP tools"
+quiz:
+  - id: "first-mcp-1"
+    question: "What command adds the GitHub MCP server?"
+    type: "multiple-choice"
+    options:
+      - "claude install github"
+      - "claude mcp add github -e GITHUB_TOKEN=ghp_... --transport stdio npx -y @modelcontextprotocol/server-github"
+      - "mcp install github"
+      - "npm install mcp-github"
+    correct: 1
+    explanation: "The full command is: claude mcp add github -e GITHUB_TOKEN=ghp_... --transport stdio npx -y @modelcontextprotocol/server-github. This adds a server named 'github', passes your token as an environment variable, uses stdio transport, and runs the GitHub MCP server package."
+  - id: "first-mcp-2"
+    question: "How do you list all connected MCP servers?"
+    type: "multiple-choice"
+    options:
+      - "claude mcp list (from terminal) or /mcp (in session)"
+      - "claude servers"
+      - "/list-servers"
+      - "mcp status"
+    correct: 0
+    explanation: "Use 'claude mcp list' from the terminal to see all configured MCP servers, or type /mcp during an active session. Both show the server name, transport type, status (connected/disconnected), and available tools."
+  - id: "first-mcp-3"
+    question: "How do you remove an MCP server?"
+    type: "multiple-choice"
+    options:
+      - "Delete the config file manually"
+      - "claude mcp remove github"
+      - "/remove github"
+      - "claude uninstall github"
+    correct: 1
+    explanation: "claude mcp remove github removes the 'github' MCP server from your configuration. The server is disconnected and its configuration is deleted."
+  - id: "first-mcp-4"
+    question: "What does the -e flag do in the claude mcp add command?"
+    type: "multiple-choice"
+    options:
+      - "Enables the server"
+      - "Passes environment variables to the MCP server process"
+      - "Encrypts the connection"
+      - "Edits the server config"
+    correct: 1
+    explanation: "The -e flag passes environment variables to the MCP server process. For example, -e GITHUB_TOKEN=ghp_xxx gives the GitHub server your authentication token. The server process receives this as an environment variable, not as a command-line argument, which is more secure."
+---
+
+## Setting Up GitHub MCP
+
+The GitHub MCP server is the best first MCP server to set up. It's immediately useful, well-maintained, and demonstrates the full MCP workflow: installation, authentication, tool usage, and management.
+
+### Prerequisites
+
+You need a **GitHub Personal Access Token** (classic or fine-grained):
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
+2. Generate a new token with these scopes:
+   - `repo` — Full repository access
+   - `read:org` — Read org data (if you work in an organization)
+   - `read:user` — Read user profile
+3. Copy the token (starts with `ghp_`)
+
+### Installation
+
+```bash
+claude mcp add github \
+  -e GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-github
+```
+
+Let's break this down:
+
+| Part | Meaning |
+|---|---|
+| `claude mcp add` | Add a new MCP server |
+| `github` | Name for this server (you choose) |
+| `-e GITHUB_TOKEN=ghp_...` | Pass your token to the server |
+| `--transport stdio` | Use stdio transport (local process) |
+| `npx -y @modelcontextprotocol/server-github` | The server package to run |
+
+### Verify It's Working
+
+```bash
+# From terminal
+claude mcp list
+
+# Should show:
+# github  stdio  @modelcontextprotocol/server-github  connected
+```
+
+Or during a session:
+
+```bash
+/mcp
+
+# Shows all connected servers and their tools
+```
+
+## Using GitHub Tools
+
+Once connected, Claude has access to GitHub tools. Here's what you can do:
+
+### List Pull Requests
+
+```bash
+"Show me all open PRs in this repo"
+```
+
+Claude calls `mcp__github__list_prs` and returns a formatted list.
+
+### Review a PR
+
+```bash
+"Review PR #42 — check for security issues and code quality"
+```
+
+Claude fetches the PR diff, analyzes it, and can post review comments directly.
+
+### Create a PR
+
+```bash
+"Create a PR from the current branch to main. Summarize all 
+commits in the description."
+```
+
+Claude generates the PR with a title and description based on your changes.
+
+### Work with Issues
+
+```bash
+"Show me all open issues labeled 'bug'"
+
+"Create an issue: 'Payment webhook handler times out under load' 
+with labels bug and priority-high"
+
+"Close issue #15 with a comment explaining the fix"
+```
+
+### Search Repositories
+
+```bash
+"Search for files named 'auth' in the repository"
+
+"What are the most recent commits on the main branch?"
+```
+
+## A Real Workflow: PR Review Pipeline
+
+Here's a complete workflow using GitHub MCP:
+
+```bash
+# Start a session focused on code review
+claude -n "code-review-sprint"
+
+# Get an overview of what needs review
+"List all open PRs that need review. Sort by oldest first."
+
+# Review the first one
+"Review PR #37. Focus on:
+- Security vulnerabilities
+- Missing error handling
+- Test coverage
+- Code convention violations (check CLAUDE.md)"
+
+# Post the review
+"Post your review on PR #37. For critical issues, request changes.
+For minor issues, approve with comments."
+
+# Move to the next PR
+"Now review PR #39..."
+```
+
+This entire workflow happens in Claude Code — no browser, no context switching.
+
+## Managing MCP Servers
+
+### List Servers
+
+```bash
+# Terminal
+claude mcp list
+
+# In session
+/mcp
+```
+
+### Remove a Server
+
+```bash
+claude mcp remove github
+```
+
+### Temporarily Disconnect
+
+During a session, you can disconnect a server to save tokens without removing it permanently:
+
+```bash
+/mcp
+# Select the server to disconnect
+```
+
+### Update a Server
+
+Remove and re-add with the same name:
+
+```bash
+claude mcp remove github
+claude mcp add github \
+  -e GITHUB_TOKEN=ghp_new_token \
+  --transport stdio \
+  npx -y @modelcontextprotocol/server-github
+```
+
+## Where Server Configs Are Stored
+
+MCP server configurations are stored in two locations:
+
+### User-Level: ~/.claude.json
+
+Servers added here are available in all projects:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "ghp_xxxx"
+      }
+    }
+  }
+}
+```
+
+### Project-Level: .mcp.json
+
+Servers specific to a project, committed to git:
+
+```json
+{
+  "mcpServers": {
+    "project-db": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://localhost:5432/mydb"
+      }
+    }
+  }
+}
+```
+
+The `claude mcp add` command adds to user-level by default. Use `--scope project` to add to the project configuration.
+
+## Permissions for MCP Tools
+
+MCP tools are subject to the same permission system as built-in tools:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__github__list_prs",
+      "mcp__github__get_pr",
+      "mcp__github__create_pr_review"
+    ],
+    "deny": [
+      "mcp__github__delete_repo",
+      "mcp__github__delete_branch"
+    ]
+  }
+}
+```
+
+You can allow specific tools, deny dangerous ones, or allow an entire server:
+
+```json
+"allow": ["mcp__github"]  // All GitHub tools
+```
+
+## Troubleshooting
+
+### "Server failed to start"
+
+Check that the package is installable:
+```bash
+npx -y @modelcontextprotocol/server-github --help
+```
+
+If this fails, you may need to install Node.js or check your npm configuration.
+
+### "Authentication failed"
+
+Verify your token:
+```bash
+curl -H "Authorization: token ghp_xxxx" https://api.github.com/user
+```
+
+If this returns your profile, the token is valid. If not, generate a new one.
+
+### "Tools not appearing"
+
+Wait a few seconds after starting a session — MCP servers take a moment to initialize. Check with `/mcp` to see the server status.
+
+## Key Takeaway
+
+The GitHub MCP server is the ideal first MCP integration. Set it up with `claude mcp add` and a personal access token. Once connected, Claude can list PRs, review code, create issues, and manage your GitHub workflow — all from natural language. MCP server configs live in `~/.claude.json` (global) or `.mcp.json` (project). Apply permissions to MCP tools just like built-in tools to control what Claude can do on GitHub.

@@ -1,0 +1,353 @@
+---
+title: "Full Production Deployment Case Study"
+slug: "production-case-study"
+order: 2
+difficulty: "expert"
+duration: 20
+tags: ["case-study", "production", "end-to-end", "deployment"]
+objectives:
+  - "Walk through a complete project built with Claude Code"
+  - "See how every concept integrates in a real workflow"
+  - "Understand the end-to-end development lifecycle"
+  - "Apply lessons learned from production experience"
+quiz:
+  - id: "case-study-1"
+    question: "What's the first thing to set up when starting a new project with Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Write all the code first"
+      - "CLAUDE.md — establish stack, conventions, and architecture rules before writing any code"
+      - "Install MCP servers"
+      - "Create agent teams"
+    correct: 1
+    explanation: "CLAUDE.md is always the first step. Before writing any code, establish your stack, conventions, and architecture rules. This ensures every Claude session from the very first follows consistent patterns. Adding CLAUDE.md later means earlier code was written without these standards."
+  - id: "case-study-2"
+    question: "In what order should you build your Claude Code infrastructure?"
+    type: "multiple-choice"
+    options:
+      - "Agents → Settings → CLAUDE.md"
+      - "CLAUDE.md → settings.json → commands → hooks → agents → skills"
+      - "Settings → Agents → Commands"
+      - "It doesn't matter"
+    correct: 1
+    explanation: "Build in layers: CLAUDE.md first (project context), then settings.json (permissions and environment), then commands (repeatable workflows), then hooks (automation), then agents (specialized roles), then skills (knowledge packages). Each layer builds on the previous ones."
+  - id: "case-study-3"
+    question: "When should you add custom agents to a project?"
+    type: "multiple-choice"
+    options:
+      - "At the very beginning"
+      - "When you find yourself repeatedly doing the same specialized task (e.g., security review every PR)"
+      - "Never"
+      - "Only for enterprise projects"
+    correct: 1
+    explanation: "Add agents when you identify recurring specialized tasks. If you're doing a security review on every PR, create a security-reviewer agent. If you're writing tests for every new service, create a test-writer agent. Don't create agents preemptively — create them when the pattern emerges."
+  - id: "case-study-4"
+    question: "What's the complete development loop with Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Write code → push"
+      - "/plan → /execute → /simplify → test → /commit → PR → review → merge"
+      - "Ask Claude to do everything"
+      - "Only use Claude for debugging"
+    correct: 1
+    explanation: "The complete loop: /plan (analyze and plan), /execute (implement the plan), /simplify (clean up), test (verify), /commit (commit with good message), PR (create pull request), review (code review), merge. Each step uses the Claude Code tool best suited for it."
+---
+
+## The Project: ScheduleForge API
+
+Let's walk through building a complete project with Claude Code — from first commit to production deployment. This isn't theoretical. It's the workflow that experienced Claude Code users follow.
+
+**The project**: ScheduleForge, a scheduling API for booking appointments. Node.js, TypeScript, Fastify, Prisma, PostgreSQL.
+
+## Phase 1: Project Foundation
+
+### Step 1: CLAUDE.md
+
+The very first file in the project:
+
+```markdown
+# ScheduleForge — Appointment Scheduling API
+
+REST API for managing appointments, availability, and scheduling.
+
+## Stack
+- Node.js 20 + TypeScript 5.4 (strict mode)
+- Fastify 4.x + @fastify/autoload
+- Prisma 5.x + PostgreSQL 16
+- Zod for validation, Vitest for testing
+- pnpm as package manager
+
+## Architecture
+- Routes → Handlers → Services → Repositories
+- All business logic in services
+- All database queries in repositories
+- AppError for all errors (src/lib/errors.ts)
+- Zod schemas for all input validation
+
+## Conventions
+- Functional style, no classes
+- Named exports only
+- kebab-case files, PascalCase types
+- Explicit return types on async functions
+- UTC for all date/time storage
+
+## Commands
+- pnpm dev — start dev server (port 3000)
+- pnpm test — run Vitest
+- pnpm lint — ESLint + Prettier
+- pnpm db:migrate — run Prisma migrations
+```
+
+### Step 2: settings.json
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read", "Write(src/**)", "Write(tests/**)", "Write(prisma/**)",
+      "Bash(pnpm *)", "Bash(git *)", "Bash(npx prisma *)", "Bash(npx vitest *)"
+    ],
+    "deny": [
+      "Read(.env*)", "Write(package.json)", "Bash(rm -rf *)",
+      "Bash(sudo *)", "Bash(curl *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "Write(*.ts)", "command": "npx prettier --write $file" }
+    ],
+    "Notification": [
+      { "command": "osascript -e 'display notification \"Claude needs you\" with title \"ScheduleForge\"'" }
+    ]
+  },
+  "env": { "ENABLE_LSP_TOOL": "1" }
+}
+```
+
+### Step 3: Project Scaffold
+
+```bash
+claude -n "project-scaffold"
+
+/plan
+"Plan the project structure for ScheduleForge. Include:
+- Directory structure following our architecture
+- Database schema (appointments, users, availability)
+- Configuration setup"
+
+/execute
+"Create the project scaffold following the plan"
+```
+
+## Phase 2: Core Development
+
+### Step 4: Database Schema
+
+```bash
+claude -n "database-schema"
+
+"Design and create the Prisma schema for:
+- Users (id, email, name, role)
+- Availability (userId, dayOfWeek, startTime, endTime)
+- Appointments (id, userId, clientEmail, startTime, endTime, status)
+Run the migration."
+```
+
+### Step 5: Core Features
+
+Each feature gets its own session:
+
+```bash
+# Session: User management
+claude -n "feature-users"
+/plan
+"Plan the user management module: CRUD operations, authentication"
+/execute
+"Implement the user module"
+/simplify
+/commit
+
+# Session: Availability management
+claude -n "feature-availability"
+/plan
+"Plan the availability module"
+/execute
+/simplify
+/commit
+
+# Session: Appointment booking
+claude -n "feature-appointments"
+/plan
+"Plan the appointment booking module with conflict detection"
+/execute
+/simplify
+/commit
+```
+
+One task, one session. Each session starts fresh with focused context.
+
+## Phase 3: Custom Commands
+
+As patterns emerge, create commands:
+
+```bash
+mkdir -p .claude/commands
+```
+
+`.claude/commands/feature.md`:
+```markdown
+---
+description: "Implement a new feature module"
+argument-hint: "module-name"
+---
+Plan and implement the $ARGUMENTS module:
+1. /plan — design the service, handlers, routes, and types
+2. /execute — implement following CLAUDE.md conventions
+3. Write tests for all service methods
+4. /simplify — clean up
+5. /commit with a descriptive message
+```
+
+`.claude/commands/test.md`:
+```markdown
+---
+description: "Generate tests for a source file"
+argument-hint: "file-path"
+---
+Generate comprehensive tests for $ARGUMENTS following our conventions.
+```
+
+## Phase 4: Agents and Skills
+
+When recurring patterns appear:
+
+### Security Reviewer (after the third PR review)
+
+`.claude/agents/security-reviewer.md`:
+```markdown
+---
+name: Security Reviewer
+model: opus
+permissionMode: plan
+effort: high
+---
+Review code for: auth bypass, input validation, data exposure, injection.
+Follow the checklist in our PR review conventions.
+```
+
+### API Endpoint Skill (after the third endpoint)
+
+`.claude/skills/api-endpoint/SKILL.md`:
+```markdown
+---
+name: API Endpoint Creator
+description: Creates new API endpoints following ScheduleForge conventions
+---
+[Templates for route, handler, service, repository, tests]
+```
+
+## Phase 5: MCP Integration
+
+```bash
+# GitHub for PR management
+claude mcp add github -e GITHUB_TOKEN=ghp_xxx --transport stdio npx -y @modelcontextprotocol/server-github
+
+# Database for schema inspection
+claude mcp add postgres -e DATABASE_URL=$DATABASE_URL --transport stdio npx -y @modelcontextprotocol/server-postgres
+```
+
+## Phase 6: Hooks and Automation
+
+### Auto-Format + Type Check
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file && npx tsc --noEmit 2>&1 | head -10 || true"
+      }
+    ]
+  }
+}
+```
+
+## Phase 7: Development Workflow
+
+The daily workflow crystallizes:
+
+```bash
+# Morning: pick up a task
+claude -n "task-name"
+/plan
+"Plan the notification system for appointment reminders"
+
+# Implement
+/execute
+"Implement following the plan"
+
+# Quality
+/simplify
+"Run the tests"
+
+# Ship
+/commit
+"Create a PR targeting main"
+
+# Review
+"@security-reviewer Review the changes in this PR"
+```
+
+## Phase 8: Testing and Deployment
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/claude-review.yml
+name: Claude Review
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @anthropic-ai/claude-code
+      - run: claude -p "Review this PR for security and quality" --max-turns 15
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+### Pre-Deploy Checklist
+
+`.claude/commands/deploy.md`:
+```markdown
+---
+description: "Run deploy checklist"
+argument-hint: "staging|production"
+---
+Deploy to $ARGUMENTS:
+1. Verify branch: !`git branch --show-current`
+2. Verify tests: !`pnpm test --run 2>&1 | tail -5`
+3. Verify build: `pnpm build`
+4. Tag if production
+5. Push and deploy
+```
+
+## The Complete Toolkit Used
+
+| Phase | Tools Used |
+|---|---|
+| Foundation | CLAUDE.md, settings.json |
+| Development | /plan, /execute, /simplify, /commit |
+| Automation | Commands, hooks, agents |
+| Integration | MCP (GitHub, Postgres) |
+| Quality | Security reviewer agent, /simplify |
+| Deployment | Deploy command, CI/CD |
+| Monitoring | /cost, /insights |
+
+## Key Takeaway
+
+A production project with Claude Code follows a clear progression: CLAUDE.md first (always), then settings.json, then iterative feature development with the plan-execute-simplify-test-commit loop. Commands emerge from repeated patterns, agents from recurring specialized roles, and skills from reusable knowledge. MCP connects external tools, hooks automate quality gates, and CI/CD extends Claude into your pipeline. The result: a codebase built consistently with every Claude Code feature working in concert.

@@ -1,0 +1,285 @@
+---
+title: "Environment Variables That Unlock Power"
+slug: "environment-variables"
+order: 4
+difficulty: "intermediate"
+duration: 14
+tags: ["environment-variables", "configuration", "lsp", "optimization"]
+objectives:
+  - "Know the essential environment variables and what they do"
+  - "Understand the precedence between shell vars and settings.json"
+  - "Enable LSP for massive token savings"
+  - "Configure thinking tokens, effort, and brief mode"
+quiz:
+  - id: "env-vars-1"
+    question: "What does ENABLE_LSP_TOOL=1 do?"
+    type: "multiple-choice"
+    options:
+      - "Enables a text-to-speech tool"
+      - "Enables Language Server Protocol for precise code navigation (~50ms vs 45s grep)"
+      - "Enables a file compression tool"
+      - "Enables the latest model"
+    correct: 1
+    explanation: "ENABLE_LSP_TOOL=1 enables the Language Server Protocol tool, which gives Claude precise code navigation — go to definition, find references, symbol search. This is dramatically faster and more token-efficient than grep-based code navigation (50ms vs up to 45 seconds)."
+  - id: "env-vars-2"
+    question: "What happens if ANTHROPIC_API_KEY is set when you have a Pro/Max subscription?"
+    type: "multiple-choice"
+    options:
+      - "The subscription is used and the key is ignored"
+      - "The API key overrides the subscription — you're billed at API rates"
+      - "Both are used"
+      - "Claude Code shows an error"
+    correct: 1
+    explanation: "This is a critical gotcha: ANTHROPIC_API_KEY overrides your subscription. If it's set in your shell, Claude Code uses it instead of your subscription, and you're billed per-token at API rates. Always unset it if you want to use your subscription."
+  - id: "env-vars-3"
+    question: "Which takes precedence: shell environment variables or settings.json env?"
+    type: "multiple-choice"
+    options:
+      - "settings.json always wins"
+      - "Shell environment variables take precedence over settings.json"
+      - "They're merged with no priority"
+      - "It depends on the variable"
+    correct: 1
+    explanation: "Shell environment variables (from .zshrc, .bashrc, or exported in the terminal) always take precedence over the env key in settings.json. If ENABLE_LSP_TOOL is set in both your shell and settings.json, the shell value wins."
+  - id: "env-vars-4"
+    question: "What does CLAUDE_CODE_BRIEF=1 do?"
+    type: "multiple-choice"
+    options:
+      - "Uses a faster but less capable model"
+      - "Makes Claude's responses shorter and more concise"
+      - "Limits the session to 5 minutes"
+      - "Disables extended thinking"
+    correct: 1
+    explanation: "CLAUDE_CODE_BRIEF=1 tells Claude to produce shorter, more concise responses. Instead of detailed explanations with every code change, Claude gets straight to the point. This is useful for experienced users who don't need verbose explanations."
+---
+
+## The Secret Switches
+
+Claude Code has a set of environment variables that unlock features, control behavior, and optimize performance. Some of them are documented, some are less well-known, but all of them give you direct control over how Claude Code operates.
+
+These variables can be set in your shell profile, your settings.json `env` key, or directly in the terminal. Let's cover the essential ones.
+
+## The Must-Have: ENABLE_LSP_TOOL
+
+If you set nothing else, set this:
+
+```bash
+export ENABLE_LSP_TOOL=1
+```
+
+Or in settings.json:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1"
+  }
+}
+```
+
+**What it does**: Enables the Language Server Protocol tool, which gives Claude precise code navigation — go to definition, find all references, symbol search, and hover documentation.
+
+**Why it matters**: Without LSP, when Claude needs to find where `createOrder` is defined, it runs grep across your codebase. In a large project, this can take up to 45 seconds and return hundreds of results, all of which enter your context window.
+
+With LSP, Claude uses "go to definition" — a single-hop lookup that takes about 50 milliseconds and returns exactly the function it's looking for.
+
+```
+Without LSP:
+  grep "createOrder" → 45 matches, 3,000 tokens, 45 seconds
+
+With LSP:
+  go to definition → 1 exact result, 50 tokens, 50ms
+```
+
+This saves **thousands of tokens per session** and makes Claude dramatically faster at navigating your code. It's the single highest-impact environment variable.
+
+## Thinking Token Control: MAX_THINKING_TOKENS
+
+```bash
+export MAX_THINKING_TOKENS=12000
+```
+
+When extended thinking is enabled (Alt+T), Claude spends tokens on internal reasoning before producing a visible response. By default, Claude decides how much to think based on the problem's complexity.
+
+Setting `MAX_THINKING_TOKENS` puts a ceiling on this:
+
+- **10,000-15,000**: Good default — enough for complex reasoning without runaway costs
+- **5,000**: For moderately complex tasks where you want some thinking but not unlimited
+- **25,000+**: For very complex problems where deep reasoning is worth the token investment
+
+If you don't set this, Claude might spend 30,000+ tokens thinking about a problem that only needed 5,000 tokens of reasoning. The cap keeps costs predictable.
+
+## Effort Level: CLAUDE_CODE_EFFORT_LEVEL
+
+```bash
+export CLAUDE_CODE_EFFORT_LEVEL=medium
+```
+
+Sets the default effort level for all sessions. Valid values: `low`, `medium`, `high`, `max`.
+
+This is lower priority than `--effort` flag and `/effort` command, but higher than settings.json `effortLevel`. It's useful as a persistent default in your shell profile.
+
+## Brief Mode: CLAUDE_CODE_BRIEF
+
+```bash
+export CLAUDE_CODE_BRIEF=1
+```
+
+Tells Claude to produce shorter, more concise responses. Instead of:
+
+```
+I've analyzed the file and found the issue. The problem is in the 
+createOrder function on line 47 where the validation step is skipped
+when the order type is 'express'. Here's what I'll do to fix it:
+
+1. Add the validation check before the express path
+2. Update the error message to be more descriptive
+3. Add a test case for this edge case
+
+Let me implement these changes now.
+
+[makes changes]
+
+I've made the following changes:
+- Added Zod validation on line 48 for express orders
+- Updated the error message on line 52
+- Created a new test in order-service.test.ts
+```
+
+With brief mode, Claude produces:
+
+```
+Fixed: added validation for express orders in createOrder (line 48), 
+updated error message, added test case.
+
+[makes changes]
+```
+
+Same result, fewer tokens, less noise. Experienced users who don't need verbose explanations will appreciate this.
+
+## Session Backgrounding: ENABLE_SESSION_BACKGROUNDING
+
+```bash
+export ENABLE_SESSION_BACKGROUNDING=1
+```
+
+Enables the ability to send sessions to the background. When enabled, you can start a task, background it, and work on something else while it runs.
+
+This is useful for long-running tasks like large refactoring, test suite runs, or code analysis — you don't need to watch Claude work, just check back when it's done.
+
+## The Dangerous One: ANTHROPIC_API_KEY
+
+```bash
+# WARNING: This overrides your subscription!
+export ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxx
+```
+
+If this is set, Claude Code uses it **instead of your subscription**, billing you at per-token API rates. This is the most common billing surprise for Claude Code users.
+
+If you have a Pro or Max subscription and you've set an API key at some point (maybe for testing or another project), check and unset it:
+
+```bash
+# Check if set
+echo $ANTHROPIC_API_KEY
+
+# Unset it
+unset ANTHROPIC_API_KEY
+
+# Remove from shell profile permanently
+# Edit ~/.zshrc or ~/.bashrc and remove the export line
+```
+
+## Custom Endpoints: ANTHROPIC_BASE_URL
+
+```bash
+export ANTHROPIC_BASE_URL=https://your-proxy.company.com/v1
+```
+
+Routes Claude Code requests through a custom API endpoint. This is used by:
+
+- **Enterprises** routing through internal API gateways
+- **Teams** using AWS Bedrock or Google Vertex AI
+- **Developers** using proxy services for monitoring or caching
+
+Most individual users don't need this. If your company uses Claude Code, your IT team may provide a specific URL.
+
+## Setting Variables: Two Methods
+
+### Method 1: Shell Profile (Persistent)
+
+Add to `~/.zshrc` or `~/.bashrc`:
+
+```bash
+# Claude Code environment
+export ENABLE_LSP_TOOL=1
+export MAX_THINKING_TOKENS=12000
+export CLAUDE_CODE_BRIEF=0
+```
+
+These are set every time you open a terminal. They take precedence over settings.json.
+
+### Method 2: settings.json (Portable)
+
+Add to any settings.json file:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "12000",
+    "CLAUDE_CODE_BRIEF": "0"
+  }
+}
+```
+
+This is portable (committed to git for team settings) and doesn't require shell configuration. But shell variables override these if both are set.
+
+### Precedence
+
+```
+Shell environment (~/.zshrc)     ← Highest priority
+  ↓ overrides
+settings.json env key            ← Lower priority
+```
+
+If `ENABLE_LSP_TOOL=0` is in your shell and `ENABLE_LSP_TOOL=1` is in settings.json, LSP is **disabled** (shell wins).
+
+## The Recommended Setup
+
+For most developers, this is the optimal configuration:
+
+### In settings.json (Team-Wide)
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "MAX_THINKING_TOKENS": "10000"
+  }
+}
+```
+
+### In ~/.zshrc (Personal)
+
+```bash
+# Claude Code — personal preferences
+export CLAUDE_CODE_BRIEF=1
+```
+
+This gives the whole team LSP and thinking caps, while your personal shell adds brief mode. Clean, layered, and each setting lives at the appropriate level.
+
+## Quick Reference
+
+| Variable | Values | What It Does |
+|---|---|---|
+| `ENABLE_LSP_TOOL` | 0 / 1 | Enable Language Server Protocol (must-have) |
+| `MAX_THINKING_TOKENS` | Number | Cap thinking tokens per turn |
+| `CLAUDE_CODE_EFFORT_LEVEL` | low/medium/high/max | Default effort level |
+| `CLAUDE_CODE_BRIEF` | 0 / 1 | Concise responses |
+| `ENABLE_SESSION_BACKGROUNDING` | 0 / 1 | Allow backgrounding sessions |
+| `ANTHROPIC_API_KEY` | API key | Override subscription with API billing |
+| `ANTHROPIC_BASE_URL` | URL | Custom API endpoint |
+
+## Key Takeaway
+
+Environment variables give you direct control over Claude Code's behavior. The must-have is `ENABLE_LSP_TOOL=1` — it transforms code navigation from slow grep operations to instant LSP lookups, saving thousands of tokens per session. Set `MAX_THINKING_TOKENS` to cap reasoning costs, and use `CLAUDE_CODE_BRIEF=1` for concise output. Be careful with `ANTHROPIC_API_KEY` — it overrides your subscription. Shell variables take precedence over settings.json, so use settings.json for team-shared config and shell variables for personal preferences.

@@ -1,0 +1,318 @@
+---
+title: "Building Your First Hook: Auto-Format on Save"
+slug: "auto-format-hook"
+order: 2
+difficulty: "advanced"
+duration: 14
+tags: ["hooks", "formatting", "prettier", "black", "automation"]
+objectives:
+  - "Build a PostToolUse hook for auto-formatting"
+  - "Configure formatters for multiple languages"
+  - "Understand how the $file variable works"
+  - "Test and debug hooks"
+quiz:
+  - id: "autoformat-1"
+    question: "Which hook event is used for auto-formatting after Claude writes a file?"
+    type: "multiple-choice"
+    options:
+      - "PreToolUse"
+      - "PostToolUse with a Write matcher"
+      - "SessionStart"
+      - "Notification"
+    correct: 1
+    explanation: "PostToolUse fires after Claude completes a tool use. With a Write matcher (e.g., Write(*.ts)), it triggers specifically when Claude writes a TypeScript file. The $file variable contains the path of the written file, which you pass to the formatter."
+  - id: "autoformat-2"
+    question: "What does the $file variable contain in a PostToolUse Write hook?"
+    type: "multiple-choice"
+    options:
+      - "The file contents"
+      - "The absolute path of the file that was just written"
+      - "The file size"
+      - "The file type"
+    correct: 1
+    explanation: "$file contains the absolute path of the file Claude just wrote. When you use 'npx prettier --write $file', Prettier receives the exact file path and formats that specific file in place."
+  - id: "autoformat-3"
+    question: "How can you test if your hooks are working correctly?"
+    type: "multiple-choice"
+    options:
+      - "There's no way to test hooks"
+      - "Ask Claude to write a file and check if the formatter ran by examining the output"
+      - "Run the hook manually"
+      - "Check the hook log file"
+    correct: 1
+    explanation: "The simplest test is to ask Claude to write a file that would normally be unformatted, then check if the PostToolUse hook ran the formatter. For example, ask Claude to write TypeScript without following Prettier's rules — if the file comes out properly formatted, your hook is working."
+  - id: "autoformat-4"
+    question: "Can you have multiple PostToolUse hooks for different file types?"
+    type: "multiple-choice"
+    options:
+      - "No, only one PostToolUse hook is allowed"
+      - "Yes — each hook can have a different matcher, so different formatters run for different file types"
+      - "Only two are allowed"
+      - "Yes, but they conflict with each other"
+    correct: 1
+    explanation: "You can have as many PostToolUse hooks as you need. Each one has its own matcher and command. Write(*.ts) → Prettier, Write(*.py) → Black, Write(*.go) → gofmt — each formatter runs only for its file type."
+---
+
+## Why Auto-Format?
+
+When Claude writes code, it usually follows good formatting — but not always your project's exact formatting rules. Maybe your team uses 4-space indentation but Claude used 2. Maybe Prettier wants trailing commas but Claude left them out.
+
+The fix: a **PostToolUse hook** that runs your formatter every time Claude writes a file. Claude writes the code, your formatter cleans it up, and the result always matches your project's style.
+
+This is the single most useful hook you can set up, and it takes about 2 minutes.
+
+## TypeScript/JavaScript: Prettier
+
+### The Hook
+
+Add to `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.tsx)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.js)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.jsx)",
+        "command": "npx prettier --write $file"
+      }
+    ]
+  }
+}
+```
+
+### How It Works
+
+1. Claude writes `src/services/order-service.ts`
+2. PostToolUse fires because the matcher `Write(*.ts)` matches
+3. `$file` is set to `src/services/order-service.ts`
+4. The command runs: `npx prettier --write src/services/order-service.ts`
+5. Prettier reformats the file according to your `.prettierrc` config
+6. The file on disk now matches your project's style exactly
+
+### Consolidating with Glob
+
+If your project formats all web files the same way, use a broader glob:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx,js,jsx,json,css,scss,md})",
+        "command": "npx prettier --write $file"
+      }
+    ]
+  }
+}
+```
+
+One hook handles all file types that Prettier supports.
+
+## Python: Black
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file"
+      }
+    ]
+  }
+}
+```
+
+Or with isort for import ordering:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m isort $file && python -m black $file"
+      }
+    ]
+  }
+}
+```
+
+The `&&` chains two commands: first sort imports, then format the code.
+
+## Go: gofmt
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.go)",
+        "command": "gofmt -w $file"
+      }
+    ]
+  }
+}
+```
+
+## Rust: rustfmt
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.rs)",
+        "command": "rustfmt $file"
+      }
+    ]
+  }
+}
+```
+
+## Multi-Language Project
+
+For a project with multiple languages, combine formatters:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx,js,jsx,json,css,md})",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file"
+      },
+      {
+        "matcher": "Write(*.go)",
+        "command": "gofmt -w $file"
+      },
+      {
+        "matcher": "Write(*.rs)",
+        "command": "rustfmt $file"
+      },
+      {
+        "matcher": "Write(*.sql)",
+        "command": "npx sql-formatter --fix $file"
+      }
+    ]
+  }
+}
+```
+
+Each hook fires independently based on its matcher. Writing a `.ts` file only triggers Prettier. Writing a `.py` file only triggers Black. No conflicts.
+
+## Adding Linting
+
+You can extend PostToolUse hooks to also lint after formatting:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file && npx eslint --fix $file"
+      }
+    ]
+  }
+}
+```
+
+This runs Prettier first, then ESLint with auto-fix. The file gets both formatted and linted in one hook execution.
+
+### A Word of Caution on Lint Hooks
+
+Auto-formatting is safe — formatters never change behavior, only style. Auto-linting with `--fix` can sometimes change behavior (e.g., removing an unused import that's actually needed for side effects). Be careful with lint auto-fix in hooks.
+
+A safer approach for linting:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx eslint $file 2>/dev/null || true"
+      }
+    ]
+  }
+}
+```
+
+This formats and then runs the linter for informational purposes (without `--fix`). The `|| true` prevents a non-zero exit code from causing issues.
+
+## Testing Your Hooks
+
+### Quick Test
+
+```bash
+claude
+
+# Ask Claude to write a deliberately unformatted file
+"Create a file called test-hook.ts with a simple function. 
+Use 4-space indentation and no trailing commas."
+
+# If your Prettier config uses 2 spaces and trailing commas,
+# check the written file — it should match Prettier's style,
+# not what you asked for.
+```
+
+If the file is formatted according to your Prettier config, the hook is working.
+
+### Debugging
+
+If hooks aren't working:
+
+1. **Check the matcher**: Does it match the file type? `Write(*.ts)` won't match `.tsx` files.
+2. **Check the command**: Can you run it manually? `npx prettier --write path/to/file.ts`
+3. **Check the formatter installation**: Is Prettier/Black/gofmt installed?
+4. **Check settings.json syntax**: Valid JSON? Correct nesting?
+
+Run your formatter manually to verify it works:
+
+```bash
+npx prettier --write src/test-file.ts
+# If this works, the formatter is installed and configured
+```
+
+## Performance Impact
+
+Hooks run synchronously — Claude waits for the hook to complete before continuing. For most formatters, this adds 100-500ms per file write. In practice, this is imperceptible.
+
+If you have very slow hooks (linters that analyze the entire project, for example), consider:
+- Running them asynchronously (append `&` to the command)
+- Running them only on specific directories
+- Skipping them for test/temporary files
+
+```json
+{
+  "matcher": "Write(src/**/*.ts)",
+  "command": "npx prettier --write $file"
+}
+```
+
+Only format files in `src/` — skip test files, config files, and generated code.
+
+## Key Takeaway
+
+Auto-formatting hooks are the first thing every Claude Code user should set up. The pattern is simple: PostToolUse + Write matcher + formatter command. Configure one hook per file type: Prettier for TypeScript/JavaScript, Black for Python, gofmt for Go. Claude writes code in its style, the formatter fixes it to your project's style, and the result always matches your configuration. It takes 2 minutes to set up and saves endless formatting corrections.

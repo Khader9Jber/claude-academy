@@ -1,0 +1,346 @@
+---
+title: "Tool Permissions: Allow and Deny Patterns"
+slug: "tool-permissions"
+order: 5
+difficulty: "intermediate"
+duration: 16
+tags: ["permissions", "security", "configuration", "tools"]
+objectives:
+  - "Understand the permission glob pattern syntax"
+  - "Configure allow and deny lists for Read, Write, and Bash tools"
+  - "Set up MCP tool permissions"
+  - "Use the Tab cycle for runtime permission modes"
+quiz:
+  - id: "permissions-1"
+    question: "What does the pattern Bash(git log:*) match?"
+    type: "multiple-choice"
+    options:
+      - "Only the exact command 'git log'"
+      - "Any command starting with 'git log:' (git log with arguments separated by colon)"
+      - "Any bash command containing 'git'"
+      - "Only 'git log --oneline'"
+    correct: 1
+    explanation: "Bash(git log:*) uses colon as an argument separator, matching 'git log' followed by any arguments. This is the recommended pattern for allowing git log with any flags — it's more precise than Bash(git log*) which could match 'git logout' or similar."
+  - id: "permissions-2"
+    question: "What happens when a tool matches both an allow and deny pattern?"
+    type: "multiple-choice"
+    options:
+      - "Allow always wins"
+      - "Deny always wins — it takes priority over allow"
+      - "The more specific pattern wins"
+      - "Claude asks you to choose"
+    correct: 1
+    explanation: "Deny always takes priority over allow. If Write(src/**) is in allow and Write(src/secrets/**) is in deny, files in src/secrets/ are blocked even though src/** would normally allow them. This is a security-first design — denials are absolute."
+  - id: "permissions-3"
+    question: "What does the Tab key cycle through during a permission prompt?"
+    type: "multiple-choice"
+    options:
+      - "Different models"
+      - "Allow Once → Allow Session → Allow Project → Deny"
+      - "File tabs in the editor"
+      - "Different effort levels"
+    correct: 1
+    explanation: "When Claude requests permission for an action, pressing Tab cycles through: Allow Once (just this time), Allow Session (until session ends), Allow Project (saved to settings), and Deny. This lets you make quick permission decisions without editing config files."
+  - id: "permissions-4"
+    question: "Why should you deny Bash(curl *) in production configurations?"
+    type: "multiple-choice"
+    options:
+      - "curl is too slow"
+      - "curl doesn't work with Claude Code"
+      - "It prevents data exfiltration — Claude could theoretically send code to external URLs"
+      - "curl uses too many tokens"
+    correct: 2
+    explanation: "Denying curl prevents a class of prompt injection attacks where malicious instructions embedded in code could cause Claude to send your source code to an external URL. This is a security best practice for any production Claude Code configuration."
+---
+
+## How Permissions Work
+
+Every time Claude Code wants to read a file, write a file, or run a shell command, it checks the permission system. If the action is explicitly allowed, it proceeds silently. If it's explicitly denied, it's blocked. If neither, Claude asks you for permission.
+
+The permission system uses **glob patterns** — the same wildcard syntax you know from `.gitignore` and shell expansion. Mastering these patterns is the key to a Claude Code setup that's both productive and secure.
+
+## Permission Pattern Syntax
+
+### Read Patterns
+
+Control which files Claude can read:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Read(src/**)",
+      "Read(docs/*.md)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Read(secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)"
+    ]
+  }
+}
+```
+
+| Pattern | Matches |
+|---|---|
+| `Read` | All file reads (blanket allow) |
+| `Read(src/**)` | Any file under src/ at any depth |
+| `Read(docs/*.md)` | Markdown files directly in docs/ |
+| `Read(.env*)` | .env, .env.local, .env.production |
+| `Read(**/*.pem)` | Any .pem file anywhere in the project |
+
+### Write Patterns
+
+Control which files Claude can create or modify:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Write(docs/**/*.md)"
+    ],
+    "deny": [
+      "Write(package.json)",
+      "Write(pnpm-lock.yaml)",
+      "Write(prisma/schema.prisma)",
+      "Write(.github/**)",
+      "Write(Dockerfile)"
+    ]
+  }
+}
+```
+
+| Pattern | Matches |
+|---|---|
+| `Write(src/**)` | Any file under src/ |
+| `Write(tests/**)` | Any file under tests/ |
+| `Write(package.json)` | Exactly package.json |
+| `Write(.github/**)` | GitHub Actions, PR templates, etc. |
+
+### Bash Patterns
+
+Control which shell commands Claude can run:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm *)",
+      "Bash(npm test)",
+      "Bash(npx vitest *)",
+      "Bash(docker compose *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(git push --force*)",
+      "Bash(chmod *)",
+      "Bash(kill *)"
+    ]
+  }
+}
+```
+
+The **colon separator** in Bash patterns is important:
+
+- `Bash(git log:*)` matches `git log` with any arguments (the colon acts as argument separator)
+- `Bash(git log*)` matches any command starting with `git log` — which could include `git logout` or other unintended commands
+
+Use the colon form for precision:
+
+```json
+"Bash(git log:*)"     // git log --oneline, git log -10, etc.
+"Bash(git diff:*)"    // git diff HEAD, git diff --staged, etc.
+"Bash(git branch:*)"  // git branch -a, git branch new-feature, etc.
+```
+
+### MCP Tool Patterns
+
+Control which MCP tools Claude can invoke:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__github",
+      "mcp__github__list_prs",
+      "mcp__postgres__query"
+    ],
+    "deny": [
+      "mcp__postgres__execute",
+      "mcp__github__delete_repo"
+    ]
+  }
+}
+```
+
+| Pattern | Matches |
+|---|---|
+| `mcp__github` | All tools from the GitHub MCP server |
+| `mcp__github__list_prs` | Only the list_prs tool |
+| `mcp__postgres__execute` | Block destructive SQL execution |
+
+## The Deny-Over-Allow Rule
+
+When an action matches both an allow and a deny pattern, **deny always wins**:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Write(src/**)"
+    ],
+    "deny": [
+      "Write(src/generated/**)"
+    ]
+  }
+}
+```
+
+Claude can write to any file under `src/` except files under `src/generated/`. The deny pattern carves out an exception from the broader allow.
+
+This is a deliberate security design. You can grant broad access and then surgically restrict specific paths, knowing the restrictions are absolute.
+
+## The Tab Cycle: Runtime Permissions
+
+When Claude encounters an action that's not covered by your allow or deny lists, it prompts you for permission. Instead of typing, you can press **Tab** to cycle through options:
+
+```
+Claude wants to run: npm install lodash
+
+  [Allow Once]  →  Tab  →  [Allow Session]  →  Tab  →  [Allow Project]  →  Tab  →  [Deny]
+```
+
+- **Allow Once**: Permits this specific action right now. Gone after this one use.
+- **Allow Session**: Permits this action for the rest of the session. Resets when you start a new session.
+- **Allow Project**: Saves the permission to your project settings (`.claude/settings.json`). Persists across sessions.
+- **Deny**: Blocks this action.
+
+This is a fast way to build up your permission list organically. As you work, Claude asks about new actions, and you press Tab to the appropriate level. Over time, your settings.json accumulates a well-fitted permission set.
+
+## Building a Permission Set
+
+### Start Permissive, Narrow Down
+
+For new projects, start with broad allows and see what Claude needs:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(git *)",
+      "Bash(pnpm *)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)"
+    ]
+  }
+}
+```
+
+As you discover actions you want to restrict, add deny patterns. As you find yourself repeatedly approving the same action, add it to allow.
+
+### Lock Down for Production
+
+For production or security-sensitive projects, start restrictive:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(src/**)",
+      "Read(tests/**)",
+      "Read(docs/**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(pnpm test)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm typecheck)",
+      "Bash(git status)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Read(secrets/**)",
+      "Read(**/*.pem)",
+      "Write(package.json)",
+      "Write(.github/**)",
+      "Bash(rm *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(chmod *)",
+      "Bash(git push *)"
+    ]
+  }
+}
+```
+
+This gives Claude exactly what it needs for development — read source, write source, run tests — while blocking anything that could be dangerous.
+
+## Common Permission Recipes
+
+### Full-stack TypeScript Project
+
+```json
+"allow": [
+  "Read",
+  "Write(src/**)", "Write(tests/**)", "Write(docs/**)",
+  "Bash(pnpm *)", "Bash(npx *)", "Bash(git *)",
+  "Bash(docker compose *)"
+],
+"deny": [
+  "Read(.env*)", "Write(package.json)",
+  "Bash(rm -rf *)", "Bash(sudo *)", "Bash(curl *)"
+]
+```
+
+### Python Data Science Project
+
+```json
+"allow": [
+  "Read",
+  "Write(src/**)", "Write(notebooks/**)", "Write(tests/**)",
+  "Bash(python *)", "Bash(pip *)", "Bash(pytest *)",
+  "Bash(git *)", "Bash(jupyter *)"
+],
+"deny": [
+  "Read(.env*)", "Read(credentials/**)",
+  "Bash(rm -rf *)", "Bash(sudo *)", "Bash(curl *)"
+]
+```
+
+### Monorepo
+
+```json
+"allow": [
+  "Read",
+  "Write(packages/*/src/**)", "Write(packages/*/tests/**)",
+  "Bash(pnpm *)", "Bash(turbo *)", "Bash(git *)"
+],
+"deny": [
+  "Read(.env*)", "Write(packages/*/package.json)",
+  "Bash(rm -rf *)", "Bash(sudo *)", "Bash(curl *)"
+]
+```
+
+## Key Takeaway
+
+Tool permissions use glob patterns to control exactly what Claude can read, write, and execute. Deny patterns always override allow patterns — this is a security guarantee. Use the colon separator in Bash patterns (`Bash(git log:*)`) for precise command matching. Start with broad permissions and narrow down, or start locked-down for sensitive projects. The Tab cycle at permission prompts lets you build your permission set organically as you work.

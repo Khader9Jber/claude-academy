@@ -1,0 +1,356 @@
+---
+title: "All 11 Hook Events Explained"
+slug: "hook-events"
+order: 1
+difficulty: "advanced"
+duration: 18
+tags: ["hooks", "events", "automation", "configuration"]
+objectives:
+  - "Understand all hook events and when they fire"
+  - "Know the difference between command and HTTP hook types"
+  - "Use exit codes to control Claude's behavior from hooks"
+  - "Choose the right event for each automation need"
+quiz:
+  - id: "hooks-1"
+    question: "What does exit code 2 do in a PreToolUse hook?"
+    type: "multiple-choice"
+    options:
+      - "Continues normally"
+      - "Blocks the tool use — Claude cannot proceed with that action"
+      - "Retries the tool use"
+      - "Exits Claude Code"
+    correct: 1
+    explanation: "In a PreToolUse hook, exit code 2 blocks the tool use entirely. Claude receives a message that the action was blocked by a hook and must find an alternative approach. Exit 0 allows the tool use to proceed. This is the mechanism for creating safety gates."
+  - id: "hooks-2"
+    question: "When does the PostToolUse event fire?"
+    type: "multiple-choice"
+    options:
+      - "Before Claude uses a tool"
+      - "After Claude successfully uses a tool — ideal for running formatters on written files"
+      - "When the session ends"
+      - "When you type a command"
+    correct: 1
+    explanation: "PostToolUse fires immediately after Claude completes a tool use. The most common use is running formatters (Prettier, Black) on files Claude just wrote. The hook receives information about which tool was used and what file was affected."
+  - id: "hooks-3"
+    question: "What is the difference between command and http hook types?"
+    type: "multiple-choice"
+    options:
+      - "Command hooks are faster"
+      - "Command hooks run a shell command; HTTP hooks send a webhook to a URL"
+      - "HTTP hooks are more secure"
+      - "They're the same"
+    correct: 1
+    explanation: "Command hooks execute a shell command on your machine (like running a formatter or sending a desktop notification). HTTP hooks send an HTTP request to a URL (like posting to a Slack webhook or triggering a CI pipeline). Use command for local actions, HTTP for remote notifications."
+  - id: "hooks-4"
+    question: "When does the Notification event fire?"
+    type: "multiple-choice"
+    options:
+      - "Every 5 minutes"
+      - "When Claude needs your attention — waiting for approval, encountered an error, or went idle"
+      - "When you receive an email"
+      - "When a PR is created"
+    correct: 1
+    explanation: "The Notification event fires when Claude needs your attention: it's waiting for permission approval, encountered an error it can't resolve, or has gone idle after completing a task. This is the event to hook into for desktop notifications, sound alerts, or mobile notifications."
+---
+
+## The Hook System
+
+Hooks are automated actions that fire in response to Claude Code events. Every time Claude reads a file, writes code, runs a command, or needs your attention, a hook event fires. You can attach your own scripts to these events — turning Claude Code into an automated pipeline.
+
+Think of hooks as event listeners. The event fires, your hook runs, and depending on the exit code, Claude's behavior may change.
+
+## Hook Types
+
+### Command Hooks
+
+Run a shell command on your machine:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      }
+    ]
+  }
+}
+```
+
+The command runs in your shell with access to environment variables and the file system.
+
+### HTTP Hooks
+
+Send an HTTP request to a URL:
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "type": "http",
+        "url": "https://hooks.slack.com/services/xxx/yyy/zzz",
+        "method": "POST",
+        "body": {
+          "text": "Claude Code needs your attention"
+        }
+      }
+    ]
+  }
+}
+```
+
+HTTP hooks are ideal for remote notifications — Slack, Discord, webhooks, CI triggers.
+
+## All 11 Hook Events
+
+### 1. PreToolUse
+
+**Fires**: Before Claude executes a tool (Read, Write, Bash, MCP tool).
+
+**Use case**: Safety gates. Block dangerous operations, require confirmation for sensitive actions.
+
+**Exit codes**:
+- `0` — Allow the tool use
+- `2` — Block the tool use (Claude gets an error message)
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(src/generated/**)",
+        "command": "echo 'Cannot write to generated files' && exit 2"
+      }
+    ]
+  }
+}
+```
+
+### 2. PostToolUse
+
+**Fires**: After Claude successfully executes a tool.
+
+**Use case**: Auto-formatting, linting, logging, notifications.
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file"
+      }
+    ]
+  }
+}
+```
+
+The `$file` variable contains the path of the affected file.
+
+### 3. UserPromptSubmit
+
+**Fires**: After you submit a prompt, before Claude processes it.
+
+**Use case**: Input validation, logging, telemetry.
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "command": "echo \"$(date): User submitted prompt\" >> ~/.claude/prompt-log.txt"
+      }
+    ]
+  }
+}
+```
+
+Exit code 2 blocks the prompt from being processed.
+
+### 4. SessionStart
+
+**Fires**: When a new Claude Code session begins.
+
+**Use case**: Environment setup, server health checks, welcome messages.
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "echo 'Checking services...' && docker compose ps"
+      }
+    ]
+  }
+}
+```
+
+### 5. Notification
+
+**Fires**: When Claude needs your attention — waiting for permission, error, or idle.
+
+**Use case**: Desktop notifications, sound alerts, mobile notifications.
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs you\" with title \"Claude Code\"'"
+      }
+    ]
+  }
+}
+```
+
+### 6. TeammateIdle
+
+**Fires**: When an agent team member goes idle (waiting for work or blocked).
+
+**Use case**: Agent team coordination, workload balancing.
+
+```json
+{
+  "hooks": {
+    "TeammateIdle": [
+      {
+        "command": "echo 'Agent idle' >> ~/.claude/team-log.txt"
+      }
+    ]
+  }
+}
+```
+
+### 7. TaskCompleted
+
+**Fires**: When a background task finishes.
+
+**Use case**: Notification that a long-running task is done.
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Task complete\" with title \"Claude Code\"' && afplay /System/Library/Sounds/Glass.aiff"
+      }
+    ]
+  }
+}
+```
+
+### 8. Elicitation
+
+**Fires**: When an MCP server requests structured input from Claude.
+
+**Use case**: Logging MCP input requests, custom input handling.
+
+### 9. ElicitationResult
+
+**Fires**: When the response to an MCP elicitation is returned.
+
+**Use case**: Logging responses, post-processing elicitation results.
+
+### 10. WorktreeCreate
+
+**Fires**: When a new git worktree is created (for agent isolation).
+
+**Use case**: Setting up worktree-specific environment, installing dependencies.
+
+```json
+{
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "command": "cd $worktree_path && pnpm install"
+      }
+    ]
+  }
+}
+```
+
+### 11. WorktreeRemove
+
+**Fires**: When a git worktree is cleaned up.
+
+**Use case**: Cleanup scripts, resource deallocation.
+
+## Matchers
+
+Hooks use **matchers** to filter which tool uses trigger them. Without a matcher, a hook fires for all tool uses of that event type.
+
+```json
+{
+  "PostToolUse": [
+    {
+      "matcher": "Write(*.ts)",
+      "command": "npx prettier --write $file"
+    },
+    {
+      "matcher": "Write(*.css)",
+      "command": "npx prettier --write $file"
+    },
+    {
+      "matcher": "Bash(pnpm test*)",
+      "command": "echo 'Tests ran at $(date)' >> test-log.txt"
+    }
+  ]
+}
+```
+
+Matchers use the same glob pattern syntax as permissions:
+- `Write(*.ts)` — Any TypeScript file write
+- `Write(src/**)` — Any file write under src/
+- `Bash(pnpm test*)` — Any pnpm test command
+- `Read(.env*)` — Any .env file read
+
+## Hook Variables
+
+Hooks receive context about the event through environment variables:
+
+| Variable | Description | Available In |
+|---|---|---|
+| `$file` | Path of the affected file | PostToolUse (Write) |
+| `$tool` | Name of the tool used | PreToolUse, PostToolUse |
+| `$worktree_path` | Path of the worktree | WorktreeCreate, WorktreeRemove |
+
+## Configuration Location
+
+Hooks are configured in settings.json — any of the three layers:
+
+```json
+// .claude/settings.json (project-level, shared with team)
+{
+  "hooks": {
+    "PostToolUse": [...],
+    "PreToolUse": [...],
+    "Notification": [...]
+  }
+}
+```
+
+## Quick Reference
+
+| Event | When It Fires | Common Use |
+|---|---|---|
+| PreToolUse | Before tool execution | Safety gates, blocking |
+| PostToolUse | After tool execution | Formatting, linting |
+| UserPromptSubmit | After prompt submission | Logging, validation |
+| SessionStart | Session begins | Environment setup |
+| Notification | Claude needs attention | Desktop alerts |
+| TeammateIdle | Agent goes idle | Team coordination |
+| TaskCompleted | Background task done | Completion alerts |
+| Elicitation | MCP requests input | Input logging |
+| ElicitationResult | MCP input returned | Response logging |
+| WorktreeCreate | Worktree created | Dependency install |
+| WorktreeRemove | Worktree removed | Cleanup |
+
+## Key Takeaway
+
+Claude Code's hook system has 11 events covering the full lifecycle of tool use, sessions, agents, and MCP interactions. The two most immediately useful are PostToolUse (auto-format files after Claude writes them) and Notification (get alerted when Claude needs you). Hooks can be shell commands (local actions) or HTTP requests (remote notifications). The exit code 2 in PreToolUse hooks gives you the power to block Claude from performing specific actions — creating safety gates that go beyond static permissions.

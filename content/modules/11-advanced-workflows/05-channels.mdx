@@ -1,0 +1,246 @@
+---
+title: "Channels: Discord and Telegram Integration"
+slug: "channels-integration"
+order: 5
+difficulty: "advanced"
+duration: 13
+tags: ["channels", "discord", "telegram", "bots", "integration"]
+objectives:
+  - "Understand what Channels are and how they work"
+  - "Set up bidirectional communication with Discord/Telegram"
+  - "Build an always-on AI team agent"
+  - "Know the current limitations and research preview status"
+quiz:
+  - id: "channels-1"
+    question: "What are Channels in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "TV channels"
+      - "Bidirectional integrations that connect Claude Code sessions to messaging platforms like Discord and Telegram"
+      - "Network channels"
+      - "Audio channels"
+    correct: 1
+    explanation: "Channels connect Claude Code to messaging platforms. When a message arrives in Discord or Telegram, Claude Code receives it and can respond. When Claude Code needs to communicate, it can send messages back to the platform. It's bidirectional — messages flow both ways."
+  - id: "channels-2"
+    question: "What is the primary use case for Channels?"
+    type: "multiple-choice"
+    options:
+      - "Sending marketing emails"
+      - "Creating an always-on AI agent that responds to team messages in Discord/Telegram"
+      - "Playing music"
+      - "Video conferencing"
+    correct: 1
+    explanation: "The primary use case is an always-on AI team member. Set up a bot in your Discord server or Telegram group, connect it to Claude Code via Channels, and team members can ask questions, request code reviews, or trigger automations by messaging the bot."
+  - id: "channels-3"
+    question: "What does 'bidirectional' mean in the Channels context?"
+    type: "multiple-choice"
+    options:
+      - "Claude can read and write files"
+      - "Messages flow both ways — from the platform to Claude Code AND from Claude Code back to the platform"
+      - "Two people can use it"
+      - "It works on two platforms"
+    correct: 1
+    explanation: "Bidirectional means messages flow in both directions. Team members send messages to the bot (platform → Claude Code), and Claude Code sends responses back (Claude Code → platform). Claude can also proactively send messages — like alerting the team about a failing build."
+  - id: "channels-4"
+    question: "What is the current status of Channels?"
+    type: "multiple-choice"
+    options:
+      - "Generally available"
+      - "Research preview — available but still experimental and subject to changes"
+      - "Deprecated"
+      - "Only available for enterprise"
+    correct: 1
+    explanation: "Channels is currently a research preview feature. It's functional and available to use, but the API and behavior may change. Use it for experimentation and non-critical workflows, and expect improvements over time."
+---
+
+## Claude Code as a Team Bot
+
+Channels extend Claude Code beyond the terminal. Instead of only interacting through the CLI, Claude can receive and send messages through messaging platforms — Discord, Telegram, and potentially others.
+
+This turns Claude Code into an **always-on team AI** that responds to messages, answers questions, and performs actions — all triggered by team chat.
+
+## How Channels Work
+
+```
+┌──────────┐      ┌─────────────┐      ┌──────────────┐
+│ Discord  │ ←──→ │ Claude Code │ ←──→ │  Your Code   │
+│ Telegram │      │  (Session)  │      │   (Local)    │
+└──────────┘      └─────────────┘      └──────────────┘
+```
+
+1. A team member sends a message in Discord/Telegram
+2. The message arrives at Claude Code through the channel
+3. Claude processes the message with full tool access (files, bash, MCP)
+4. Claude sends a response back to the platform
+
+Claude has the same capabilities as in a normal session — it can read files, run commands, query databases — but the trigger is a chat message instead of terminal input.
+
+## Setting Up Telegram
+
+### Step 1: Create a Bot
+
+1. Open Telegram and find @BotFather
+2. Send `/newbot` and follow the prompts
+3. Copy the bot token
+
+### Step 2: Connect to Claude Code
+
+```bash
+claude --channels telegram
+```
+
+Follow the setup instructions to link your bot token. Claude Code connects to Telegram and starts listening for messages.
+
+### Step 3: Interact
+
+In your Telegram chat with the bot:
+
+```
+You: What's the current status of our test suite?
+Bot: All 147 tests passing. Last run: 3 minutes ago. 
+     No failures in the last 24 hours.
+
+You: Review the latest PR
+Bot: PR #45 "Add rate limiting to API endpoints"
+     3 findings:
+     - Medium: Missing rate limit on /health endpoint
+     - Low: Magic number 100 should be a constant
+     - Suggestion: Add rate limit headers to responses
+```
+
+## Use Cases
+
+### Team Q&A Bot
+
+Set up a Claude Code bot in your team's Discord/Telegram that can answer questions about your codebase:
+
+```
+Developer: How does the auth middleware work?
+Bot: The auth middleware (src/middleware/auth.ts) extracts the JWT 
+     from the Authorization header, verifies it using the secret 
+     from env.JWT_SECRET, and attaches the decoded user to 
+     request.user. It returns 401 for missing/invalid tokens.
+
+Developer: Where's the payment webhook handler?
+Bot: src/routes/webhooks/stripe.ts, line 23. It verifies the 
+     HMAC signature, then dispatches to handlers based on event type.
+```
+
+### Deployment Monitor
+
+```
+Bot: [Automated] Deployment to staging complete.
+     Health check: PASS
+     Response time: 145ms (normal)
+     Error rate: 0.01% (normal)
+
+Developer: Looks good, deploy to production
+Bot: Deploying to production... 
+     [2 minutes later]
+     Production deployment complete.
+     Health check: PASS
+     All systems nominal.
+```
+
+### Code Review Trigger
+
+```
+Developer: /review 42
+Bot: Reviewing PR #42 "Implement order notifications"...
+     
+     Security: No issues found
+     Quality: 2 suggestions (variable naming, extract constant)
+     Performance: 1 warning (N+1 query in notification batch)
+     
+     Full review posted as PR comment.
+```
+
+### On-Call Assistant
+
+```
+[3 AM Alert from monitoring]
+On-call Dev: What's causing the spike in 500 errors?
+Bot: Analyzing error logs...
+     Root cause: Redis connection pool exhausted.
+     The pool limit is 10 but we have 15 concurrent webhook 
+     processors. This started after the 22:00 deployment.
+     
+     Quick fix: Increase pool limit to 25 in config/redis.ts
+     Proper fix: Add connection pooling with backoff
+
+On-call Dev: Apply the quick fix
+Bot: Applied: increased pool limit to 25 in config/redis.ts
+     Committed: "fix: increase Redis pool limit (hotfix)"
+     Pushed to main. Deploying...
+```
+
+## Configuration
+
+Channels configuration is managed through the Claude Code session:
+
+```bash
+# Start with channels
+claude --channels
+
+# Or add to a running session
+/channels
+```
+
+### Access Control
+
+Control who can interact with your bot:
+
+- **Allowlist**: Only specific users/groups can interact
+- **DM policy**: Whether the bot responds in DMs
+- **Group policy**: Whether the bot responds in group chats
+
+## Research Preview Considerations
+
+Channels is a research preview feature:
+
+- **API may change**: Configuration and behavior might evolve
+- **Stability**: Less stable than core features
+- **Features**: Some features may be added or removed
+
+Use it for:
+- Team productivity experiments
+- Non-critical monitoring
+- Development workflow automation
+
+Don't rely on it for:
+- Production incident response (have a manual fallback)
+- Customer-facing bots (use a dedicated bot framework)
+- Security-sensitive operations without additional safeguards
+
+## Security Notes
+
+When running Claude Code as a team-accessible bot:
+
+1. **Lock down permissions**: The bot should have minimal write access
+2. **Read-only by default**: Start with read-only capabilities, add write access carefully
+3. **Audit logging**: Log all bot interactions
+4. **Scope access**: Restrict which channels/users can interact
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(pnpm test)"
+    ],
+    "deny": [
+      "Write(*)",
+      "Bash(rm *)",
+      "Bash(git push *)"
+    ]
+  }
+}
+```
+
+A read-only bot is safe. A write-enabled bot needs careful permission scoping.
+
+## Key Takeaway
+
+Channels connect Claude Code to messaging platforms like Discord and Telegram, creating an always-on AI team member. Messages flow bidirectionally — team members ask questions or trigger actions, Claude responds with full code access. Use cases include team Q&A bots, deployment monitors, code review triggers, and on-call assistants. Channels is a research preview — use it for team productivity and non-critical workflows. Always lock down permissions when exposing Claude through a messaging channel.

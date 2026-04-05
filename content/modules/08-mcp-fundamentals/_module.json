@@ -1,0 +1,12 @@
+{
+  "title": "MCP Fundamentals",
+  "slug": "mcp-fundamentals",
+  "description": "Learn the Model Context Protocol from the ground up. Understand MCP servers, tools, resources, and how to extend Claude's capabilities with external integrations.",
+  "arc": "practitioner",
+  "order": 8,
+  "icon": "plug",
+  "color": "#5e9ed6",
+  "estimatedHours": 3,
+  "prerequisites": ["claude-code-basics"],
+  "lessonCount": 5
+}

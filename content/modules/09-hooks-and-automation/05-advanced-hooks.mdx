@@ -1,0 +1,309 @@
+---
+title: "Advanced Hook Patterns: Quality Gates"
+slug: "advanced-hooks"
+order: 5
+difficulty: "advanced"
+duration: 16
+tags: ["hooks", "quality-gates", "security", "advanced"]
+objectives:
+  - "Chain hooks into a quality gate pipeline"
+  - "Build PreToolUse guards that block dangerous operations"
+  - "Use UserPromptSubmit for input validation"
+  - "Coordinate agent teams with TeammateIdle hooks"
+quiz:
+  - id: "adv-hooks-1"
+    question: "How do you create a hook that blocks Claude from writing to production config files?"
+    type: "multiple-choice"
+    options:
+      - "Delete the config files"
+      - "Use a PreToolUse hook with exit code 2 that matches Write on config paths"
+      - "Tell Claude not to"
+      - "Rename the files"
+    correct: 1
+    explanation: "A PreToolUse hook with a matcher like Write(config/production/**) and exit code 2 blocks the write operation before it happens. Claude receives an error message and must find an alternative approach. This is a hard block that can't be talked around."
+  - id: "adv-hooks-2"
+    question: "What's the advantage of hooks over permissions for safety?"
+    type: "multiple-choice"
+    options:
+      - "Hooks are faster"
+      - "Hooks can run custom logic, check conditions, and provide detailed feedback — not just allow/deny"
+      - "Hooks don't use tokens"
+      - "They're the same"
+    correct: 1
+    explanation: "Permissions are binary (allow or deny). Hooks can run arbitrary logic — check the current branch, verify test status, inspect file contents, and provide a detailed error message explaining why the action was blocked. This gives you conditional, context-aware safety controls."
+  - id: "adv-hooks-3"
+    question: "What does a UserPromptSubmit hook allow you to do?"
+    type: "multiple-choice"
+    options:
+      - "Change Claude's model"
+      - "Validate or transform user input before Claude processes it"
+      - "Submit prompts automatically"
+      - "Record audio"
+    correct: 1
+    explanation: "UserPromptSubmit fires after you submit a prompt but before Claude processes it. You can use it to validate input (exit 2 to block), log prompts for auditing, or add pre-processing logic. This is useful for team environments where you want to enforce prompt guidelines."
+  - id: "adv-hooks-4"
+    question: "How do you chain multiple hooks into a pipeline?"
+    type: "multiple-choice"
+    options:
+      - "Use the pipeline keyword"
+      - "List multiple hooks under the same event — they run in order"
+      - "Create a pipeline.json file"
+      - "Hooks can't be chained"
+    correct: 1
+    explanation: "Multiple hooks under the same event run in the order they're listed. You can chain PreToolUse (guard) → PostToolUse (format) → Notification (alert) across events, or multiple hooks within the same event. Each hook processes independently."
+---
+
+## Beyond Simple Formatting
+
+The hooks you've built so far — auto-formatting and notifications — are the foundation. But hooks can do much more. They can enforce code quality standards, prevent dangerous operations conditionally, validate inputs, and coordinate multi-agent workflows.
+
+In this lesson, we build a complete **quality gate pipeline** — a series of hooks that ensure every change Claude makes meets your standards.
+
+## PreToolUse Guards
+
+PreToolUse hooks fire before Claude executes a tool. Exit code 2 blocks the action. This gives you veto power over any operation.
+
+### Guard: No Production Config Changes
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(config/production/**)",
+        "command": "echo 'BLOCKED: Production config files cannot be modified by Claude. Edit manually.' && exit 2"
+      }
+    ]
+  }
+}
+```
+
+Claude receives the error message and knows exactly why the action was blocked.
+
+### Guard: No Writes to Main Branch
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(*)",
+        "command": "branch=$(git branch --show-current 2>/dev/null); if [ \"$branch\" = 'main' ] || [ \"$branch\" = 'master' ]; then echo 'BLOCKED: Cannot write files while on main/master branch. Create a feature branch first.' && exit 2; fi"
+      }
+    ]
+  }
+}
+```
+
+This checks the current git branch before any file write. If you're on main/master, the write is blocked. Claude must create a feature branch first.
+
+### Guard: No Large File Writes
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(*)",
+        "command": "if [ -f \"$file\" ] && [ $(wc -l < \"$file\" 2>/dev/null || echo 0) -gt 500 ]; then echo 'WARNING: This file has 500+ lines. Consider splitting it.' && exit 2; fi"
+      }
+    ]
+  }
+}
+```
+
+Blocks writes to files over 500 lines, encouraging modular code.
+
+## PostToolUse Quality Checks
+
+Beyond formatting, PostToolUse can run quality checks after Claude writes code:
+
+### Type Check After Write
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.ts)",
+        "command": "npx prettier --write $file && npx tsc --noEmit --pretty 2>&1 | head -20 || true"
+      }
+    ]
+  }
+}
+```
+
+After every TypeScript file write: format with Prettier, then run the type checker. If there are type errors, they appear in Claude's context and it can fix them.
+
+### Test After Write
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(src/services/**/*.ts)",
+        "command": "test_file=$(echo $file | sed 's/.ts$/.test.ts/'); if [ -f \"$test_file\" ]; then npx vitest run \"$test_file\" --reporter=verbose 2>&1 | tail -15; fi"
+      }
+    ]
+  }
+}
+```
+
+After writing a service file, if a corresponding test file exists, run those tests. Claude immediately sees if its changes broke anything.
+
+## UserPromptSubmit: Input Validation
+
+UserPromptSubmit fires after you submit a prompt but before Claude processes it. Use it for:
+
+### Prompt Logging
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S'): prompt submitted\" >> ~/.claude/prompt-audit.log"
+      }
+    ]
+  }
+}
+```
+
+Creates an audit trail of when prompts are submitted. Useful for teams tracking Claude Code usage.
+
+### Content Filtering
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "command": "echo \"$prompt\" | grep -qi 'deploy to production' && echo 'BLOCKED: Use the deploy pipeline, not Claude Code, for production deployments.' && exit 2 || true"
+      }
+    ]
+  }
+}
+```
+
+Blocks prompts that mention deploying to production — directing users to the proper deployment pipeline instead.
+
+## TeammateIdle: Agent Coordination
+
+When using agent teams (Module 10), TeammateIdle fires when an agent has no work:
+
+```json
+{
+  "hooks": {
+    "TeammateIdle": [
+      {
+        "command": "echo \"$(date): Agent idle, checking for unassigned tasks\" >> ~/.claude/team-log.txt"
+      }
+    ]
+  }
+}
+```
+
+## The Complete Quality Gate Pipeline
+
+Here's a full quality gate configuration that combines guards, formatters, checks, and notifications:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(config/production/**)",
+        "command": "echo 'BLOCKED: Cannot modify production configs' && exit 2"
+      },
+      {
+        "matcher": "Write(*.generated.*)",
+        "command": "echo 'BLOCKED: Cannot modify generated files' && exit 2"
+      },
+      {
+        "matcher": "Bash(git push --force*)",
+        "command": "echo 'BLOCKED: Force push not allowed' && exit 2"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx prettier --write $file"
+      },
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file"
+      },
+      {
+        "matcher": "Write(src/**/*.ts)",
+        "command": "npx tsc --noEmit 2>&1 | head -10 || true"
+      }
+    ],
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs your attention\" with title \"Claude Code\" sound name \"Glass\"'"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Task complete!\" with title \"Claude Code\" sound name \"Hero\"'"
+      }
+    ],
+    "SessionStart": [
+      {
+        "command": "echo 'Quality gates active: production config guard, auto-format, type-check'"
+      }
+    ]
+  }
+}
+```
+
+### What This Pipeline Does
+
+1. **SessionStart**: Logs that quality gates are active
+2. **PreToolUse guards**: Blocks production config changes, generated file edits, and force pushes
+3. **PostToolUse formatters**: Auto-formats TypeScript and Python files
+4. **PostToolUse type check**: Runs TypeScript type checking after writes
+5. **Notification**: Desktop alert when Claude needs you
+6. **TaskCompleted**: Sound + visual alert when a background task finishes
+
+### The Flow
+
+```
+Claude wants to write a file
+  ↓
+PreToolUse: Is it a blocked file? → Yes: BLOCKED (exit 2)
+                                   → No: Continue
+  ↓
+Claude writes the file
+  ↓
+PostToolUse #1: Run formatter (Prettier/Black)
+  ↓
+PostToolUse #2: Run type checker
+  ↓
+Claude sees type errors (if any) and can fix them
+  ↓
+[Later] Claude finishes and goes idle
+  ↓
+Notification: Desktop alert
+```
+
+## Hook Ordering
+
+When multiple hooks are defined for the same event, they run in the order they're listed:
+
+```json
+{
+  "PostToolUse": [
+    { "matcher": "Write(*.ts)", "command": "command-A" },
+    { "matcher": "Write(*.ts)", "command": "command-B" },
+    { "matcher": "Write(*.ts)", "command": "command-C" }
+  ]
+}
+```
+
+Execution order: A → B → C. If command-A fails, B and C still run.
+
+## Key Takeaway
+
+Advanced hooks create quality gates that enforce standards automatically. PreToolUse guards block dangerous operations (production configs, force pushes, generated files) with exit code 2. PostToolUse chains formatters and type checkers so Claude's output is always clean. UserPromptSubmit validates input before processing. The complete quality gate pipeline — guards, formatters, checks, notifications — runs silently in the background, catching issues before they reach your codebase.

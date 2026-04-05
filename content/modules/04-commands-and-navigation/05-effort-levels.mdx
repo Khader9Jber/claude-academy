@@ -1,0 +1,318 @@
+---
+title: "Effort Levels and Extended Thinking"
+slug: "effort-levels"
+order: 5
+difficulty: "beginner"
+duration: 15
+tags: ["claude-code", "effort", "extended-thinking", "optimization"]
+objectives:
+  - "Understand the 4 effort levels and when to use each"
+  - "Know all the ways to set effort level (command, flag, config, env var)"
+  - "Use extended thinking effectively for complex problems"
+  - "Master the ultrathink keyword for one-off deep reasoning"
+quiz:
+  - id: "effort-1"
+    question: "What are the 4 effort levels in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "easy, medium, hard, extreme"
+      - "low, medium, high, max"
+      - "1, 2, 3, 4"
+      - "basic, standard, advanced, expert"
+    correct: 1
+    explanation: "The four effort levels are low (minimal tokens, mechanical tasks), medium (default balanced), high (deep reasoning, complex tasks), and max (Opus-only, no token limit, current session only)."
+  - id: "effort-2"
+    question: "What does the 'ultrathink' keyword do?"
+    type: "multiple-choice"
+    options:
+      - "Permanently sets effort to max"
+      - "Switches to Opus model"
+      - "Bumps effort to 'high' for a single turn, then reverts"
+      - "Enables voice mode"
+    correct: 2
+    explanation: "Typing 'ultrathink' anywhere in a prompt bumps the effort level to 'high' for that single message. After Claude responds, the effort level returns to whatever it was before. It's a convenient way to get deep reasoning on one specific question."
+  - id: "effort-3"
+    question: "What is the precedence order for effort level settings?"
+    type: "multiple-choice"
+    options:
+      - "Config file > environment variable > command flag > slash command"
+      - "Slash command (/effort) > command flag (--effort) > environment variable > config file"
+      - "Environment variable always wins"
+      - "They all have equal priority"
+    correct: 1
+    explanation: "In-session commands (/effort) have highest priority, followed by command-line flags (--effort), then environment variables (CLAUDE_CODE_EFFORT_LEVEL), and finally config file settings (effortLevel in settings.json). Each layer overrides the ones below it."
+  - id: "effort-4"
+    question: "When should you use 'low' effort level?"
+    type: "multiple-choice"
+    options:
+      - "For complex debugging sessions"
+      - "For architectural decisions"
+      - "For mechanical tasks like renaming, formatting, and boilerplate generation"
+      - "Never — always use high effort"
+    correct: 2
+    explanation: "Low effort is perfect for tasks that don't require reasoning: renaming variables, fixing imports, generating boilerplate, simple grep operations. Using high effort on these tasks wastes tokens without improving the result."
+  - id: "effort-5"
+    question: "How do you toggle extended thinking on and off during a session?"
+    type: "multiple-choice"
+    options:
+      - "Type /think"
+      - "Press Alt+T"
+      - "Type /model thinking"
+      - "Extended thinking is always on"
+    correct: 1
+    explanation: "Alt+T toggles extended thinking on and off. When enabled, Claude does internal reasoning before generating its visible response. This is separate from effort level — thinking is about whether Claude reasons internally, effort is about how many tokens it spends."
+---
+
+## The Effort Dial
+
+Not every task needs the same amount of computational effort. Renaming a variable doesn't need deep reasoning. Designing a distributed system does. Claude Code lets you match the effort level to the task, saving tokens on simple work and investing them where they matter.
+
+Think of effort levels as a dial that controls how hard Claude thinks:
+
+## The 4 Effort Levels
+
+### Low — ~1/3 Tokens
+
+Low effort tells Claude to be quick and direct. It uses approximately one-third the tokens of a normal response. Claude skips deep analysis, doesn't consider edge cases extensively, and produces concise output.
+
+**Best for:**
+- Renaming variables across a file
+- Fixing import statements
+- Generating boilerplate (interfaces, DTOs, CRUD)
+- Simple grep and summarize operations
+- Adding comments to existing code
+- Formatting and style fixes
+
+```bash
+/effort low
+"Rename all instances of 'userId' to 'accountId' in @src/services/user.ts"
+```
+
+Low effort on this task saves 60-70% of the tokens compared to medium, with identical results — because the task doesn't benefit from more thinking.
+
+### Medium — Default
+
+Medium is the default effort level on Max plans. It's the balanced option — Claude reasons through the task but doesn't go overboard.
+
+**Best for:**
+- Writing functions and components
+- Implementing features
+- Writing tests
+- Code review
+- Documentation
+- Most daily coding tasks
+
+```bash
+/effort medium
+"Write a function that validates and parses ISO 8601 date strings,
+handling timezone offsets and returning a Date object."
+```
+
+If you don't set an effort level, you're using medium.
+
+### High — Deep Reasoning
+
+High effort tells Claude to reason deeply — consider more edge cases, evaluate more alternatives, and produce more thorough analysis. This uses significantly more tokens but catches issues that medium would miss.
+
+**Best for:**
+- Complex debugging (multi-file, subtle bugs)
+- Architecture and system design
+- Security audits
+- Performance optimization
+- Refactoring with many interdependencies
+- Code that's safety-critical or handles money
+
+```bash
+/effort high
+"Analyze @src/services/payment.ts for race conditions. We're seeing
+occasional double charges in production. Consider the interaction
+between the webhook handler and the API endpoint."
+```
+
+High effort on this task makes Claude consider timing windows, database transaction isolation levels, idempotency failures, and retry storm scenarios — depth that medium effort might skip.
+
+### Max — No Token Limit (Opus Only)
+
+Max effort is the ceiling. It removes token limits on Claude's reasoning, letting it think as long as it needs. This is only available with the Opus model and applies only to the current session.
+
+**Best for:**
+- The hardest problems you encounter — rare, but when you need it, nothing else will do
+- Full codebase architecture reviews
+- Complex migration planning
+- Debugging issues that have stumped you for days
+
+```bash
+/model opus
+/effort max
+"We have a memory leak in our Node.js production server. It grows
+by ~50MB/hour and eventually OOMs after ~18 hours. Here's the
+heap snapshot: @diagnostics/heap-snapshot.json. The app uses
+Express, Prisma, Redis pub/sub, and WebSocket connections.
+Find the leak."
+```
+
+Max effort is expensive. Reserve it for problems where the cost of *not* finding the answer is higher than the token cost.
+
+## Setting Effort Levels
+
+There are five ways to set the effort level, listed from highest to lowest priority:
+
+### 1. /effort Command (Highest Priority)
+
+Set during an active session. Overrides everything else:
+
+```bash
+# In a session
+/effort high
+
+# Check current level
+/effort
+```
+
+### 2. --effort Command-Line Flag
+
+Set when starting a session:
+
+```bash
+claude --effort high "debug the authentication failure"
+```
+
+### 3. CLAUDE_CODE_EFFORT_LEVEL Environment Variable
+
+Set in your shell profile for a persistent default:
+
+```bash
+# In ~/.zshrc or ~/.bashrc
+export CLAUDE_CODE_EFFORT_LEVEL=medium
+```
+
+### 4. effortLevel in settings.json
+
+Set in your Claude Code configuration:
+
+```json
+// ~/.claude/settings.json
+{
+  "effortLevel": "medium"
+}
+```
+
+### 5. effort in Agent Frontmatter (Lowest Priority)
+
+When configuring sub-agents, you can set their effort level:
+
+```yaml
+---
+effort: low
+---
+```
+
+### Precedence Order
+
+If multiple are set, this is the priority:
+
+```
+/effort (in-session) > --effort (flag) > ENV var > settings.json > agent frontmatter
+```
+
+The most specific, most recent setting wins. An in-session `/effort high` overrides everything else.
+
+## The ultrathink Keyword
+
+Here's a productivity trick: type **ultrathink** anywhere in your prompt to bump the effort to high for just that one message.
+
+```
+"ultrathink — This function has a subtle concurrency bug.
+Multiple goroutines access the map without synchronization
+but it only crashes under high load. Find the race condition
+in @src/worker/pool.go"
+```
+
+After Claude responds, the effort level returns to whatever it was before. You don't need to `/effort high` and then `/effort medium` — ultrathink handles the one-off escalation automatically.
+
+This is perfect for moments in an otherwise routine session where one specific question needs deeper reasoning.
+
+## Extended Thinking
+
+Extended thinking is a separate but related feature. While effort levels control how many tokens Claude spends on the visible response, **extended thinking** controls whether Claude does *internal* reasoning before the response.
+
+### What Extended Thinking Does
+
+When enabled, Claude spends tokens on internal reasoning — analyzing the problem, considering approaches, catching potential mistakes — before generating the visible response. You see a "thinking..." indicator while this happens.
+
+The thinking tokens are separate from the response tokens. Claude might "think" for 5,000 tokens and then produce a 500-token response. The thinking isn't shown to you, but its effects are visible in the quality and accuracy of the answer.
+
+### Toggling Extended Thinking
+
+```
+Alt+T    — Toggle on/off during a session
+```
+
+When the thinking indicator appears, Claude is reasoning internally. When it disappears, Claude is generating its visible response.
+
+### Capping Thinking Tokens
+
+If you want thinking but don't want it to consume unlimited tokens:
+
+```bash
+# Set a cap via environment variable
+export MAX_THINKING_TOKENS=10000
+```
+
+This limits Claude to 10,000 thinking tokens per turn. Without a cap, Claude decides how much to think based on the problem's complexity.
+
+### When to Use Thinking
+
+| Scenario | Thinking | Why |
+|----------|---------|-----|
+| Complex debugging | ON | Catches subtle issues through internal analysis |
+| Architecture design | ON | Considers more alternatives before committing |
+| Security review | ON | More thorough threat modeling |
+| Simple code generation | OFF | Adds latency without improving simple output |
+| Renaming / formatting | OFF | No reasoning needed for mechanical tasks |
+| Quick questions | OFF | Faster responses for factual lookups |
+
+### Combining Effort + Thinking
+
+Effort levels and extended thinking are independent dials. You can combine them:
+
+| Combo | Token Usage | Best For |
+|-------|------------|---------|
+| Low effort, no thinking | Minimal | Renaming, formatting |
+| Medium effort, no thinking | Normal | Standard coding tasks |
+| Medium effort + thinking | Above normal | Moderately complex problems |
+| High effort + thinking | High | Complex bugs, architecture |
+| Max effort + thinking (Opus) | Maximum | The hardest problems |
+
+## The #1 Token Optimization
+
+If there's one thing to remember from this lesson, it's this:
+
+**Match effort to task.**
+
+Most developers leave effort at medium for everything. This means they spend too many tokens on simple tasks and too few on complex ones. The developers who optimize their Claude Code usage adjust effort several times per session:
+
+```bash
+# Start the day with a quick renaming task
+/effort low
+"Rename the 'data' variable to 'userData' in @src/api/users.ts"
+
+# Move to feature implementation
+/effort medium
+"Implement the notification preferences endpoint"
+
+# Hit a tricky bug
+/effort high
+"This race condition only happens under load. ultrathink and
+find the root cause in @src/services/queue.ts"
+
+# Clean up: add comments and fix formatting
+/effort low
+"Add JSDoc comments to all public functions in @src/services/queue.ts"
+```
+
+Four effort changes in one session. Each task gets the right level of computational investment. Total tokens saved: 30-40% compared to medium-for-everything, with better results on the complex tasks.
+
+## Key Takeaway
+
+Effort levels (low, medium, high, max) control how deeply Claude reasons about each task. Extended thinking (Alt+T) adds internal reasoning before the response. The ultrathink keyword bumps to high effort for a single message. The biggest token optimization you can make is matching effort to task: low for mechanical work, medium for daily coding, high for complex problems, max for the hardest challenges. This saves tokens on simple tasks and invests them where they actually improve results.

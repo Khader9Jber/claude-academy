@@ -1,0 +1,12 @@
+{
+  "title": "CLAUDE.md & Configuration",
+  "slug": "claude-md-and-config",
+  "description": "Master the CLAUDE.md file and project configuration. Learn how to set up persistent instructions, project conventions, and customize Claude's behavior for your team.",
+  "arc": "practitioner",
+  "order": 5,
+  "icon": "file-cog",
+  "color": "#5e9ed6",
+  "estimatedHours": 3,
+  "prerequisites": ["commands-and-navigation"],
+  "lessonCount": 6
+}

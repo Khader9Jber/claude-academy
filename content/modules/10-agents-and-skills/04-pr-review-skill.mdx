@@ -1,0 +1,304 @@
+---
+title: "Building a PR Review Skill"
+slug: "pr-review-skill"
+order: 4
+difficulty: "advanced"
+duration: 16
+tags: ["skills", "pr-review", "security", "code-quality"]
+objectives:
+  - "Build a complete PR review skill from scratch"
+  - "Combine MCP tools with skill instructions"
+  - "Create structured review output"
+  - "Handle multiple review categories (security, quality, performance)"
+quiz:
+  - id: "pr-skill-1"
+    question: "Why combine an MCP server with a skill for PR review?"
+    type: "multiple-choice"
+    options:
+      - "It looks more professional"
+      - "The MCP server fetches the PR data (diff, comments), while the skill provides the review framework and instructions"
+      - "Skills can't access files"
+      - "MCP is required for all skills"
+    correct: 1
+    explanation: "MCP provides the data (fetching PR diffs, comments, file changes from GitHub), while the skill provides the intelligence (what to look for, how to structure findings, what severity levels to use). Together, they create a complete automated review pipeline."
+  - id: "pr-skill-2"
+    question: "What security patterns should a PR review skill check for?"
+    type: "multiple-choice"
+    options:
+      - "Only SQL injection"
+      - "SQL injection, XSS, auth bypass, N+1 queries, data exposure, and input validation gaps"
+      - "Only syntax errors"
+      - "Only code style"
+    correct: 1
+    explanation: "A comprehensive security review checks for: SQL injection, XSS (cross-site scripting), authentication/authorization bypass, N+1 database queries, sensitive data exposure (PII in logs, verbose errors), and input validation gaps. Each represents a different attack vector."
+  - id: "pr-skill-3"
+    question: "Why should the skill output structured markdown?"
+    type: "multiple-choice"
+    options:
+      - "Markdown looks nice"
+      - "Structured output (tables, severity tags, file references) is parseable, actionable, and can be posted directly to GitHub as a PR comment"
+      - "Unstructured text works just as well"
+      - "Claude can only output markdown"
+    correct: 1
+    explanation: "Structured markdown output with severity tags, file:line references, and categorized findings can be directly posted as a GitHub PR comment, parsed by automation tools, and quickly scanned by developers. Unstructured prose is harder to act on."
+---
+
+## The Complete PR Review Skill
+
+We're going to build a production-quality PR review skill that:
+
+1. Fetches the PR diff via GitHub MCP
+2. Scans for security vulnerabilities
+3. Checks code quality
+4. Identifies performance issues
+5. Outputs a structured markdown review
+
+This is the kind of skill that saves hours per week for teams doing regular code review.
+
+## The Skill Structure
+
+```
+.claude/skills/pr-review/
+├── SKILL.md
+└── references/
+    └── security-patterns.md
+```
+
+## SKILL.md
+
+```markdown
+---
+name: PR Review
+description: Comprehensive pull request review covering security, quality, and performance
+disableAutoInvocation: true
+---
+
+## Overview
+
+This skill performs a comprehensive PR review. It must be invoked
+explicitly with `/pr-review <pr-number>`.
+
+## Prerequisites
+
+- GitHub MCP server must be connected
+- The repository must be a git repo with a remote
+
+## Workflow
+
+### Step 1: Gather PR Data
+
+1. Use mcp__github to fetch the PR details:
+   - Title, description, author
+   - Changed files list
+   - Full diff
+   - Existing review comments
+
+2. Read each changed file in full (not just the diff) to understand context
+
+### Step 2: Security Scan
+
+Check every changed file for these patterns:
+
+#### SQL Injection
+- Raw string concatenation in SQL queries
+- Template literals in database queries
+- Missing parameterized queries
+- Dynamic table/column names from user input
+
+#### Cross-Site Scripting (XSS)
+- innerHTML or dangerouslySetInnerHTML with user data
+- Unsanitized output in templates
+- Missing Content-Security-Policy headers
+
+#### Authentication/Authorization Bypass
+- Endpoints missing auth middleware
+- Role checks that can be bypassed
+- Token validation gaps
+- Session management issues
+
+#### Data Exposure
+- PII in log statements (emails, names, addresses)
+- Verbose error messages exposing internals
+- Sensitive data in API responses
+- Hardcoded secrets or credentials
+
+#### Input Validation
+- Missing Zod/validation on request bodies
+- Incomplete validation (checking type but not bounds)
+- Missing sanitization on output
+
+### Step 3: Code Quality Review
+
+Check for:
+- **Duplicated logic**: Same code in multiple places
+- **Single responsibility violations**: Functions doing too many things
+- **Error handling gaps**: Uncaught promises, missing try/catch, generic catches
+- **Type safety**: Any types, type assertions, missing return types
+- **Naming**: Unclear variable/function names
+- **Dead code**: Unused imports, unreachable code, commented-out code
+
+### Step 4: Performance Review
+
+Check for:
+- **N+1 queries**: Database queries inside loops
+- **Missing indexes**: Queries on unindexed columns
+- **Unnecessary computation**: Repeated calculations, missing memoization
+- **Large payloads**: Responses returning more data than needed
+- **Missing pagination**: List endpoints without limits
+- **Synchronous bottlenecks**: Blocking operations in async contexts
+
+### Step 5: Generate Report
+
+Output the review in this exact format:
+
+## Output Format
+
+```markdown
+# PR Review: #{pr_number} — {pr_title}
+
+**Author**: {author}
+**Files Changed**: {count}
+**Review Date**: {date}
+
+## Summary
+
+{1-2 sentence summary of the PR and overall assessment}
+
+## Critical Findings
+
+| # | Severity | Category | File:Line | Finding |
+|---|----------|----------|-----------|---------|
+| 1 | CRITICAL | Security | src/api/users.ts:47 | SQL injection via unsanitized query parameter |
+| 2 | HIGH | Security | src/auth/middleware.ts:12 | Missing auth check on admin endpoint |
+
+### Details
+
+#### Finding 1: SQL injection via unsanitized query parameter
+**File**: src/api/users.ts:47
+**Severity**: CRITICAL
+**Category**: Security
+
+**Description**: User input from `req.query.search` is concatenated
+directly into the SQL query without parameterization.
+
+**Current Code**:
+```typescript
+const users = await db.query(`SELECT * FROM users WHERE name LIKE '%${search}%'`);
+```
+
+**Recommended Fix**:
+```typescript
+const users = await db.query('SELECT * FROM users WHERE name LIKE $1', [`%${search}%`]);
+```
+
+---
+
+## Warnings
+
+{Same format as Critical Findings}
+
+## Suggestions
+
+{Same format but lighter tone — improvements, not requirements}
+
+## Approval Recommendation
+
+- [ ] **Approve**: No critical or high-severity findings
+- [ ] **Request Changes**: Critical or high-severity findings present
+- [ ] **Comment**: Only suggestions, no blocking issues
+```
+
+## Severity Definitions
+
+- **CRITICAL**: Must fix before merge. Security vulnerability, data loss risk, or production-breaking.
+- **HIGH**: Should fix before merge. Significant quality or performance issue.
+- **MEDIUM**: Fix in follow-up. Code quality concern that doesn't block merge.
+- **LOW**: Optional. Style suggestion or minor improvement.
+
+## Rules
+
+- Read the FULL file for context, not just the diff lines
+- Reference specific line numbers for every finding
+- Provide a concrete fix for every finding (not just "fix this")
+- Don't report style issues if the project has a formatter
+- Check CLAUDE.md for project-specific conventions before flagging violations
+- If no issues found, explicitly say "No issues found" — don't invent findings
+```
+
+## Using the Skill
+
+### Setup
+
+Ensure the GitHub MCP server is connected:
+
+```bash
+claude mcp add github -e GITHUB_TOKEN=ghp_xxx --transport stdio npx -y @modelcontextprotocol/server-github
+```
+
+### Invocation
+
+```bash
+# In a Claude Code session
+/pr-review 42
+```
+
+Or with natural language:
+
+```bash
+"Use the PR review skill to review PR #42"
+```
+
+### Example Output
+
+Claude produces a structured review like:
+
+```markdown
+# PR Review: #42 — Add order cancellation endpoint
+
+**Author**: @engineer
+**Files Changed**: 7
+**Review Date**: 2026-04-04
+
+## Summary
+
+This PR adds order cancellation with refund processing. The implementation
+follows the service pattern but has two security concerns and one 
+performance issue that should be addressed before merge.
+
+## Critical Findings
+
+| # | Severity | Category | File:Line | Finding |
+|---|----------|----------|-----------|---------|
+| 1 | HIGH | Security | src/services/order.ts:89 | Missing idempotency check on refund |
+| 2 | MEDIUM | Performance | src/repos/order-repo.ts:34 | N+1 query in cancellation batch |
+
+...
+```
+
+## Extending the Skill
+
+### Add Custom Security Patterns
+
+Create `.claude/skills/pr-review/references/security-patterns.md`:
+
+```markdown
+# Project-Specific Security Patterns
+
+## HMAC Verification
+All webhook handlers MUST call verifyHmac() before processing.
+Check that new webhook handlers include this.
+
+## Multi-Tenancy
+All database queries MUST include merchantId filter.
+Check that new queries don't accidentally expose cross-tenant data.
+
+## Rate Limiting
+All public endpoints MUST have rate limiting applied.
+Check that new routes include @fastify/rate-limit.
+```
+
+The skill can reference these project-specific patterns during reviews.
+
+## Key Takeaway
+
+A PR review skill combines GitHub MCP (data fetching) with structured review instructions (what to check and how to report). The skill checks security (injection, XSS, auth bypass), quality (duplication, error handling, types), and performance (N+1 queries, missing indexes). Structured markdown output with severity tags and file:line references makes findings actionable and directly postable as GitHub PR comments. Build the skill once, use it for every PR.

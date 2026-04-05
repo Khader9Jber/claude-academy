@@ -10,13 +10,15 @@
 
 ## Executive Summary
 
-Claude Academy passes all QA checks. The project builds successfully with zero TypeScript errors, all 46 unit tests pass, all 74 MDX lesson files validate without issues, and every expected file is present. The project is ready for deployment.
+Claude Academy passes all v0.1.0 QA checks. The project builds successfully with zero TypeScript errors, all 46 unit tests pass, all 74 MDX lesson files validate without issues, and every expected file is present. v0.2.0 adds 36 new test cases (9 unit, 6 component, 21 E2E) covering Supabase auth, theme toggling, leaderboard, certificates, and profile features. The v0.2.0 tests are currently pending execution.
 
-**QA Verdict: PASS**
+**QA Verdict: PASS (v0.1.0) | PENDING (v0.2.0)**
 
 ---
 
 ## Test Results
+
+### v0.1.0 Results
 
 | Area | Result | Details |
 |------|--------|---------|
@@ -24,6 +26,30 @@ Claude Academy passes all QA checks. The project builds successfully with zero T
 | Content validation | 74/74 files valid | All frontmatter, quiz data, and content bodies pass |
 | Build | Success | 96 routes generated, 0 warnings |
 | TypeScript | 0 errors | Full compilation in 2.1 seconds |
+
+### v0.2.0 Results (Pending)
+
+| Area | Test Count | Status | Details |
+|------|------------|--------|---------|
+| Supabase Client (Unit) | 4 | Pending | `isSupabaseConfigured()`, `createClient()` with/without env vars |
+| Constants (Unit) | 5 | Pending | `ARC_DEFINITIONS`, `MODULE_ORDER`, `ACHIEVEMENTS` shape validation |
+| Auth Provider (Component) | 4 | Pending | Renders children, null user, loading state, hook shape |
+| Theme Toggle (Component) | 2 | Pending | Renders button, correct icon per theme |
+| Auth Pages (E2E) | 6 | Pending | Login/signup form rendering, OAuth buttons, header auth state |
+| Leaderboard (E2E) | 4 | Pending | Page load, heading, ranking structure, public access |
+| Certificate (E2E) | 6 | Pending | 5 arc pages load, locked state |
+| Theme (E2E) | 4 | Pending | Default dark, toggle, class switch, persistence |
+| Profile (E2E) | 1 | Pending | Unauthenticated redirect |
+| **v0.2.0 Total** | **36** | **Pending** | **9 unit + 6 component + 21 E2E** |
+
+### Combined Test Count
+
+| Category | v0.1.0 | v0.2.0 | Total |
+|----------|--------|--------|-------|
+| Unit | 46 | 9 | 55 |
+| Component | 0 | 6 | 6 |
+| E2E | 36 | 21 | 57 |
+| **All** | **82** | **36** | **118** |
 
 ---
 
@@ -64,6 +90,20 @@ Claude Academy passes all QA checks. The project builds successfully with zero T
 | 11 | Advanced Workflows | 7 |
 | 12 | Enterprise and Production | 7 |
 | 13 | Capstone | 4 |
+
+### v0.2.0 Feature Coverage
+
+| Feature | Source Files | Test Suites | Status |
+|---------|-------------|-------------|--------|
+| Supabase Auth | `src/lib/supabase/client.ts`, `src/components/auth/auth-provider.tsx` | Suite 19, 21, 23 | Pending |
+| Login / Signup Pages | `src/app/auth/login/page.tsx`, `src/app/auth/signup/page.tsx` | Suite 23 | Pending |
+| OAuth (Google + GitHub) | `src/app/auth/callback/route.ts` | Suite 23 (TC-AUTH-002) | Pending |
+| Light / Dark Mode | `src/components/layout/theme-toggle.tsx` | Suite 22, 26 | Pending |
+| Leaderboard | `src/app/leaderboard/page.tsx` | Suite 24 | Pending |
+| Certificates (per arc) | `src/app/certificate/[type]/page.tsx` | Suite 25 | Pending |
+| Profile Page | `src/app/profile/page.tsx` | Suite 27 | Pending |
+| Progress Sync | `src/hooks/use-synced-progress.ts` | Not yet covered (manual testing) | -- |
+| Database (RLS, triggers) | `supabase/migrations/001_initial.sql` | Not yet covered (requires Supabase instance) | -- |
 
 ---
 
@@ -190,6 +230,6 @@ No blocking items. The project is deployment-ready.
 
 ---
 
-## QA Verdict: PASS
+## QA Verdict: PASS (v0.1.0) | PENDING (v0.2.0)
 
-The Claude Academy project passes all quality gates. All 74 lessons are valid, all 46 unit tests pass, the build succeeds with zero errors, and every expected file is present. The project is ready for static deployment.
+The Claude Academy project passes all v0.1.0 quality gates. All 74 lessons are valid, all 46 unit tests pass, the build succeeds with zero errors, and every expected file is present. v0.2.0 adds 36 new test cases across 9 suites covering authentication, theme, leaderboard, certificates, and profile features. These tests are pending execution by the test runner agent.

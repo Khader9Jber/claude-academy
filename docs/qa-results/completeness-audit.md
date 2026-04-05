@@ -71,6 +71,21 @@ Additional page-level components:
 
 **Result: 9/9 pages PASS**
 
+### v0.2.0 Pages (App Router)
+
+- [x] `/auth/login` -- `src/app/auth/login/page.tsx`
+- [x] `/auth/signup` -- `src/app/auth/signup/page.tsx`
+- [x] `/auth/callback` -- `src/app/auth/callback/route.ts`
+- [x] `/auth/confirm` -- `src/app/auth/confirm/route.ts`
+- [x] `/profile` -- `src/app/profile/page.tsx`
+- [x] `/leaderboard` -- `src/app/leaderboard/page.tsx`
+- [x] `/certificate/[type]` -- `src/app/certificate/[type]/page.tsx`
+
+Additional page-level components:
+- [x] `src/app/certificate/[type]/certificate-client.tsx`
+
+**Result: 7/7 v0.2.0 pages PASS**
+
 ---
 
 ## Component Files
@@ -119,7 +134,10 @@ Additional page-level components:
 - [x] `src/components/ui/card.tsx`
 - [x] `src/components/ui/progress-bar.tsx`
 
-**Result: 30/30 component files PASS**
+### Auth Components (1/1)
+- [x] `src/components/auth/auth-provider.tsx`
+
+**Result: 31/31 component files PASS**
 
 ---
 
@@ -131,7 +149,16 @@ Additional page-level components:
 - [x] `src/lib/progress-store.ts` — Zustand store with persist middleware (primary)
 - [x] `src/lib/store.ts` — Alternative/legacy Zustand store
 
-**Result: 5/5 lib files PASS**
+### Supabase Lib Files (3/3)
+- [x] `src/lib/supabase/client.ts` -- Browser Supabase client
+- [x] `src/lib/supabase/server.ts` -- Server Supabase client
+- [x] `src/lib/supabase/proxy.ts` -- Supabase proxy utilities
+
+### Hooks (2/2)
+- [x] `src/hooks/use-synced-progress.ts` -- Dual-write progress sync hook
+- [x] `src/hooks/index.ts` -- Hooks barrel export
+
+**Result: 10/10 lib + hooks files PASS**
 
 ---
 
@@ -143,6 +170,34 @@ Additional page-level components:
 - [x] `src/types/index.ts` — TreeItem, QuizQuestion, BlankDefinition, LessonMeta, Achievement, ModuleProgress
 
 **Result: 4/4 type files PASS**
+
+---
+
+## Database Migrations
+
+- [x] `supabase/migrations/001_initial.sql` -- Initial schema (7 tables with RLS)
+
+**Result: 1/1 migration files PASS**
+
+---
+
+## E2E Page Objects
+
+### v0.1.0 Page Objects (9/9)
+- [x] `e2e/pages/base.page.ts`
+- [x] `e2e/pages/landing.page.ts`
+- [x] `e2e/pages/curriculum.page.ts`
+- [x] `e2e/pages/module.page.ts`
+- [x] `e2e/pages/lesson.page.ts`
+- [x] `e2e/pages/prompt-lab.page.ts`
+- [x] `e2e/pages/cheatsheet.page.ts`
+- [x] `e2e/pages/templates.page.ts`
+- [x] `e2e/pages/progress.page.ts`
+- [x] `e2e/pages/index.ts` -- Barrel export
+
+**Result: 9/9 page objects + 1 barrel PASS**
+
+Note: v0.2.0 E2E tests (Suites 23-27) reuse `BasePage` for auth, leaderboard, certificate, theme, and profile tests. Dedicated page objects for these new pages are not yet created; they will be added as needed when tests are expanded.
 
 ---
 
@@ -234,13 +289,19 @@ pageExtensions: ["ts", "tsx", "md", "mdx"]  // Confirmed
 |----------|-------|---------|---------|
 | Module metadata | 13 | 13 | 0 |
 | MDX lessons | 74 | 74 | 0 |
-| Pages | 9 | 9 | 0 |
-| Components | 30 | 30 | 0 |
+| Pages (v0.1.0) | 9 | 9 | 0 |
+| Pages (v0.2.0) | 7 | 7 | 0 |
+| Components (v0.1.0) | 30 | 30 | 0 |
+| Components (v0.2.0 auth) | 1 | 1 | 0 |
 | Lib files | 5 | 5 | 0 |
+| Supabase lib files | 3 | 3 | 0 |
+| Hooks | 2 | 2 | 0 |
 | Type files | 4 | 4 | 0 |
+| Database migrations | 1 | 1 | 0 |
+| E2E page objects | 10 | 10 | 0 |
 | Docs | 6 | 6 | 0 |
 | Root configs | 10 | 10 | 0 |
 | Dependencies | 30 | 30 | 0 |
-| **Total** | **181** | **181** | **0** |
+| **Total** | **205** | **205** | **0** |
 
 **Result: 100% complete -- PASS**

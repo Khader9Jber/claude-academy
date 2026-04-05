@@ -2,9 +2,9 @@
 
 ## Claude Academy Learning Platform
 
-**Document Version:** 2.0
+**Document Version:** 3.0
 **Date:** 2026-04-05
-**Status:** Active (Phase 7 Complete)
+**Status:** Active (Phase 7 Complete + v0.2.0 Feature Coverage)
 
 ---
 
@@ -388,7 +388,7 @@ All E2E tests use the Page Object Model pattern. Each page in the application ha
 **Class hierarchy:**
 
 ```
-BasePage (shared: header, footer, logo, navigation methods)
+BasePage (shared: header, footer, logo, navigation methods, theme toggle, auth state)
 ├── LandingPage (hero, stats, arc cards, CTA)
 ├── CurriculumPage (module cards, arc sections)
 ├── ModulePage (module title, lesson items)
@@ -396,7 +396,10 @@ BasePage (shared: header, footer, logo, navigation methods)
 ├── PromptLabPage (heading, templates, category filters)
 ├── CheatsheetPage (search input, category tabs)
 ├── TemplatesPage (template cards, code blocks)
-└── ProgressPage (heading, stats, reset, confirm)
+├── ProgressPage (heading, stats, reset, confirm)
+├── LeaderboardPage (heading, ranking table/list)
+├── CertificatePage (arc title, locked/unlocked state, download)
+└── ProfilePage (display name, avatar, settings)
 ```
 
 All page objects are re-exported through a barrel file (`e2e/pages/index.ts`) for clean imports in test files.
@@ -411,7 +414,12 @@ All page objects are re-exported through a barrel file (`e2e/pages/index.ts`) fo
 | Cheatsheet E2E | `e2e/cheatsheet.spec.ts` | 4 | Search, category tabs |
 | Templates E2E | `e2e/templates.spec.ts` | 4 | Template cards, copy buttons, category filters, code blocks |
 | Responsive Design E2E | `e2e/responsive.spec.ts` | 5 | Mobile landing, hamburger menu, tablet curriculum, desktop lesson, mobile scrolling |
-| **Total** | **6 files** | **36** | **All pages and critical user flows** |
+| Auth Pages E2E | `e2e/auth.spec.ts` | 6 | Login form, signup form, OAuth buttons, header sign-in state |
+| Leaderboard E2E | `e2e/leaderboard.spec.ts` | 4 | Page load, heading, ranking structure, public access |
+| Certificate E2E | `e2e/certificate.spec.ts` | 6 | All 5 arc certificate pages load, locked state display |
+| Theme E2E | `e2e/theme.spec.ts` | 4 | Default dark mode, toggle visibility, class switching, persistence |
+| Profile E2E | `e2e/profile.spec.ts` | 1 | Unauthenticated redirect to login |
+| **Total** | **11 files** | **57** | **All pages, critical user flows, and v0.2.0 features** |
 
 ### 7.4 Viewport Strategy
 
@@ -594,3 +602,93 @@ Database testing validates Row Level Security (RLS) policies, data isolation bet
 | Correct ranking | Create multiple users with different lesson counts, verify leaderboard sorts by total completed |
 | New completions reflected | User completes a lesson, verify leaderboard updates |
 | Display name shown | User sets display name, verify it appears in leaderboard |
+
+---
+
+## 12. Authentication Testing
+
+### 12.1 Overview
+
+Authentication testing validates the full Supabase Auth integration at both unit and E2E levels. Tests cover the Supabase client configuration, the AuthProvider React context, login/signup page rendering, OAuth button presence, and header auth state.
+
+### 12.2 Unit Coverage
+
+| Area | Suite | Test Count | What Is Tested |
+|------|-------|------------|----------------|
+| Supabase Client | Suite 19 | 4 | `isSupabaseConfigured()` with and without env vars, `createClient()` success and graceful failure |
+| Auth Provider | Suite 21 | 4 | Renders children, provides null user when unauthenticated, loading state, `useAuth()` hook shape |
+
+### 12.3 E2E Coverage
+
+| Area | Suite | Test Count | What Is Tested |
+|------|-------|------------|----------------|
+| Auth Pages | Suite 23 | 6 | Login form fields, signup form fields, OAuth buttons, cross-links between login/signup, header "Sign In" button |
+| Profile | Suite 27 | 1 | Unauthenticated redirect to login |
+
+### 12.4 Graceful Degradation
+
+When Supabase environment variables are not configured, the site operates as a fully static application. Suite 19 (TC-SC-001, TC-SC-004) explicitly validates that missing env vars do not cause crashes. E2E tests for content pages (Suites 10-15) implicitly verify that all content remains accessible without authentication.
+
+---
+
+## 13. Theme Testing
+
+### 13.1 Overview
+
+Theme testing covers the light/dark mode toggle introduced in v0.2.0. The application defaults to dark mode and supports class-based theme switching via `next-themes`.
+
+### 13.2 Component Coverage
+
+| Area | Suite | Test Count | What Is Tested |
+|------|-------|------------|----------------|
+| ThemeToggle | Suite 22 | 2 | Renders without crashing, shows correct icon per theme |
+
+### 13.3 E2E Coverage
+
+| Area | Suite | Test Count | What Is Tested |
+|------|-------|------------|----------------|
+| Theme Toggling | Suite 26 | 4 | Default dark mode, toggle button visibility, html class switching, localStorage persistence |
+
+### 13.4 Theme Invariants
+
+Code blocks and terminal components remain dark-themed in both light and dark modes. This is validated by visual inspection rather than automated tests, as the CSS is scoped to those components independently.
+
+---
+
+## 14. New Feature Coverage (v0.2.0)
+
+### 14.1 Summary
+
+v0.2.0 introduced 6 major features. The following table maps each feature to its test suites:
+
+| Feature | Unit Suites | Component Suites | E2E Suites | Total Tests |
+|---------|-------------|------------------|------------|-------------|
+| Supabase Auth | Suite 19 (4) | Suite 21 (4) | Suite 23 (6) | 14 |
+| Light/Dark Mode | -- | Suite 22 (2) | Suite 26 (4) | 6 |
+| Leaderboard | -- | -- | Suite 24 (4) | 4 |
+| Profile | -- | -- | Suite 27 (1) | 1 |
+| Certificates | -- | -- | Suite 25 (6) | 6 |
+| Constants Validation | Suite 20 (5) | -- | -- | 5 |
+| **Totals** | **9** | **6** | **21** | **36** |
+
+### 14.2 Files Under Test
+
+| Source File | Test Suite(s) |
+|-------------|---------------|
+| `src/lib/supabase/client.ts` | Suite 19 |
+| `src/lib/constants.ts` | Suite 20 |
+| `src/components/auth/auth-provider.tsx` | Suite 21 |
+| `src/components/layout/theme-toggle.tsx` | Suite 22 |
+| `src/app/auth/login/page.tsx` | Suite 23 |
+| `src/app/auth/signup/page.tsx` | Suite 23 |
+| `src/app/leaderboard/page.tsx` | Suite 24 |
+| `src/app/certificate/[type]/page.tsx` | Suite 25 |
+| `src/app/profile/page.tsx` | Suite 27 |
+
+### 14.3 Overall Test Count
+
+| Version | Unit | Component | E2E | Total |
+|---------|------|-----------|-----|-------|
+| v0.1.0 | 46 (Suites 1-3) | 0 (Suites 4-9 planned) | 36 (Suites 10-15) | 82 |
+| v0.2.0 additions | 9 (Suites 19-20) | 6 (Suites 21-22) | 21 (Suites 23-27) | 36 |
+| **Combined** | **55** | **6** | **57** | **118** |

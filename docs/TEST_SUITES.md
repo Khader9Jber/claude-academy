@@ -2,9 +2,9 @@
 
 ## Claude Academy Learning Platform
 
-**Document Version:** 2.0
+**Document Version:** 3.0
 **Date:** 2026-04-05
-**Status:** Active (Suites 1-9 unit/component, Suites 10-15 E2E — all implemented)
+**Status:** Active (Suites 1-9 unit/component, Suites 10-15 E2E — implemented; Suites 19-27 v0.2.0 features — pending)
 
 ---
 
@@ -28,6 +28,15 @@
 16. [Suite 16: Pages (E2E) — Planned](#suite-16-pages-e2e--planned)
 17. [Suite 17: Accessibility (E2E) — Planned](#suite-17-accessibility-e2e--planned)
 18. [Suite 18: Performance (E2E) — Planned](#suite-18-performance-e2e--planned)
+19. [Suite 19: Supabase Client (Unit)](#suite-19-supabase-client-unit)
+20. [Suite 20: Constants (Unit)](#suite-20-constants-unit)
+21. [Suite 21: Auth Provider (Component)](#suite-21-auth-provider-component)
+22. [Suite 22: Theme Toggle (Component)](#suite-22-theme-toggle-component)
+23. [Suite 23: Auth Pages E2E](#suite-23-auth-pages-e2e)
+24. [Suite 24: Leaderboard E2E](#suite-24-leaderboard-e2e)
+25. [Suite 25: Certificate E2E](#suite-25-certificate-e2e)
+26. [Suite 26: Theme E2E](#suite-26-theme-e2e)
+27. [Suite 27: Profile E2E](#suite-27-profile-e2e)
 
 ---
 
@@ -2044,3 +2053,544 @@
 | **Expected Result** | All metrics are >= 95 on every page |
 | **Priority** | P1 |
 | **Status** | Not Run |
+
+---
+
+## Suite 19: Supabase Client (Unit)
+
+**File:** `src/__tests__/lib/supabase-client.test.ts`
+**Target:** `src/lib/supabase/client.ts`
+**Tool:** Vitest
+
+### TC-SC-001: isSupabaseConfigured() returns false when env vars missing
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-SC-001 |
+| **Description** | When `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` environment variables are not set, `isSupabaseConfigured()` returns `false` |
+| **Preconditions** | Supabase environment variables are unset or empty |
+| **Steps** | 1. Ensure env vars are not set 2. Call `isSupabaseConfigured()` |
+| **Expected Result** | Returns `false` |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-SC-002: isSupabaseConfigured() returns true when env vars present
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-SC-002 |
+| **Description** | When both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set, `isSupabaseConfigured()` returns `true` |
+| **Preconditions** | Both Supabase environment variables are set to valid values |
+| **Steps** | 1. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` 2. Call `isSupabaseConfigured()` |
+| **Expected Result** | Returns `true` |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-SC-003: createClient() returns client when configured
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-SC-003 |
+| **Description** | When Supabase is configured, `createClient()` returns a valid Supabase client instance |
+| **Preconditions** | Supabase environment variables are set |
+| **Steps** | 1. Set env vars 2. Call `createClient()` 3. Check the returned value |
+| **Expected Result** | Returns a non-null object (Supabase client instance) |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-SC-004: createClient() handles missing env gracefully
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-SC-004 |
+| **Description** | When Supabase environment variables are missing, `createClient()` returns `null` or does not throw |
+| **Preconditions** | Supabase environment variables are unset |
+| **Steps** | 1. Ensure env vars are not set 2. Call `createClient()` |
+| **Expected Result** | Returns `null` or a fallback value without throwing an exception |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 20: Constants (Unit)
+
+**File:** `src/__tests__/lib/constants.test.ts`
+**Target:** `src/lib/constants.ts`
+**Tool:** Vitest
+
+### TC-CON-001: ARC_DEFINITIONS has 4 arcs
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CON-001 |
+| **Description** | The `ARC_DEFINITIONS` array contains exactly 4 learning arcs |
+| **Preconditions** | None |
+| **Steps** | 1. Import `ARC_DEFINITIONS` from constants 2. Check `ARC_DEFINITIONS.length` |
+| **Expected Result** | Length is 4 (Foundation, Practitioner, Power User, Expert) |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CON-002: MODULE_ORDER has 13 modules
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CON-002 |
+| **Description** | The `MODULE_ORDER` array contains exactly 13 module slugs |
+| **Preconditions** | None |
+| **Steps** | 1. Import `MODULE_ORDER` from constants 2. Check `MODULE_ORDER.length` |
+| **Expected Result** | Length is 13 |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CON-003: ACHIEVEMENTS has 12+ items
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CON-003 |
+| **Description** | The `ACHIEVEMENTS` array contains at least 12 achievement definitions |
+| **Preconditions** | None |
+| **Steps** | 1. Import `ACHIEVEMENTS` from constants 2. Check `ACHIEVEMENTS.length` |
+| **Expected Result** | Length is >= 12 |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+### TC-CON-004: Each arc has required fields (name, color, description)
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CON-004 |
+| **Description** | Every item in `ARC_DEFINITIONS` has `name`, `color`, and `description` properties |
+| **Preconditions** | None |
+| **Steps** | 1. Iterate over `ARC_DEFINITIONS` 2. Assert each item has `name`, `color`, and `description` properties that are non-empty strings |
+| **Expected Result** | All 4 arcs have the required fields with non-empty values |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CON-005: Each achievement has required fields (id, title, description, icon)
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CON-005 |
+| **Description** | Every item in `ACHIEVEMENTS` has `id`, `title`, `description`, and `icon` properties |
+| **Preconditions** | None |
+| **Steps** | 1. Iterate over `ACHIEVEMENTS` 2. Assert each item has `id`, `title`, `description`, and `icon` properties that are non-empty |
+| **Expected Result** | All achievements have the required fields with non-empty values |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 21: Auth Provider (Component)
+
+**File:** `src/__tests__/components/auth/auth-provider.test.tsx`
+**Target:** `src/components/auth/auth-provider.tsx`
+**Tool:** Vitest + React Testing Library
+
+### TC-AP-001: AuthProvider renders children
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AP-001 |
+| **Description** | The `AuthProvider` component renders its children without crashing |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | Supabase client is mocked |
+| **Steps** | 1. Render `<AuthProvider><div>child content</div></AuthProvider>` 2. Assert "child content" is visible |
+| **Expected Result** | Children are rendered in the DOM |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-AP-002: Provides null user when not authenticated
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AP-002 |
+| **Description** | When no user is authenticated, the auth context provides a `null` user |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | Supabase returns no session |
+| **Steps** | 1. Render `<AuthProvider>` wrapping a component that reads `useAuth()` 2. Assert `user` is `null` |
+| **Expected Result** | `user` from `useAuth()` is `null` |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-AP-003: Provides loading state initially
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AP-003 |
+| **Description** | While the auth session is being resolved, `useAuth()` returns `loading: true` |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | Supabase `getSession` is pending (not yet resolved) |
+| **Steps** | 1. Render `<AuthProvider>` wrapping a component that reads `useAuth()` 2. Assert `loading` is `true` before session resolves |
+| **Expected Result** | `loading` is `true` during initial resolution |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+### TC-AP-004: useAuth hook returns expected shape
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AP-004 |
+| **Description** | The `useAuth()` hook returns an object with `user`, `loading`, `signOut`, and `signIn` properties |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | Component is wrapped in `<AuthProvider>` |
+| **Steps** | 1. Render a component that calls `useAuth()` inside `<AuthProvider>` 2. Assert the returned object has `user`, `loading`, `signOut`, and `signIn` keys |
+| **Expected Result** | All four properties are present on the returned object |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 22: Theme Toggle (Component)
+
+**File:** `src/__tests__/components/layout/theme-toggle.test.tsx`
+**Target:** `src/components/layout/theme-toggle.tsx`
+**Tool:** Vitest + React Testing Library
+
+### TC-TT-001: Renders without crashing
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-TT-001 |
+| **Description** | The `ThemeToggle` component renders a button element without crashing |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | `next-themes` ThemeProvider is mocked or wrapping the component |
+| **Steps** | 1. Render `<ThemeToggle />` 2. Assert a button element is in the document |
+| **Expected Result** | A button element is rendered |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-TT-002: Shows correct icon based on theme
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-TT-002 |
+| **Description** | The toggle button displays a sun icon in dark mode and a moon icon in light mode |
+| **Page Object Used** | N/A (component test) |
+| **Preconditions** | Theme is set to "dark" |
+| **Steps** | 1. Render `<ThemeToggle />` with theme = "dark" 2. Assert sun icon is visible (indicating switch-to-light action) 3. Switch theme to "light" 4. Assert moon icon is visible |
+| **Expected Result** | Icon reflects the current theme state |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+---
+
+## Suite 23: Auth Pages E2E
+
+**File:** `e2e/auth.spec.ts`
+**Target:** `/auth/login`, `/auth/signup`, site header auth state
+**Tool:** Playwright
+**Page Objects:** BasePage (from `e2e/pages/`)
+**Tests:** 6
+
+### TC-AUTH-001: Login page loads with form fields
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-001 |
+| **Description** | The login page at `/auth/login` loads and displays email and password input fields plus a submit button |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/auth/login` 2. Assert email input is visible 3. Assert password input is visible 4. Assert submit button is visible |
+| **Expected Result** | Email input, password input, and submit button are all visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-AUTH-002: Login page has OAuth buttons
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-002 |
+| **Description** | The login page displays OAuth provider buttons (Google, GitHub) |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Login page is loaded |
+| **Steps** | 1. Navigate to `/auth/login` 2. Assert Google OAuth button is visible 3. Assert GitHub OAuth button is visible |
+| **Expected Result** | Both Google and GitHub OAuth buttons are visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-AUTH-003: Login page has signup link
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-003 |
+| **Description** | The login page has a link to the signup page for new users |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Login page is loaded |
+| **Steps** | 1. Navigate to `/auth/login` 2. Assert a link pointing to `/auth/signup` (or containing text "Sign up") is visible |
+| **Expected Result** | A signup link is visible on the login page |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+### TC-AUTH-004: Signup page loads with form fields
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-004 |
+| **Description** | The signup page at `/auth/signup` loads and displays email, password, and confirm password input fields |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/auth/signup` 2. Assert email input is visible 3. Assert password input is visible 4. Assert submit button is visible |
+| **Expected Result** | Email input, password input, and submit button are all visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-AUTH-005: Signup page has login link
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-005 |
+| **Description** | The signup page has a link back to the login page for existing users |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Signup page is loaded |
+| **Steps** | 1. Navigate to `/auth/signup` 2. Assert a link pointing to `/auth/login` (or containing text "Sign in" / "Log in") is visible |
+| **Expected Result** | A login link is visible on the signup page |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+### TC-AUTH-006: Sign In button visible in header
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-AUTH-006 |
+| **Description** | When no user is logged in, the site header displays a "Sign In" button |
+| **Page Object Used** | BasePage |
+| **Preconditions** | No user session exists, application is served |
+| **Steps** | 1. Navigate to `/` 2. Assert the header contains a "Sign In" button or link |
+| **Expected Result** | "Sign In" text is visible in the header area |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 24: Leaderboard E2E
+
+**File:** `e2e/leaderboard.spec.ts`
+**Target:** `/leaderboard`
+**Tool:** Playwright
+**Page Objects:** BasePage (from `e2e/pages/`)
+**Tests:** 4
+
+### TC-LB-001: Leaderboard page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-LB-001 |
+| **Description** | The leaderboard page at `/leaderboard` loads without errors |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/leaderboard` 2. Assert the page does not show a 404 or error state |
+| **Expected Result** | Page loads successfully (HTTP 200, no error message visible) |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-LB-002: Shows heading
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-LB-002 |
+| **Description** | The leaderboard page displays a heading (h1) identifying the page |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Leaderboard page is loaded |
+| **Steps** | 1. Navigate to `/leaderboard` 2. Assert an `h1` heading is visible |
+| **Expected Result** | An h1 heading containing "Leaderboard" (or similar) is visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-LB-003: Shows ranking structure
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-LB-003 |
+| **Description** | The leaderboard page displays a ranking structure (table, list, or card layout for user rankings) |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Leaderboard page is loaded |
+| **Steps** | 1. Navigate to `/leaderboard` 2. Assert a ranking container element is visible (table, ordered list, or ranking cards) |
+| **Expected Result** | A ranking structure is present on the page |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+### TC-LB-004: Accessible without login
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-LB-004 |
+| **Description** | The leaderboard page is accessible to unauthenticated users (no redirect to login) |
+| **Page Object Used** | BasePage |
+| **Preconditions** | No user session exists |
+| **Steps** | 1. Navigate to `/leaderboard` without any auth session 2. Assert the page loads the leaderboard content (not a login redirect) |
+| **Expected Result** | Page shows leaderboard content; URL does not redirect to `/auth/login` |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 25: Certificate E2E
+
+**File:** `e2e/certificate.spec.ts`
+**Target:** `/certificate/[type]`
+**Tool:** Playwright
+**Page Objects:** BasePage (from `e2e/pages/`)
+**Tests:** 6
+
+### TC-CERT-001: Foundation certificate page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-001 |
+| **Description** | The Foundation arc certificate page at `/certificate/foundation` loads successfully |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/certificate/foundation` 2. Assert the page loads without error |
+| **Expected Result** | Page loads successfully with certificate content visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CERT-002: Practitioner certificate page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-002 |
+| **Description** | The Practitioner arc certificate page at `/certificate/practitioner` loads successfully |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/certificate/practitioner` 2. Assert the page loads without error |
+| **Expected Result** | Page loads successfully with certificate content visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CERT-003: Power User certificate page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-003 |
+| **Description** | The Power User arc certificate page at `/certificate/power-user` loads successfully |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/certificate/power-user` 2. Assert the page loads without error |
+| **Expected Result** | Page loads successfully with certificate content visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CERT-004: Expert certificate page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-004 |
+| **Description** | The Expert arc certificate page at `/certificate/expert` loads successfully |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/certificate/expert` 2. Assert the page loads without error |
+| **Expected Result** | Page loads successfully with certificate content visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CERT-005: Full certificate page loads
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-005 |
+| **Description** | The full completion certificate page at `/certificate/full` loads successfully |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Application is served |
+| **Steps** | 1. Navigate to `/certificate/full` 2. Assert the page loads without error |
+| **Expected Result** | Page loads successfully with certificate content visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-CERT-006: Shows locked state when not completed
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-CERT-006 |
+| **Description** | When the user has not completed the arc, the certificate page shows a locked/incomplete state |
+| **Page Object Used** | BasePage |
+| **Preconditions** | No user session or user has not completed the arc |
+| **Steps** | 1. Navigate to `/certificate/foundation` without completing the Foundation arc 2. Assert the page indicates the certificate is locked or not yet earned |
+| **Expected Result** | A locked state indicator is visible (lock icon, "not yet earned" message, or disabled download) |
+| **Priority** | P2 |
+| **Status** | Pending |
+
+---
+
+## Suite 26: Theme E2E
+
+**File:** `e2e/theme.spec.ts`
+**Target:** Theme toggling across the application
+**Tool:** Playwright
+**Page Objects:** BasePage (from `e2e/pages/`)
+**Tests:** 4
+
+### TC-THEME-001: Page loads in dark mode by default
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-THEME-001 |
+| **Description** | The application loads with dark mode as the default theme |
+| **Page Object Used** | BasePage |
+| **Preconditions** | No theme preference stored in localStorage |
+| **Steps** | 1. Clear localStorage 2. Navigate to `/` 3. Assert the `html` element has the `dark` class |
+| **Expected Result** | `html` element has class `dark` |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-THEME-002: Theme toggle button visible
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-THEME-002 |
+| **Description** | The theme toggle button is visible in the site header |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Any page is loaded |
+| **Steps** | 1. Navigate to `/` 2. Assert the theme toggle button is visible in the header |
+| **Expected Result** | Theme toggle button is visible |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-THEME-003: Toggle switches theme class on html
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-THEME-003 |
+| **Description** | Clicking the theme toggle button switches the `class` attribute on the `html` element between `dark` and `light` |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Page is loaded in dark mode |
+| **Steps** | 1. Assert `html` has class `dark` 2. Click the theme toggle button 3. Assert `html` now has class `light` (or `dark` class is removed) |
+| **Expected Result** | `html` class changes from `dark` to `light` after toggle |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+### TC-THEME-004: Theme persists after reload
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-THEME-004 |
+| **Description** | After toggling to light mode and reloading the page, the light theme persists |
+| **Page Object Used** | BasePage |
+| **Preconditions** | Theme has been toggled to light mode |
+| **Steps** | 1. Click theme toggle to switch to light mode 2. Reload the page 3. Assert `html` still has class `light` |
+| **Expected Result** | Theme preference persists across page reloads via localStorage |
+| **Priority** | P1 |
+| **Status** | Pending |
+
+---
+
+## Suite 27: Profile E2E
+
+**File:** `e2e/profile.spec.ts`
+**Target:** `/profile`
+**Tool:** Playwright
+**Page Objects:** BasePage (from `e2e/pages/`)
+**Tests:** 1
+
+### TC-PROF-001: Profile page redirects when not logged in
+
+| Field | Value |
+|-------|-------|
+| **ID** | TC-PROF-001 |
+| **Description** | When an unauthenticated user navigates to `/profile`, they are redirected to the login page |
+| **Page Object Used** | BasePage |
+| **Preconditions** | No user session exists |
+| **Steps** | 1. Navigate to `/profile` without any auth session 2. Assert the URL redirects to `/auth/login` or the login page content is displayed |
+| **Expected Result** | User is redirected to the login page; `/profile` content is not displayed |
+| **Priority** | P1 |
+| **Status** | Pending |

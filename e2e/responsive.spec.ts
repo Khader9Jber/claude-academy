@@ -39,4 +39,12 @@ test.describe('Responsive Design', () => {
     // Should be able to scroll
     await page.evaluate(() => window.scrollTo(0, 500));
   });
+
+  test('mobile: theme toggle visible', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/');
+    // Theme toggle should be visible even on mobile (it is in the header actions, not behind hamburger)
+    const toggle = page.getByRole('button', { name: /theme|switch to/i });
+    await expect(toggle).toBeVisible();
+  });
 });

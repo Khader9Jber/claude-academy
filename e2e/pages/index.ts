@@ -7,3 +7,7 @@ export { PromptLabPage } from './prompt-lab.page';
 export { CheatsheetPage } from './cheatsheet.page';
 export { TemplatesPage } from './templates.page';
 export { ProgressPage } from './progress.page';
+export { AuthPage } from './auth.page';
+export { LeaderboardPage } from './leaderboard.page';
+export { ProfilePage } from './profile.page';
+export { CertificatePage } from './certificate.page';

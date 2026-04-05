@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { LandingPage, CurriculumPage, ModulePage, LessonPage } from './pages';
+import { LandingPage, CurriculumPage, ModulePage, LessonPage, AuthPage } from './pages';
 
 test.describe('Site Navigation', () => {
   test('landing page loads with hero section', async ({ page }) => {
@@ -102,5 +102,24 @@ test.describe('Site Navigation', () => {
     await landing.navigateTo('/');
     await expect(landing.footer).toBeVisible();
     await expect(landing.footerCredit).toBeVisible();
+  });
+
+  test('leaderboard link visible in header navigation', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Nav links hidden on mobile');
+
+    const landing = new LandingPage(page);
+    await landing.navigateTo('/');
+    const leaderboardLink = page.getByTestId('nav-leaderboard');
+    await expect(leaderboardLink).toBeVisible();
+    await leaderboardLink.click();
+    await expect(page).toHaveURL(/\/leaderboard/);
+  });
+
+  test('auth login button visible in header', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Sign In button hidden on mobile');
+
+    const auth = new AuthPage(page);
+    await auth.navigateTo('/');
+    await expect(auth.headerLoginBtn).toBeVisible();
   });
 });

@@ -1,4 +1,4 @@
-name: Deploy — GitHub Pages + Vercel
+name: Deploy — GitHub Pages + Netlify
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
       - name: Test + Coverage
         run: npm run test:coverage
 
-  # ── Deploy to GitHub Pages ──
+  # ── Deploy to GitHub Pages (static, no auth) ──
   deploy-github-pages:
     name: GitHub Pages
     needs: ci-gate
@@ -57,9 +57,9 @@ jobs:
       - id: deployment
         uses: actions/deploy-pages@v4
 
-  # ── Deploy to Vercel ──
-  deploy-vercel:
-    name: Vercel Production
+  # ── Deploy to Netlify (SSR, full features) ──
+  deploy-netlify:
+    name: Netlify Production
     needs: ci-gate
     runs-on: ubuntu-latest
     steps:
@@ -69,12 +69,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Deploy to Vercel
-        run: |
-          DEPLOY_URL=$(npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org --yes 2>&1 | grep -o 'https://[^ ]*\.vercel\.app' | tail -1)
-          echo "Deployed to: $DEPLOY_URL"
-          npx vercel alias set "$DEPLOY_URL" claude-academy-course.vercel.app --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org
-          echo "Alias updated: https://claude-academy-course.vercel.app"
+      - name: Build
+        run: npm run build
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      - name: Deploy to Netlify
+        run: npx netlify deploy --prod --dir=.next --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} --site=${{ secrets.NETLIFY_SITE_ID }}

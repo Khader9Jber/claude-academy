@@ -34,8 +34,9 @@
 | 10 | Deployment | DONE | 0.5 weeks |
 | 11 | Supabase Backend | DONE | 1 week |
 | 12 | Light/Dark Mode | DONE | 0.5 weeks |
+| 13 | Netlify Migration | DONE | 0.5 weeks |
 
-**Total timeline:** ~13.5 weeks from project start. All phases complete.
+**Total timeline:** ~14 weeks from project start. All phases complete.
 
 ---
 
@@ -380,8 +381,8 @@ scripts/completeness-audit.ts
 - 4 GitHub Actions workflows:
   - `ci.yml`: Lint, typecheck, unit tests + coverage, E2E tests, build (parallel jobs with dependency graph)
   - `security.yml`: Dependency audit (`npm audit` + `audit-ci`), CodeQL static analysis, secret detection (TruffleHog)
-  - `deploy.yml`: CI gate then dual deploy to GitHub Pages + Vercel production with alias
-  - `pr-preview.yml`: Vercel preview deploy on PRs with auto-comment
+  - `deploy.yml`: CI gate then triple deploy to Netlify (primary) + GitHub Pages + Vercel (backup)
+  - `pr-preview.yml`: Netlify preview deploy on PRs with auto-comment
 - Artifact uploads: coverage reports (30 days), Playwright reports (30 days), screenshots on failure (7 days), build output (7 days)
 - Weekly scheduled security scan (Monday 8am UTC)
 
@@ -460,18 +461,19 @@ src/components/progress/progress-dashboard.tsx
 
 **Deliverables:**
 
+- Netlify production deployment at `https://klaude-academy.netlify.app` (primary)
 - GitHub Pages deployment at `https://khader9jber.github.io/claude-academy/`
-- Vercel production deployment at `https://claude-academy-course.vercel.app`
-- Vercel team/org (`claude-academy-org`) for clean URL aliasing
+- Vercel production deployment at `https://claude-academy-course.vercel.app` (backup)
 - Automated deployment on push to main via `deploy.yml` workflow
-- PR preview deploys via `pr-preview.yml` workflow
+- PR preview deploys via `pr-preview.yml` workflow (Netlify)
 
 **Acceptance Criteria:** All met.
 
+- Netlify site accessible at `https://klaude-academy.netlify.app`
 - GitHub Pages site accessible at `https://khader9jber.github.io/claude-academy/`
-- Vercel site accessible at `https://claude-academy-course.vercel.app`
-- Both sites deploy automatically when CI passes
-- PR previews deploy on PR creation/update
+- Vercel backup site accessible at `https://claude-academy-course.vercel.app`
+- All three sites deploy automatically when CI passes
+- PR previews deploy on PR creation/update via Netlify
 
 ---
 
@@ -493,7 +495,7 @@ src/components/progress/progress-dashboard.tsx
 - Auto-profile trigger: creates a `profiles` row on new user signup
 - Progress sync hook (`useProgressSync`): dual-write to localStorage + Supabase for authenticated users
 - Site header updated: shows "Sign In" when logged out, user menu when logged in
-- `next.config.ts` updated: SSR for Vercel, static export only when `DEPLOY_TARGET=github-pages`
+- `next.config.ts` updated: SSR for Netlify/Vercel, static export only when `DEPLOY_TARGET=github-pages`
 - Login and signup pages include `data-testid` attributes for E2E testing
 - Supabase env vars are optional -- site works without them as a fully static app
 
@@ -533,6 +535,31 @@ src/components/progress/progress-dashboard.tsx
 
 ---
 
+### Phase 13: Netlify Migration (DONE)
+
+**Objective:** Migrate primary deployment from Vercel to Netlify to resolve deployment protection issues on Vercel's free plan.
+
+**Deliverables:**
+
+- Primary deployment moved to Netlify at `https://klaude-academy.netlify.app`
+- Netlify configured for SSR with full auth support (auth callbacks, server-side sessions)
+- GitHub Pages remains as secondary static deployment
+- Vercel demoted to backup deployment (kept for redundancy)
+- CI/CD pipeline updated: `deploy.yml` deploys to Netlify (primary) + GitHub Pages + Vercel (backup)
+- PR preview deploys switched from Vercel to Netlify
+- New CI/CD secrets: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
+- All project documentation updated to reflect new deployment architecture
+
+**Acceptance Criteria:**
+
+- Netlify site accessible at `https://klaude-academy.netlify.app` with SSR and full auth
+- GitHub Pages site still accessible at `https://khader9jber.github.io/claude-academy/`
+- Vercel backup still accessible at `https://claude-academy-course.vercel.app`
+- Deploy pipeline runs all three deployments on push to main
+- PR previews deploy to Netlify and comment the preview URL
+
+---
+
 ## 3. Tech Stack Summary
 
 Full details are documented in `TECH_STACK.md` at the project root. Summary:
@@ -566,7 +593,7 @@ Full details are documented in `TECH_STACK.md` at the project root. Summary:
 
 **Rationale:**
 
-- Zero hosting cost: static files can be served from free tiers of Vercel, Netlify, or Cloudflare Pages
+- Zero hosting cost: static files can be served from free tiers of Netlify, Vercel, or Cloudflare Pages
 - Maximum performance: pre-rendered HTML means instant page loads, no server processing delay
 - Zero server maintenance: no server to patch, scale, or monitor
 - Simplicity: the entire application is a set of files that any web server can host
@@ -836,7 +863,7 @@ const supabaseStorage = {
 
 **Step 6: Deploy**
 
-Deploy to Vercel as a serverless application (instead of static). The build output changes from `/out` (static files) to the standard Next.js serverless deployment.
+Deploy to Netlify as a serverless application (instead of static). The build output changes from `/out` (static files) to the standard Next.js serverless deployment. Vercel is available as a backup.
 
 ### Impact Assessment
 
@@ -846,7 +873,7 @@ Deploy to Vercel as a serverless application (instead of static). The build outp
 | `src/lib/progress-store.ts` (storage adapter) | All interactive components |
 | New: auth pages, auth middleware | All content (MDX files) |
 | New: `.env.local` with Supabase credentials | All UI components |
-| Deployment target (static -> serverless) | All styling (CSS, Tailwind) |
+| Deployment target (static -> serverless on Netlify) | All styling (CSS, Tailwind) |
 | | Content loader (`src/lib/content.ts`) |
 | | Search, cheatsheet, templates |
 

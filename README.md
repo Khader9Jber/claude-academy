@@ -2,7 +2,7 @@
 
 **Master Claude from Zero to Hero** — an interactive learning website with 74 lessons, quizzes, exercises, and a complete prompt engineering lab.
 
-**Live:** [claude-academy-course.vercel.app](https://claude-academy-course.vercel.app) | [GitHub Pages](https://khader9jber.github.io/claude-academy/)
+**Live:** [klaude-academy.netlify.app](https://klaude-academy.netlify.app) | [GitHub Pages](https://khader9jber.github.io/claude-academy/)
 
 ---
 
@@ -136,8 +136,8 @@ claude-academy/
 ├── .github/workflows/         # CI/CD pipelines
 │   ├── ci.yml                 # Lint → Type Check → Unit Test → Coverage → E2E
 │   ├── security.yml           # Dependency audit + CodeQL + Secret scan
-│   ├── deploy.yml             # Deploy to GitHub Pages + Vercel
-│   └── pr-preview.yml         # Vercel preview on pull requests
+│   ├── deploy.yml             # Deploy to Netlify + GitHub Pages (Vercel as backup)
+│   └── pr-preview.yml         # Netlify deploy preview on pull requests
 ├── TECH_STACK.md              # Full tech stack documentation
 ├── .env.example               # Environment variable template
 ├── playwright.config.ts       # Playwright E2E config
@@ -224,9 +224,11 @@ Your lesson content here in Markdown...
 | `NEXT_PUBLIC_SUPABASE_URL` | No | `.env.local` | Supabase project URL. Get from Settings > API in your Supabase dashboard |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | `.env.local` | Supabase anonymous key. Get from Settings > API in your Supabase dashboard |
 | `DEPLOY_TARGET` | No | CI only | Set to `github-pages` for basePath. Auto-set in pipeline |
-| `VERCEL_TOKEN` | CI only | GitHub Secrets | Vercel API token for automated deploys |
-| `VERCEL_ORG_ID` | CI only | GitHub Secrets | Vercel team/org ID |
-| `VERCEL_PROJECT_ID` | CI only | GitHub Secrets | Vercel project ID |
+| `NETLIFY_AUTH_TOKEN` | CI only | GitHub Secrets | Netlify API token for automated deploys |
+| `NETLIFY_SITE_ID` | CI only | GitHub Secrets | Netlify site ID |
+| `VERCEL_TOKEN` | CI only | GitHub Secrets | Vercel API token (backup deploys) |
+| `VERCEL_ORG_ID` | CI only | GitHub Secrets | Vercel team/org ID (backup deploys) |
+| `VERCEL_PROJECT_ID` | CI only | GitHub Secrets | Vercel project ID (backup deploys) |
 
 **Setup:**
 ```bash
@@ -255,14 +257,15 @@ Push to main
     │                          Also runs weekly on Mondays
     │
     └── Deploy ──────── CI Gate (waits for CI to pass)
+                              ├── Netlify       → klaude-academy.netlify.app (primary)
                               ├── GitHub Pages  → khader9jber.github.io/claude-academy
-                              └── Vercel        → claude-academy-course.vercel.app
+                              └── Vercel        → backup (has deployment protection issues on free plan)
 
 Pull Requests to main
     │
     ├── CI ──────────── Same as above (must pass to merge)
     ├── Security ────── Full scan
-    └── PR Preview ──── Vercel preview URL posted as PR comment
+    └── PR Preview ──── Netlify deploy preview URL posted as PR comment
 ```
 
 **Monitor pipeline:** [github.com/Khader9Jber/claude-academy/actions](https://github.com/Khader9Jber/claude-academy/actions)
@@ -319,13 +322,14 @@ All selectors use `data-testid` attributes — stable, decoupled from content.
 ### Automatic (recommended)
 Push to `main`. The pipeline handles everything:
 - Builds with correct config for each platform
-- Deploys to GitHub Pages (with `/claude-academy` basePath)
-- Deploys to Vercel (root basePath) with auto-alias
+- Deploys to Netlify (primary, SSR with full auth support)
+- Deploys to GitHub Pages (with `/claude-academy` basePath, static)
+- Vercel available as backup (has deployment protection issues on free plan)
 
-### Manual Vercel deploy
+### Manual Netlify deploy
 ```bash
 npm run build
-npx vercel deploy --prod --scope claude-academy-org
+npx netlify deploy --prod --site $NETLIFY_SITE_ID
 ```
 
 ### Manual GitHub Pages
@@ -440,7 +444,7 @@ git push origin v0.2.0       # Push snapshot tag
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 16 (App Router, SSR on Vercel / static on GitHub Pages) |
+| Framework | Next.js 16 (App Router, SSR on Netlify / static on GitHub Pages) |
 | Language | TypeScript 5.6+ |
 | Styling | Tailwind CSS 4 |
 | Content | MDX 3 |
@@ -451,7 +455,7 @@ git push origin v0.2.0       # Push snapshot tag
 | Unit testing | Vitest + React Testing Library |
 | E2E testing | Playwright |
 | CI/CD | GitHub Actions (4 workflows) |
-| Hosting | Vercel + GitHub Pages |
+| Hosting | Netlify (primary) + GitHub Pages + Vercel (backup) |
 
 Full details in [TECH_STACK.md](./TECH_STACK.md).
 

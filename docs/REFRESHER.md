@@ -13,11 +13,11 @@ Claude Academy is a complete interactive learning website for mastering Claude a
 ## How It Works
 
 - You write lessons as MDX files in `content/modules/`. Each module has a `_module.json` for metadata and numbered `.mdx` files for lessons.
-- Push to `main` and the pipeline kicks in: lint, typecheck, unit tests, E2E tests, security scan, then auto-deploys to both GitHub Pages and Vercel.
+- Push to `main` and the pipeline kicks in: lint, typecheck, unit tests, E2E tests, security scan, then auto-deploys to Netlify (primary), GitHub Pages, and Vercel (backup).
 - Progress (completed lessons, quiz scores, streaks, achievements) is tracked in the user's browser via localStorage. No accounts needed.
 - **Optional auth**: if Supabase env vars are set, users can sign up (email, Google, GitHub) to sync progress across devices, appear on the leaderboard, and earn certificates. Without Supabase, the site runs as a fully static app.
 - Logged-in users get dual-write: progress saves to both localStorage and Supabase. Guests use localStorage only.
-- Vercel deployment uses SSR (for auth callbacks). GitHub Pages deployment uses static export.
+- Netlify deployment uses SSR (for auth callbacks). GitHub Pages deployment uses static export. Vercel is kept as a backup but has deployment protection issues on free plan.
 
 ---
 
@@ -51,8 +51,9 @@ cp .env.example .env.local
 
 ## Your Live URLs
 
-- **Vercel**: https://claude-academy-course.vercel.app
+- **Netlify (primary)**: https://klaude-academy.netlify.app
 - **GitHub Pages**: https://khader9jber.github.io/claude-academy/
+- **Vercel (backup)**: https://claude-academy-course.vercel.app
 - **Repo**: https://github.com/Khader9Jber/claude-academy
 - **Pipeline**: https://github.com/Khader9Jber/claude-academy/actions
 
@@ -62,7 +63,7 @@ cp .env.example .env.local
 
 - 74 lessons, 294 quiz questions, 13 modules, 4 arcs
 - 46 unit tests, 36 E2E tests, 97% statement coverage, 100% function coverage
-- 4 CI/CD workflows, dual deployment (GitHub Pages + Vercel)
+- 4 CI/CD workflows, triple deployment (Netlify + GitHub Pages + Vercel backup)
 - 7 project docs (SRS, Test Plan, Test Suites, Architecture, Implementation Plan, Glossary, Changelog)
 - QA reports: content validation, build report, completeness audit
 - Supabase backend: 7 database tables with RLS, 3 auth providers (email, Google, GitHub)
@@ -195,7 +196,7 @@ Quick reference to key decisions. Full details in `docs/ARCHITECTURE.md` (Sectio
 
 5. **Page Object Model for E2E** -- Each page has a corresponding class in `e2e/pages/`. When the UI changes, you update one page object instead of every test that touches that page. Tests read like user stories.
 
-6. **Dual deploy (GitHub Pages + Vercel)** -- Redundancy: if one platform has issues, the other is still up. Different audiences can use different URLs. GitHub Pages is free and tied to the repo; Vercel gives you preview deploys on PRs.
+6. **Triple deploy (Netlify + GitHub Pages + Vercel backup)** -- Redundancy: if one platform has issues, the others are still up. Netlify is the primary with SSR and full auth support. GitHub Pages is free and tied to the repo. Vercel is kept as a backup but has deployment protection issues on free plan.
 
 7. **4 separate CI workflows** -- Separation of concerns. CI runs on every push. Security scans run on pushes and weekly. Deploy only runs on main. PR previews only run on PRs. Each workflow has minimal permissions.
 
@@ -239,7 +240,7 @@ Quick reference to key decisions. Full details in `docs/ARCHITECTURE.md` (Sectio
    - "Module not found" -- check that the module slug is in `MODULE_ORDER` in `src/lib/constants.ts`
    - "Build fails" -- run `npm run build` locally and read the error. Usually a TypeScript error or missing content file.
    - "E2E test fails" -- check `playwright-report/index.html` for screenshots and traces. The most common cause is a missing `data-testid` on a new element.
-   - "Deploy fails" -- check that `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets are set in the repo settings.
+   - "Deploy fails" -- check that `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` secrets are set in the repo settings. For Vercel backup, check `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`.
 
 ---
 

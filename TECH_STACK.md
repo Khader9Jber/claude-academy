@@ -122,7 +122,7 @@ Arc color coding:
 | @supabase/supabase-js | JavaScript/TypeScript SDK for client-side Supabase access |
 | @supabase/ssr | Server-side helpers for Supabase auth in Next.js |
 
-The backend is optional. Without Supabase env vars, the site runs as a fully static app with localStorage-only progress. With Supabase configured, users can sign up, sync progress across devices, appear on the leaderboard, and earn certificates. On Vercel, the site uses SSR for auth callbacks. On GitHub Pages, it deploys as a static export.
+The backend is optional. Without Supabase env vars, the site runs as a fully static app with localStorage-only progress. With Supabase configured, users can sign up, sync progress across devices, appear on the leaderboard, and earn certificates. On Netlify, the site uses SSR for auth callbacks. On GitHub Pages, it deploys as a static export. Vercel is kept as a backup deployment target.
 
 ### Testing (Planned — Phase 7)
 
@@ -138,9 +138,9 @@ The backend is optional. Without Supabase env vars, the site runs as a fully sta
 
 | Option | Notes |
 |--------|-------|
-| Vercel (primary) | Zero-config for Next.js, free tier sufficient, automatic deploys on git push |
-| Netlify (alternative) | Static hosting, similar to Vercel |
-| Cloudflare Pages (alternative) | Free, fast global CDN |
+| Netlify (primary) | SSR support, full auth, automatic deploys on git push — https://klaude-academy.netlify.app |
+| GitHub Pages (secondary) | Static hosting, free, tied to repo — https://khader9jber.github.io/claude-academy/ |
+| Vercel (backup) | Has deployment protection issues on free plan — kept as fallback |
 | Any static host | The build output is just HTML/CSS/JS files — works anywhere |
 
 ---
@@ -189,10 +189,11 @@ The backend was added in v0.2.0. It uses Supabase as a backend-as-a-service, kee
 
 | Platform | Mode | Auth Support |
 |----------|------|-------------|
-| Vercel | SSR (serverless) | Full auth with callbacks via `src/app/auth/callback/` |
+| Netlify (primary) | SSR (serverless) | Full auth with callbacks via `src/app/auth/callback/` |
 | GitHub Pages | Static export | Auth features hidden, localStorage only |
+| Vercel (backup) | SSR (serverless) | Full auth — has deployment protection issues on free plan |
 
-The `next.config.ts` conditionally sets `output: 'export'` when `DEPLOY_TARGET=github-pages`. On Vercel, it runs as a standard SSR app.
+The `next.config.ts` conditionally sets `output: 'export'` when `DEPLOY_TARGET=github-pages`. On Netlify (and Vercel), it runs as a standard SSR app.
 
 ---
 
@@ -207,7 +208,7 @@ Next.js builds (reads MDX, generates pages)
     ↓
 Static HTML/CSS/JS files are output to /out
     ↓
-Files deployed to Vercel/Netlify/any host
+Files deployed to Netlify/GitHub Pages/any host
     ↓
 User opens site → browser loads HTML
     ↓

@@ -17,6 +17,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.2.1] - 2026-04-04
+
+### Changed
+
+- Primary deployment moved from Vercel to Netlify (https://klaude-academy.netlify.app)
+- Vercel demoted to backup deployment (has deployment protection issues on free plan)
+- Deployment is now triple-platform: Netlify (primary, SSR + full auth) + GitHub Pages (static) + Vercel (backup)
+- Updated all documentation to reflect new deployment architecture
+- Added `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` to CI/CD environment variables
+
+### Fixed
+
+- Deployment protection issues on Vercel free plan resolved by switching primary to Netlify
+
+---
+
 ## [0.2.0] - 2026-04-05
 
 ### Added

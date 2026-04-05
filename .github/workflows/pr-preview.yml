@@ -1,4 +1,4 @@
-name: PR Preview — Vercel Preview Deploy
+name: PR Preview — Netlify Preview Deploy
 
 on:
   pull_request:
@@ -18,14 +18,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Deploy Preview to Vercel
+      - name: Deploy Preview to Netlify
         id: deploy
         run: |
-          URL=$(npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org 2>&1 | grep -o 'https://[^ ]*\.vercel\.app' | tail -1)
+          URL=$(npx netlify deploy --dir=.next --auth=${{ secrets.NETLIFY_AUTH_TOKEN }} --site=${{ secrets.NETLIFY_SITE_ID }} --json 2>&1 | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('deploy_url',''))")
           echo "url=$URL" >> "$GITHUB_OUTPUT"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
         with:

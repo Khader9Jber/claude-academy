@@ -693,11 +693,12 @@ Push to main / PR opened
         │
         ├── deploy.yml (sequential)
         │   ├── CI Gate (lint + typecheck + test)
+        │   ├── Netlify Production deploy ← depends on CI Gate (primary)
         │   ├── GitHub Pages deploy ← depends on CI Gate
-        │   └── Vercel Production deploy ← depends on CI Gate
+        │   └── Vercel Production deploy ← depends on CI Gate (backup)
         │
         └── pr-preview.yml
-            └── Vercel Preview Deploy + PR comment with URL
+            └── Netlify Preview Deploy + PR comment with URL
 ```
 
 ### 7.2 Workflow Files
@@ -706,8 +707,8 @@ Push to main / PR opened
 |----------|------|---------|---------|
 | **CI** | `.github/workflows/ci.yml` | Push to `main`/`develop`, PRs to `main` | Lint, typecheck, unit tests, coverage, E2E tests, build |
 | **Security** | `.github/workflows/security.yml` | Push to `main`, PRs to `main`, weekly cron (Monday 8am UTC) | Dependency audit, CodeQL static analysis, secret scanning |
-| **Deploy** | `.github/workflows/deploy.yml` | Push to `main`, manual dispatch | CI gate then dual deploy to GitHub Pages + Vercel production |
-| **PR Preview** | `.github/workflows/pr-preview.yml` | PRs to `main` | Vercel preview deploy, auto-comments PR with preview URL |
+| **Deploy** | `.github/workflows/deploy.yml` | Push to `main`, manual dispatch | CI gate then triple deploy to Netlify (primary) + GitHub Pages + Vercel (backup) |
+| **PR Preview** | `.github/workflows/pr-preview.yml` | PRs to `main` | Netlify preview deploy, auto-comments PR with preview URL |
 
 ### 7.3 CI Job Dependency Graph
 
@@ -718,8 +719,9 @@ ci.yml:
   test (unit) ───┘
 
 deploy.yml:
-  ci-gate ──┬──► deploy-github-pages
-            └──► deploy-vercel
+  ci-gate ──┬──► deploy-netlify (primary)
+            ├──► deploy-github-pages
+            └──► deploy-vercel (backup)
 
 security.yml:
   dependency-audit ─── (parallel)
@@ -856,9 +858,9 @@ This pattern is used consistently in all 6 E2E spec files and in layout componen
 
 ## 10. Deployment Architecture
 
-### 10.1 Dual Deployment Strategy
+### 10.1 Triple Deployment Strategy
 
-The project deploys to two platforms simultaneously for redundancy and different audiences:
+The project deploys to three platforms for redundancy and different audiences:
 
 ```
 git push main
@@ -866,34 +868,46 @@ git push main
     ▼
 deploy.yml workflow
     │
+    ├──► Netlify (primary)
+    │    URL: https://klaude-academy.netlify.app
+    │    Method: netlify deploy --prod
+    │    Mode: SSR with full auth support
+    │
     ├──► GitHub Pages
     │    URL: https://khader9jber.github.io/claude-academy/
     │    Method: actions/upload-pages-artifact + actions/deploy-pages
     │    Environment variable: DEPLOY_TARGET=github-pages
     │
-    └──► Vercel Production
+    └──► Vercel (backup)
          URL: https://claude-academy-course.vercel.app
-         Method: vercel deploy --prod + vercel alias set
-         Org: claude-academy-org (Vercel team)
+         Note: Has deployment protection issues on free plan
 ```
 
 ### 10.2 Deployment Details
 
 | Platform | URL | Mode | Method | CI Gate |
 |----------|-----|------|--------|---------|
-| **Vercel Production** | `https://claude-academy-course.vercel.app` | SSR (serverless) | `vercel deploy --prod` + alias | lint + typecheck + test must pass |
+| **Netlify (primary)** | `https://klaude-academy.netlify.app` | SSR (serverless) | `netlify deploy --prod` | lint + typecheck + test must pass |
 | **GitHub Pages** | `https://khader9jber.github.io/claude-academy/` | Static export | `actions/deploy-pages@v4` | lint + typecheck + test must pass |
-| **Vercel Preview** (PRs) | Dynamic URL per PR | SSR | `vercel deploy` (non-prod) | Build must succeed |
+| **Vercel (backup)** | `https://claude-academy-course.vercel.app` | SSR (serverless) | `vercel deploy --prod` | Has deployment protection issues on free plan |
+| **Netlify Preview** (PRs) | Dynamic URL per PR | SSR | `netlify deploy` (non-prod) | Build must succeed |
 
-**SSR vs Static**: Vercel runs the site as an SSR app, which supports auth callbacks (`/auth/callback`) and server-side session management. GitHub Pages uses static export (`output: 'export'`), which does not support auth features -- the site runs in guest-only mode on GitHub Pages.
+**SSR vs Static**: Netlify runs the site as an SSR app, which supports auth callbacks (`/auth/callback`) and server-side session management. GitHub Pages uses static export (`output: 'export'`), which does not support auth features -- the site runs in guest-only mode on GitHub Pages. Vercel is available as a backup but has deployment protection issues on the free plan.
 
-### 10.3 Vercel Configuration
+### 10.3 Netlify Configuration
+
+- **Site name**: `klaude-academy`
+- **URL**: `https://klaude-academy.netlify.app`
+- **Secrets required**: `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID`
+
+### 10.4 Vercel Configuration (Backup)
 
 - **Team/Org**: `claude-academy-org`
-- **Clean alias**: `claude-academy-course.vercel.app` (set via `vercel alias set` after each deploy)
+- **URL**: `https://claude-academy-course.vercel.app`
 - **Secrets required**: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- **Note**: Has deployment protection issues on free plan -- use Netlify as primary
 
-### 10.4 PR Preview Flow
+### 10.5 PR Preview Flow
 
 ```
 PR opened/updated
@@ -902,7 +916,7 @@ PR opened/updated
 pr-preview.yml
     │
     ├── Build (npm run build)
-    ├── Deploy to Vercel (non-prod)
+    ├── Deploy to Netlify (non-prod)
     └── Comment on PR with preview URL
 ```
 
@@ -1107,7 +1121,8 @@ The `useProgressSync` hook handles the dual-write logic:
 
 | Platform | Mode | Auth | Progress Storage |
 |----------|------|------|-----------------|
-| Vercel | SSR | Full (email, Google, GitHub) | localStorage + Supabase |
+| Netlify (primary) | SSR | Full (email, Google, GitHub) | localStorage + Supabase |
 | GitHub Pages | Static export | None (auth features hidden) | localStorage only |
+| Vercel (backup) | SSR | Full (email, Google, GitHub) | localStorage + Supabase |
 
-The `next.config.ts` conditionally applies `output: 'export'` when `DEPLOY_TARGET=github-pages`. On Vercel, it runs as a standard Next.js SSR app with full auth support.
+The `next.config.ts` conditionally applies `output: 'export'` when `DEPLOY_TARGET=github-pages`. On Netlify (and Vercel), it runs as a standard Next.js SSR app with full auth support.

@@ -38,23 +38,31 @@ export default function SignupPage() {
       return;
     }
 
-    const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: displayName || email.split("@")[0],
+    try {
+      const supabase = createClient();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: displayName || email.split("@")[0],
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+      });
 
-    if (signUpError) {
-      setError(signUpError.message);
-      setSubmitting(false);
-    } else {
-      setSuccess(true);
+      if (signUpError) {
+        setError(signUpError.message);
+        setSubmitting(false);
+      } else if (data?.user?.identities?.length === 0) {
+        setError("An account with this email already exists. Try signing in instead.");
+        setSubmitting(false);
+      } else {
+        setSuccess(true);
+        setSubmitting(false);
+      }
+    } catch (err) {
+      setError("Something went wrong. Please try again in a few minutes.");
       setSubmitting(false);
     }
   };

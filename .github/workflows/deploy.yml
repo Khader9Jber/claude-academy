@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy — GitHub Pages + Vercel
 
 on:
   push:
@@ -11,12 +11,23 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "deploy"
   cancel-in-progress: false
 
 jobs:
-  build:
+  # ── Gate: CI must pass first ──
+  ci-gate:
+    name: CI Gate
+    uses: ./.github/workflows/ci.yml
+
+  # ── Deploy to GitHub Pages ──
+  deploy-github-pages:
+    name: GitHub Pages
+    needs: ci-gate
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,16 +36,39 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          NODE_ENV: production
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # ── Deploy to Vercel ──
+  deploy-vercel:
+    name: Vercel Production
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    environment:
+      name: vercel-production
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build for Vercel (no basePath)
+        run: npm run build
+        env:
+          NODE_ENV: development
+      - name: Deploy to Vercel
+        id: deploy
+        run: |
+          npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --scope claude-academy-org 2>&1 | tee deploy.log
+          URL=$(grep -o 'https://[^ ]*\.vercel\.app' deploy.log | tail -1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

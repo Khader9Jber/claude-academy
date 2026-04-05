@@ -59,22 +59,21 @@ test.describe('Site Navigation', () => {
     await expect(page.getByTestId('lesson-title')).toBeVisible();
   });
 
-  test('header navigation links work', async ({ page }) => {
+  test('header navigation links work (desktop)', async ({ page, browserName }, testInfo) => {
+    // Skip on mobile — nav links are behind hamburger menu
+    test.skip(testInfo.project.name === 'mobile', 'Nav links hidden on mobile');
+
     await page.goto('/');
 
-    // Navigate to Prompt Lab
     await page.getByTestId('nav-prompt-lab').click();
     await expect(page).toHaveURL(/prompt-lab/);
 
-    // Navigate to Cheatsheet
     await page.getByTestId('nav-cheatsheet').click();
     await expect(page).toHaveURL(/cheatsheet/);
 
-    // Navigate to Templates
     await page.getByTestId('nav-templates').click();
     await expect(page).toHaveURL(/templates/);
 
-    // Navigate to Curriculum
     await page.getByTestId('nav-curriculum').click();
     await expect(page).toHaveURL(/curriculum/);
   });

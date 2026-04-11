@@ -2,10 +2,10 @@
   "title": "Claude for QA Engineers",
   "slug": "claude-qa",
   "description": "Apply Claude to testing and quality assurance: test generation, automation frameworks, API testing, visual regression, and CI/CD test integration.",
-  "arc": "expert",
+  "arc": "specialist",
   "order": 19,
   "icon": "TestTube",
-  "color": "#d4a053",
+  "color": "#e06c75",
   "estimatedHours": 5,
   "prerequisites": ["enterprise-and-production"],
   "lessonCount": 6

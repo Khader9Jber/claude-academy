@@ -2,10 +2,10 @@
   "title": "Claude for Database Engineering",
   "slug": "claude-databases",
   "description": "Apply Claude to database work: schema design, migration strategies, query optimization, data modeling, and database administration tasks.",
-  "arc": "expert",
+  "arc": "specialist",
   "order": 25,
   "icon": "Database",
-  "color": "#d4a053",
+  "color": "#e06c75",
   "estimatedHours": 5,
   "prerequisites": ["enterprise-and-production"],
   "lessonCount": 5

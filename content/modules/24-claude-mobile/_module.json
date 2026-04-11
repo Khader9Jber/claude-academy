@@ -2,10 +2,10 @@
   "title": "Claude for Mobile Development",
   "slug": "claude-mobile",
   "description": "Apply Claude to mobile app development: React Native, Flutter, native iOS/Android, app architecture, and mobile-specific testing.",
-  "arc": "practitioner",
+  "arc": "specialist",
   "order": 24,
   "icon": "Smartphone",
-  "color": "#5e9ed6",
+  "color": "#e06c75",
   "estimatedHours": 5,
   "prerequisites": ["mcp-fundamentals"],
   "lessonCount": 5

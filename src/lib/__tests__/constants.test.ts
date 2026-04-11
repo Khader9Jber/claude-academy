@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { ARC_DEFINITIONS, MODULE_ORDER, ACHIEVEMENTS } from '../constants'
 
 describe('ARC_DEFINITIONS', () => {
-  it('has exactly 4 arcs', () => {
-    expect(ARC_DEFINITIONS).toHaveLength(4)
+  it('has exactly 5 arcs', () => {
+    expect(ARC_DEFINITIONS).toHaveLength(5)
   })
 
-  it('contains foundation, practitioner, power-user, expert arcs', () => {
+  it('contains foundation, practitioner, power-user, expert, specialist arcs', () => {
     const ids = ARC_DEFINITIONS.map((a) => a.id)
-    expect(ids).toEqual(['foundation', 'practitioner', 'power-user', 'expert'])
+    expect(ids).toEqual(['foundation', 'practitioner', 'power-user', 'expert', 'specialist'])
   })
 
   it('each arc has required fields: id, name, color, description', () => {

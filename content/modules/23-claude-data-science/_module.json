@@ -1,0 +1,12 @@
+{
+  "title": "Claude for Data Science",
+  "slug": "claude-data-science",
+  "description": "Apply Claude to data science workflows: exploratory data analysis, data cleaning, visualization, ML prototyping, and Jupyter notebook workflows.",
+  "arc": "practitioner",
+  "order": 23,
+  "icon": "BarChart3",
+  "color": "#5e9ed6",
+  "estimatedHours": 5,
+  "prerequisites": ["mcp-fundamentals"],
+  "lessonCount": 5
+}

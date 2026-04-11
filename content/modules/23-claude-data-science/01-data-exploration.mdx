@@ -1,0 +1,328 @@
+---
+title: "Exploratory Data Analysis with Claude"
+slug: "data-exploration"
+order: 1
+difficulty: "intermediate"
+duration: 22
+tags: ["data-science", "eda", "analysis", "pandas"]
+objectives:
+  - "Use Claude to perform rapid exploratory data analysis on real datasets"
+  - "Apply effective prompt patterns for data summarization and anomaly detection"
+  - "Identify distributions, correlations, and patterns through conversational analysis"
+  - "Know when to trust Claude's statistical analysis and when to verify independently"
+quiz:
+  - id: "data-exploration-1"
+    question: "What's the most effective first prompt when starting EDA with Claude?"
+    type: "multiple-choice"
+    options:
+      - "\"Analyze this data\""
+      - "\"Here's a CSV with columns [list them]. Give me summary stats, check for missing values, and flag anything unusual.\""
+      - "\"Make me a chart\""
+      - "\"Run a regression\""
+    correct: 1
+    explanation: "Providing column names and asking for specific outputs (summary stats, missing values, anomalies) gives Claude the structure it needs to produce useful EDA. Vague prompts like 'analyze this' lead to generic responses that waste your time."
+  - id: "data-exploration-2"
+    question: "When should you NOT trust Claude's statistical analysis at face value?"
+    type: "multiple-choice"
+    options:
+      - "When the dataset has fewer than 100 rows"
+      - "When Claude reports exact p-values, correlation coefficients, or statistical test results from data it hasn't actually computed on"
+      - "When the data is in JSON format"
+      - "When you're using pandas"
+    correct: 1
+    explanation: "Claude can hallucinate specific numbers when it hasn't actually run computations. If Claude reports 'the correlation is 0.847' without executing code, it's generating a plausible number, not computing one. Always have Claude generate the code, then run it yourself to get real numbers."
+  - id: "data-exploration-3"
+    question: "What's the advantage of using Claude Code for EDA over the web interface?"
+    type: "multiple-choice"
+    options:
+      - "Claude Code is faster"
+      - "Claude Code can read files directly from your filesystem and generate executable scripts you can run immediately"
+      - "The web interface can't do data analysis"
+      - "Claude Code has better models"
+    correct: 1
+    explanation: "Claude Code reads your actual CSV/JSON files directly, generates Python scripts in your project directory, and you can run them immediately. No copy-pasting data, no file upload limits, no losing context between messages."
+  - id: "data-exploration-4"
+    question: "What's the best approach for analyzing a dataset too large to paste into context?"
+    type: "multiple-choice"
+    options:
+      - "Truncate it to the first 10 rows"
+      - "Have Claude generate a profiling script that reads the file and outputs summary statistics, then share the output"
+      - "Give up and use a different tool"
+      - "Split it into multiple messages"
+    correct: 1
+    explanation: "For large datasets, have Claude write a script that reads the file, computes summary statistics, and outputs a compact report. Then share that report back with Claude for interpretation. This keeps context small while analyzing the full dataset."
+---
+
+## Your Data Has Stories — Claude Helps You Find Them
+
+Every dataset has patterns hiding in it. Outliers that signal bugs or fraud. Correlations that reveal business insights. Distributions that break your assumptions. The problem has never been finding these stories — it's having the time and energy to look.
+
+Claude turns a 2-hour EDA session into a 15-minute conversation.
+
+## The EDA Workflow
+
+Here's the real workflow I use when a new dataset lands on my desk. Not the textbook version — the one that actually works.
+
+### Step 1: First Contact
+
+You just got a CSV. Maybe it's from a client, maybe it's a database export, maybe someone dropped it in Slack with "can you look at this?" Here's what you do:
+
+```bash
+claude "I have a CSV file at ./data/ecommerce_orders.csv.
+It should have about 50K rows of e-commerce order data.
+
+Read the first few rows, then give me:
+1. Column names and inferred types
+2. Row count and memory estimate
+3. Missing value counts per column
+4. Any columns that look like they need cleaning
+5. Your first impressions — what's interesting?"
+```
+
+Claude reads the file and comes back with something like:
+
+```
+Dataset: ecommerce_orders.csv
+Rows: 48,293 | Columns: 14 | ~12MB estimated
+
+Columns:
+- order_id (string, unique identifier)
+- customer_id (string, 12,847 unique customers)
+- order_date (string — mixed formats detected: YYYY-MM-DD and MM/DD/YYYY)
+- product_category (string, 8 categories)
+- quantity (int, range 1-50)
+- unit_price (float, range 0.99-4999.00)
+- total_amount (float, range 0.99-12,450.00)
+- discount_pct (float, 34% missing values)
+- shipping_method (string, 3 values: standard/express/overnight)
+- shipping_cost (float, range 0-89.99)
+- payment_method (string, 4 values)
+- customer_region (string, but 2,341 rows have "Unknown")
+- return_flag (boolean, 8.7% returns)
+- order_status (string, 5 values)
+
+Issues spotted:
+1. order_date has mixed date formats — needs standardization
+2. discount_pct is 34% null — probably means "no discount" not "missing"
+3. customer_region has 2,341 "Unknown" values (4.8%)
+4. quantity=50 appears 23 times — could be bulk orders or data entry errors
+5. total_amount doesn't always equal quantity * unit_price — rounding or discount?
+
+First impression: This looks like a real e-commerce dataset with
+typical data quality issues. The return rate (8.7%) and discount
+patterns would be interesting to explore.
+```
+
+That took 30 seconds. Manually, you'd be writing `df.info()`, `df.describe()`, `df.isnull().sum()`, and staring at output for 10 minutes.
+
+### Step 2: Distribution Deep Dive
+
+Now you know what you're working with. Time to understand distributions:
+
+```bash
+claude "Generate a Python script that creates a comprehensive
+distribution analysis for this dataset:
+
+1. Histograms for all numeric columns
+2. Value counts for categorical columns (bar charts)
+3. Box plots for numeric columns to spot outliers
+4. A correlation heatmap for numeric columns
+
+Save the plots as a single figure grid to ./analysis/distributions.png
+Use a clean style — no default matplotlib ugliness."
+```
+
+Claude generates a complete script. Not a snippet — a runnable file:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from pathlib import Path
+
+# Setup
+Path("./analysis").mkdir(exist_ok=True)
+df = pd.read_csv("./data/ecommerce_orders.csv")
+sns.set_theme(style="whitegrid", palette="muted")
+
+numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+categorical_cols = df.select_dtypes(include=["object"]).columns.tolist()
+
+# Remove ID-like columns from categorical analysis
+categorical_cols = [c for c in categorical_cols
+                    if df[c].nunique() < 20]
+
+fig = plt.figure(figsize=(24, 20))
+gs = fig.add_gridspec(4, 4, hspace=0.4, wspace=0.3)
+
+# Numeric distributions
+for i, col in enumerate(numeric_cols[:4]):
+    ax = fig.add_subplot(gs[0, i])
+    df[col].hist(bins=50, ax=ax, color="#4C72B0", edgecolor="white")
+    ax.set_title(col, fontsize=11, fontweight="bold")
+    ax.set_ylabel("Count")
+
+# Box plots for outlier detection
+for i, col in enumerate(numeric_cols[:4]):
+    ax = fig.add_subplot(gs[1, i])
+    df.boxplot(column=col, ax=ax)
+    ax.set_title(f"{col} (Outliers)", fontsize=11)
+
+# Categorical distributions
+for i, col in enumerate(categorical_cols[:4]):
+    ax = fig.add_subplot(gs[2, i])
+    df[col].value_counts().head(10).plot(
+        kind="barh", ax=ax, color="#4C72B0"
+    )
+    ax.set_title(col, fontsize=11, fontweight="bold")
+
+# Correlation heatmap
+ax = fig.add_subplot(gs[3, :])
+corr = df[numeric_cols].corr()
+sns.heatmap(corr, annot=True, fmt=".2f", cmap="RdBu_r",
+            center=0, ax=ax, square=True)
+ax.set_title("Correlation Matrix", fontsize=13, fontweight="bold")
+
+plt.suptitle("E-Commerce Orders — Distribution Analysis",
+             fontsize=16, fontweight="bold", y=1.02)
+plt.savefig("./analysis/distributions.png", dpi=150,
+            bbox_inches="tight", facecolor="white")
+plt.close()
+print("Saved to ./analysis/distributions.png")
+```
+
+Run it. You've got a publication-quality overview of your entire dataset.
+
+### Step 3: Pattern Hunting
+
+This is where Claude shines. Instead of mechanically checking things, you have a conversation:
+
+```bash
+claude "Looking at this e-commerce data, I want to understand
+customer behavior patterns. Generate analysis code for:
+
+1. Revenue by product category — which categories drive the business?
+2. Order frequency distribution — how many orders does a typical customer make?
+3. Return rate by category — which categories have quality issues?
+4. Discount impact — do discounts actually increase order value?
+5. Shipping method preferences by region
+
+Also flag any patterns that seem unusual or worth investigating."
+```
+
+Claude generates the analysis and often catches things you wouldn't think to look for:
+
+```python
+# ... analysis code ...
+
+# Unexpected finding: overnight shipping has LOWER return rates
+# than standard shipping (5.2% vs 9.1%). Customers who pay more
+# for shipping may be more committed to keeping the product.
+
+# Another finding: the "Electronics" category has the highest
+# average order value ($287) but also the highest return rate (14.3%).
+# Worth investigating if specific products drive this.
+```
+
+Those insights came from the data, not from Claude guessing. That distinction matters.
+
+## Prompt Patterns That Work
+
+After hundreds of EDA sessions, these are the prompt patterns that consistently produce useful results:
+
+### The Overview Pattern
+
+```
+"Describe this dataset like you're briefing a new data analyst
+who's never seen it before. What's in it, what's the shape,
+what should they watch out for?"
+```
+
+### The Anomaly Hunter
+
+```
+"Look at [column/relationship] and find anything that doesn't
+fit the pattern. I'm looking for outliers, impossible values,
+sudden changes, or segments that behave differently from the rest."
+```
+
+### The Business Question Translator
+
+```
+"The business team wants to know [question in plain English].
+What analysis would answer this? Generate the code, run it,
+and give me the answer in one paragraph a non-technical
+stakeholder would understand."
+```
+
+### The Hypothesis Tester
+
+```
+"I think [hypothesis]. Generate code to test this against the data.
+Show me the evidence for and against."
+```
+
+## When to Trust, When to Verify
+
+This is the most important section in this lesson. Claude is phenomenal at EDA, but it has specific failure modes you need to know about.
+
+**Trust Claude for:**
+- Suggesting what analyses to run
+- Writing correct pandas/numpy code (it's very good at this)
+- Spotting obvious data quality issues
+- Generating visualization code
+- Explaining statistical concepts
+
+**Verify independently:**
+- Any specific number Claude quotes without running code (correlation coefficients, p-values, percentages)
+- Causal claims ("X causes Y" — Claude should say "X correlates with Y")
+- Domain-specific interpretations (Claude doesn't know your business context)
+- Statistical test choices for edge cases (small samples, non-normal distributions)
+
+The rule of thumb: if Claude generates code that produces a number, trust the number. If Claude produces a number without code, be skeptical.
+
+```bash
+# Good — Claude generates code, you run it, numbers are real
+claude "Write a script to calculate the correlation between
+discount_pct and return_flag"
+
+# Dangerous — Claude might hallucinate the exact number
+claude "What's the correlation between discount_pct and return_flag
+in my dataset?"
+# Claude might say "0.23" without computing anything
+```
+
+## Real-World Speed Run
+
+Here's a complete EDA session that takes about 15 minutes. I've done this exact workflow on client projects:
+
+```bash
+# Minute 0-2: First contact
+claude "Read ./data/sales_q4.csv and give me the full overview"
+
+# Minute 2-5: Distributions and quality
+claude "Generate a distribution analysis script. Save to ./analysis/"
+
+# Minute 5-8: Core business questions
+claude "Answer these from the data:
+1. What's our best-selling product?
+2. Which region is growing fastest?
+3. What day of week gets the most orders?
+Generate one script that answers all three."
+
+# Minute 8-12: Anomalies and patterns
+claude "Find anything weird in this data. Unusual spikes,
+outliers, segments that behave differently."
+
+# Minute 12-15: Executive summary
+claude "Based on everything we've found, write a 5-bullet
+executive summary of this dataset. Include the key numbers.
+I'll paste this in Slack for my team."
+```
+
+Fifteen minutes. Full EDA. Visualizations saved. Executive summary ready. That used to be an afternoon.
+
+## Key Takeaway
+
+Claude transforms exploratory data analysis from a tedious mechanical process into a fast, conversational one. The key is using Claude Code (not the web interface) so it can read your files directly and generate executable scripts. Always have Claude write code that computes statistics rather than asking it to quote numbers directly — code-computed results are real, directly-quoted numbers might be hallucinated. Master the prompt patterns (overview, anomaly hunting, business question translation, hypothesis testing) and you'll cut your EDA time by 80% while actually finding more insights.

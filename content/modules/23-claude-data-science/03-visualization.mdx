@@ -1,0 +1,337 @@
+---
+title: "Building Visualizations with Claude"
+slug: "visualization"
+order: 3
+difficulty: "intermediate"
+duration: 20
+tags: ["data-science", "visualization", "matplotlib", "charts"]
+objectives:
+  - "Generate publication-quality charts from plain English descriptions"
+  - "Build interactive dashboards using Plotly and Streamlit with Claude"
+  - "Apply effective color palettes and layout design through conversational prompting"
+  - "Create complex multi-panel visualizations without memorizing matplotlib APIs"
+quiz:
+  - id: "visualization-1"
+    question: "What's the most effective way to request a chart from Claude?"
+    type: "multiple-choice"
+    options:
+      - "\"Make a chart\""
+      - "\"Create a line chart showing monthly revenue (y-axis, USD) vs. month (x-axis, Jan-Dec 2024) with a secondary y-axis for user count. Use a professional color scheme. Title: 'Revenue vs Growth 2024'.\""
+      - "\"Plot the data\""
+      - "\"Visualize revenue\""
+    correct: 1
+    explanation: "Specific prompts produce specific results. Mentioning chart type, axes, units, time range, dual axes, color scheme, and title gives Claude everything it needs to generate a chart you can actually use without 5 rounds of revision."
+  - id: "visualization-2"
+    question: "When should you use Plotly instead of matplotlib?"
+    type: "multiple-choice"
+    options:
+      - "Always — Plotly is better"
+      - "When you need interactive exploration (hover, zoom, filter) or web-embedded charts"
+      - "When the dataset is large"
+      - "When you want prettier charts"
+    correct: 1
+    explanation: "Plotly shines when charts need interactivity — hover tooltips, zoom, pan, click-to-filter, dropdown selectors. For static reports, papers, or saved images, matplotlib/seaborn is perfectly fine and produces cleaner static output."
+  - id: "visualization-3"
+    question: "What's the biggest mistake when asking Claude for dashboard layouts?"
+    type: "multiple-choice"
+    options:
+      - "Using too many colors"
+      - "Asking for the entire dashboard in one prompt instead of building panel by panel"
+      - "Using dark mode"
+      - "Adding too many charts"
+    correct: 1
+    explanation: "Dashboards should be built iteratively. Ask Claude for one panel at a time, verify each looks right, then combine. Asking for 8 charts in one prompt leads to context overload and Claude cutting corners on individual chart quality."
+  - id: "visualization-4"
+    question: "How do you get Claude to avoid the 'default matplotlib look'?"
+    type: "multiple-choice"
+    options:
+      - "Use a different library"
+      - "Specify the style: 'Use seaborn whitegrid theme, Inter font if available, remove top/right spines, use this color palette: [hex codes]'"
+      - "Just say 'make it pretty'"
+      - "Add more data"
+    correct: 1
+    explanation: "Claude follows style instructions precisely. Specifying the theme, font, spine removal, and exact color palette gives you charts that look like they belong in a professional report, not a homework assignment. 'Make it pretty' is too vague to act on."
+---
+
+## Charts Should Communicate, Not Decorate
+
+The best visualization is one where the viewer understands the insight in 3 seconds. Claude is surprisingly good at this — not just generating chart code, but choosing the right chart type for your data and story.
+
+## From Description to Chart
+
+The basic workflow is dead simple. Describe what you want to see, Claude writes the code, you run it.
+
+### Simple Charts
+
+```bash
+claude "I have monthly revenue data in ./data/revenue.csv
+with columns: month, revenue, costs, profit.
+
+Create a clean line chart showing all three metrics
+over time. Revenue in blue, costs in red, profit in green.
+Add a gray shaded region where profit was negative.
+Format y-axis as USD. Save to ./charts/revenue_trend.png"
+```
+
+Claude generates complete matplotlib code:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+
+df = pd.read_csv("./data/revenue.csv")
+df['month'] = pd.to_datetime(df['month'])
+
+fig, ax = plt.subplots(figsize=(12, 6))
+
+ax.plot(df['month'], df['revenue'], color='#2563EB',
+        linewidth=2.5, label='Revenue', marker='o', markersize=4)
+ax.plot(df['month'], df['costs'], color='#DC2626',
+        linewidth=2.5, label='Costs', marker='s', markersize=4)
+ax.plot(df['month'], df['profit'], color='#16A34A',
+        linewidth=2.5, label='Profit', marker='^', markersize=4)
+
+# Shade negative profit regions
+ax.fill_between(df['month'], 0, df['profit'],
+                where=(df['profit'] < 0),
+                color='#FCA5A5', alpha=0.3,
+                label='Loss Period')
+
+ax.yaxis.set_major_formatter(
+    mticker.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+ax.set_xlabel('')
+ax.set_ylabel('Amount (USD)')
+ax.set_title('Monthly Revenue, Costs & Profit',
+             fontsize=14, fontweight='bold', pad=15)
+ax.legend(loc='upper left', frameon=True, fancybox=True)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('./charts/revenue_trend.png', dpi=150,
+            bbox_inches='tight', facecolor='white')
+plt.close()
+```
+
+Notice: Claude removed the top and right spines, added grid lines, formatted the currency, and used a professional color palette. You didn't have to ask for most of that — it knows what makes a chart look good.
+
+### Dual-Axis Charts
+
+These are notoriously tricky to code from memory. With Claude, they're one prompt:
+
+```bash
+claude "Create a dual-axis chart from ./data/growth.csv:
+- Left y-axis: monthly revenue (bar chart, blue)
+- Right y-axis: user count (line chart, orange)
+- X-axis: months
+
+Make sure the bar and line don't visually overlap too much.
+Add value labels on top of the bars."
+```
+
+```python
+fig, ax1 = plt.subplots(figsize=(14, 7))
+ax2 = ax1.twinx()
+
+# Bars on primary axis
+bars = ax1.bar(df['month'], df['revenue'], color='#3B82F6',
+               alpha=0.7, width=20, label='Revenue')
+
+# Line on secondary axis
+line = ax2.plot(df['month'], df['users'], color='#F97316',
+                linewidth=2.5, marker='o', label='Users')
+
+# Value labels on bars
+for bar in bars:
+    height = bar.get_height()
+    ax1.text(bar.get_x() + bar.get_width()/2., height + 500,
+             f'${height/1000:.0f}K', ha='center', va='bottom',
+             fontsize=8, fontweight='bold')
+
+ax1.set_ylabel('Revenue (USD)', color='#3B82F6')
+ax2.set_ylabel('Active Users', color='#F97316')
+
+# Combine legends
+lines_1, labels_1 = ax1.get_legend_handles_labels()
+lines_2, labels_2 = ax2.get_legend_handles_labels()
+ax1.legend(lines_1 + lines_2, labels_1 + labels_2,
+           loc='upper left')
+```
+
+## Dashboard-Style Multi-Panel Layouts
+
+When you need a complete dashboard, build it panel by panel:
+
+```bash
+claude "Create a 2x3 dashboard grid with these panels
+from ./data/ecommerce.csv:
+
+Top row:
+1. KPI cards: Total Revenue, Total Orders, Avg Order Value
+2. Revenue by category (horizontal bar chart)
+3. Daily order volume (area chart with 7-day moving average)
+
+Bottom row:
+4. Customer segments (donut chart)
+5. Top 10 products by revenue (bar chart)
+6. Return rate over time (line chart with threshold line at 10%)
+
+Use a cohesive dark theme. Save as a single image at 300 DPI.
+Size: 20x12 inches."
+```
+
+Claude builds the entire grid using `plt.subplots` or `gridspec`. The key insight: Claude handles the fiddly layout math (spacing, font sizes, alignment) that normally eats 30 minutes of trial and error.
+
+## Interactive Visualizations with Plotly
+
+When static charts aren't enough — when you need hover, zoom, filter — switch to Plotly:
+
+```bash
+claude "Create an interactive Plotly scatter plot from
+./data/products.csv:
+
+- X: price
+- Y: rating
+- Color: category
+- Size: number of reviews
+- Hover: show product name, price, rating, review count
+
+Add a dropdown to filter by category.
+Save as an HTML file I can share with the team."
+```
+
+```python
+import plotly.express as px
+import plotly.graph_objects as go
+
+df = pd.read_csv("./data/products.csv")
+
+fig = px.scatter(
+    df, x='price', y='rating',
+    color='category', size='num_reviews',
+    hover_data=['product_name', 'price', 'rating', 'num_reviews'],
+    title='Product Landscape: Price vs Rating',
+    size_max=40,
+    color_discrete_sequence=px.colors.qualitative.Set2
+)
+
+# Add category filter dropdown
+buttons = [dict(label='All',
+                method='update',
+                args=[{'visible': [True] * len(df['category'].unique())}])]
+
+for i, cat in enumerate(df['category'].unique()):
+    visibility = [False] * len(df['category'].unique())
+    visibility[i] = True
+    buttons.append(dict(
+        label=cat,
+        method='update',
+        args=[{'visible': visibility}]
+    ))
+
+fig.update_layout(
+    updatemenus=[dict(
+        type='dropdown', x=0.1, y=1.15,
+        buttons=buttons
+    )],
+    template='plotly_dark',
+    height=600, width=1000
+)
+
+fig.write_html('./charts/product_landscape.html')
+```
+
+Your team opens the HTML file in a browser, hovers over dots, zooms into clusters, filters by category. No server needed.
+
+## Streamlit Dashboards
+
+For something more substantial, Claude can scaffold an entire Streamlit app:
+
+```bash
+claude "Build a Streamlit dashboard for ./data/sales.csv:
+
+Sidebar:
+- Date range filter
+- Category multi-select
+- Region dropdown
+
+Main area:
+- Row of KPI cards at the top
+- Two columns: revenue trend (left) and category breakdown (right)
+- Full-width data table at the bottom with search
+
+Make it look professional — not the default Streamlit look."
+```
+
+Claude generates a complete `app.py` you run with `streamlit run app.py`. It handles the layout, filters, and data reactivity — things that would take you an hour to wire up from scratch.
+
+## Color Palette Design
+
+Colors make or break a chart. Claude knows color theory:
+
+```bash
+claude "I need a color palette for a financial dashboard:
+- 5 sequential colors for 'good to bad' (think profit levels)
+- 3 categorical colors for product lines
+- Accessible for colorblind users (deuteranopia-safe)
+- Professional, not too saturated
+
+Return them as hex codes with names, and show me a swatch."
+```
+
+Claude returns curated palettes and can generate a swatch visualization. It knows about colorblind-safe palettes, perceptual uniformity, and the difference between sequential, diverging, and categorical color scales.
+
+## Common Chart Recipes
+
+Here are the prompts I use most often. Bookmark these:
+
+```bash
+# Time series with annotations
+claude "Plot daily active users over the past year.
+Annotate the points where we launched features:
+Feb 15='v2.0 Launch', Jun 3='Mobile App', Oct 1='API Release'"
+
+# Geographic heatmap
+claude "Create a US state-level choropleth map showing
+revenue by state. Use a blue sequential palette.
+Data is in ./data/state_revenue.csv with 'state' and 'revenue' columns."
+
+# Funnel chart
+claude "Build a conversion funnel chart:
+Visitors: 100,000
+Sign-ups: 12,000
+Activated: 4,800
+Subscribed: 1,200
+Retained (month 3): 720
+
+Show drop-off percentages between each stage."
+
+# Before/after comparison
+claude "Create a slope chart comparing metrics before and after
+our redesign. Metrics: bounce rate, session duration,
+pages per visit, conversion rate. Data in ./data/ab_test.csv"
+```
+
+## The Style Guide Prompt
+
+If you produce charts regularly, create a style prompt you reuse:
+
+```bash
+claude "For all charts in this session, use these style rules:
+- Theme: seaborn 'whitegrid'
+- Font: system sans-serif, title 14pt bold, labels 11pt
+- Colors: primary #2563EB, secondary #7C3AED, accent #F59E0B
+- No top/right spines
+- Grid: y-axis only, alpha 0.3
+- DPI: 150 for screen, 300 for print
+- Figure background: white
+- Save format: PNG with tight bbox"
+```
+
+Set it once, every chart in the session follows the same look.
+
+## Key Takeaway
+
+Claude eliminates the gap between "I know what chart I want" and "I have the matplotlib/plotly code to make it." The trick is being specific in your prompts: mention chart type, axis labels, colors, layout, and the story you're trying to tell. Build dashboards panel by panel, not all at once. Use matplotlib for static reports, Plotly for interactive exploration, and Streamlit for shareable dashboards. Invest 30 seconds defining a style guide prompt and every chart in your project will look cohesive and professional.

@@ -1,0 +1,380 @@
+---
+title: "ML Model Prototyping"
+slug: "ml-prototyping"
+order: 4
+difficulty: "intermediate"
+duration: 25
+tags: ["data-science", "ml", "scikit-learn", "prototyping"]
+objectives:
+  - "Use Claude to scaffold complete ML pipelines from feature engineering to evaluation"
+  - "Get model selection guidance based on dataset characteristics"
+  - "Generate hyperparameter tuning code and interpret results"
+  - "Build model comparison frameworks for informed decision-making"
+quiz:
+  - id: "ml-prototyping-1"
+    question: "What information should you give Claude when asking for model selection advice?"
+    type: "multiple-choice"
+    options:
+      - "Just the task type (classification/regression)"
+      - "Dataset size, number of features, target type (binary/multi-class/continuous), class balance, interpretability requirements, and inference speed constraints"
+      - "The accuracy you want"
+      - "The library you prefer"
+    correct: 1
+    explanation: "Model selection depends on many factors. 10K rows with 50 features suggests tree-based models. Imbalanced classes need specific handling. If the model must be interpretable for compliance, neural nets are out. Claude can make excellent recommendations when given these specifics."
+  - id: "ml-prototyping-2"
+    question: "What's the right way to use Claude for hyperparameter tuning?"
+    type: "multiple-choice"
+    options:
+      - "Ask Claude to guess the best hyperparameters"
+      - "Have Claude generate a tuning script with reasonable search spaces, run it yourself, then share results with Claude for interpretation"
+      - "Use default hyperparameters"
+      - "Try random values manually"
+    correct: 1
+    explanation: "Claude knows sensible search ranges for every major model (e.g., max_depth 3-15 for tree models, learning_rate 0.01-0.3 for boosting). It generates the tuning code with Optuna or GridSearchCV, you run it on your data, then Claude helps you interpret which parameters matter and why."
+  - id: "ml-prototyping-3"
+    question: "When Claude suggests a model achieves '95% accuracy', what should you check first?"
+    type: "multiple-choice"
+    options:
+      - "Nothing — 95% is great"
+      - "The class distribution — if 95% of data is one class, a dummy classifier gets 95% by predicting the majority class"
+      - "The model size"
+      - "Training time"
+    correct: 1
+    explanation: "Accuracy is misleading on imbalanced datasets. If 95% of orders are non-fraudulent, predicting 'not fraud' every time gives 95% accuracy but catches zero fraud. Always check precision, recall, F1, and confusion matrix — and Claude should be telling you this automatically."
+  - id: "ml-prototyping-4"
+    question: "What's the purpose of having Claude generate a baseline model first?"
+    type: "multiple-choice"
+    options:
+      - "To save time"
+      - "To establish a performance floor — so you know whether your fancy model is actually better than simple heuristics"
+      - "Baselines aren't important"
+      - "To test if the data loads correctly"
+    correct: 1
+    explanation: "A baseline (mean predictor for regression, majority class for classification, or simple logistic regression) tells you the minimum bar. If your XGBoost model only beats a logistic regression by 0.5%, the added complexity probably isn't worth it. Claude should always start with a baseline."
+---
+
+## From Idea to Working Model in 30 Minutes
+
+ML prototyping is where Claude truly earns its keep. The distance between "I think we can predict X" and "here's a working model with cross-validated metrics" used to be a day of work. Now it's a conversation.
+
+## The Complete ML Pipeline
+
+Here's how I scaffold a full pipeline from scratch:
+
+```bash
+claude "I have a dataset at ./data/churn.csv with 10,000 rows.
+Target variable: 'churned' (binary, 1=churned, 0=retained).
+About 20% of customers churned.
+
+Features include: tenure_months, monthly_charges,
+total_charges, contract_type, payment_method,
+internet_service, num_support_tickets, has_streaming,
+has_security, gender, senior_citizen.
+
+Build me a complete ML pipeline:
+1. Baseline model (majority class + logistic regression)
+2. Feature engineering
+3. Train/test split (stratified)
+4. Model training with XGBoost
+5. Evaluation with confusion matrix, ROC-AUC, precision-recall
+6. Feature importance plot
+
+Use scikit-learn and xgboost. Make it a clean, reusable script."
+```
+
+Claude generates something like this:
+
+```python
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (classification_report, confusion_matrix,
+                             roc_auc_score, roc_curve,
+                             precision_recall_curve)
+from sklearn.dummy import DummyClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+import xgboost as xgb
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load data
+df = pd.read_csv("./data/churn.csv")
+print(f"Dataset: {df.shape[0]} rows, {df.shape[1]} columns")
+print(f"Churn rate: {df['churned'].mean():.1%}")
+
+# Define feature types
+numeric_features = ['tenure_months', 'monthly_charges',
+                    'total_charges', 'num_support_tickets']
+categorical_features = ['contract_type', 'payment_method',
+                        'internet_service', 'has_streaming',
+                        'has_security', 'gender', 'senior_citizen']
+
+# Feature engineering
+df['charges_per_month'] = df['total_charges'] / (df['tenure_months'] + 1)
+df['tickets_per_month'] = df['num_support_tickets'] / (df['tenure_months'] + 1)
+numeric_features.extend(['charges_per_month', 'tickets_per_month'])
+
+# Preprocessing pipeline
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numeric_features),
+        ('cat', OneHotEncoder(drop='first', sparse_output=False),
+         categorical_features)
+    ])
+
+X = df[numeric_features + categorical_features]
+y = df['churned']
+
+# Stratified split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42)
+
+print(f"\nTrain: {len(X_train)} | Test: {len(X_test)}")
+print(f"Train churn rate: {y_train.mean():.1%}")
+print(f"Test churn rate: {y_test.mean():.1%}")
+
+# === BASELINE ===
+print("\n" + "="*50)
+print("BASELINE: Majority Class")
+dummy = Pipeline([
+    ('preprocessor', preprocessor),
+    ('classifier', DummyClassifier(strategy='most_frequent'))
+])
+dummy.fit(X_train, y_train)
+dummy_score = dummy.score(X_test, y_test)
+print(f"Accuracy: {dummy_score:.3f}")
+print("(This is the bar to beat)\n")
+
+# === LOGISTIC REGRESSION ===
+print("MODEL 1: Logistic Regression")
+lr_pipe = Pipeline([
+    ('preprocessor', preprocessor),
+    ('classifier', LogisticRegression(max_iter=1000,
+                                      class_weight='balanced'))
+])
+lr_pipe.fit(X_train, y_train)
+lr_pred = lr_pipe.predict(X_test)
+lr_prob = lr_pipe.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, lr_pred,
+                            target_names=['Retained', 'Churned']))
+print(f"ROC-AUC: {roc_auc_score(y_test, lr_prob):.3f}\n")
+
+# === XGBOOST ===
+print("MODEL 2: XGBoost")
+xgb_pipe = Pipeline([
+    ('preprocessor', preprocessor),
+    ('classifier', xgb.XGBClassifier(
+        n_estimators=200,
+        max_depth=6,
+        learning_rate=0.1,
+        scale_pos_weight=len(y_train[y_train==0]) / len(y_train[y_train==1]),
+        random_state=42,
+        eval_metric='logloss'
+    ))
+])
+xgb_pipe.fit(X_train, y_train)
+xgb_pred = xgb_pipe.predict(X_test)
+xgb_prob = xgb_pipe.predict_proba(X_test)[:, 1]
+
+print(classification_report(y_test, xgb_pred,
+                            target_names=['Retained', 'Churned']))
+print(f"ROC-AUC: {roc_auc_score(y_test, xgb_prob):.3f}")
+```
+
+That's a working ML pipeline in one prompt. Baseline, logistic regression, XGBoost, proper evaluation, handling class imbalance with `scale_pos_weight` and `class_weight='balanced'`. It even computed engineered features.
+
+## Model Selection Guidance
+
+Claude is excellent at recommending models when you describe your situation:
+
+```bash
+claude "Here's my ML problem:
+- 10K rows, 50 features (30 numeric, 20 categorical)
+- Binary classification (predicting churn)
+- 20% positive class (imbalanced but not extreme)
+- Model needs to be interpretable for the business team
+- Inference must be fast (< 10ms per prediction)
+- I care more about catching churners (recall) than precision
+
+What models should I try and in what order?"
+```
+
+Claude recommends a progression like:
+
+```
+1. Logistic Regression (baseline, fully interpretable)
+   - Use class_weight='balanced'
+   - Check coefficients for feature importance
+   - Good enough? Ship it.
+
+2. Random Forest (moderate complexity)
+   - Built-in feature importance
+   - Handles mixed features naturally
+   - Fast inference (< 1ms)
+
+3. XGBoost/LightGBM (if you need more performance)
+   - Use scale_pos_weight for imbalance
+   - SHAP values for interpretability
+   - Still fast inference
+
+Skip: Neural nets (overkill for 10K rows), SVM (slow inference
+at scale), KNN (slow inference + not interpretable).
+
+For your recall priority: optimize threshold on the
+precision-recall curve rather than using 0.5 default.
+A threshold of 0.3 might catch 90% of churners at
+the cost of more false positives.
+```
+
+That's advice you'd pay a consultant for. Claude gives it in 10 seconds.
+
+## Hyperparameter Tuning
+
+Don't guess. Don't use defaults. Let Claude generate a tuning script:
+
+```bash
+claude "Generate an Optuna hyperparameter tuning script
+for my XGBoost churn model. I want to optimize ROC-AUC
+with 5-fold stratified cross-validation.
+
+Search ranges should be sensible for a 10K-row dataset.
+Run 100 trials. Show me the best params and a parameter
+importance plot."
+```
+
+```python
+import optuna
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+def objective(trial):
+    params = {
+        'n_estimators': trial.suggest_int('n_estimators', 50, 500),
+        'max_depth': trial.suggest_int('max_depth', 3, 10),
+        'learning_rate': trial.suggest_float('learning_rate',
+                                              0.01, 0.3, log=True),
+        'subsample': trial.suggest_float('subsample', 0.6, 1.0),
+        'colsample_bytree': trial.suggest_float('colsample_bytree',
+                                                  0.6, 1.0),
+        'min_child_weight': trial.suggest_int('min_child_weight',
+                                               1, 10),
+        'reg_alpha': trial.suggest_float('reg_alpha',
+                                          1e-8, 10.0, log=True),
+        'reg_lambda': trial.suggest_float('reg_lambda',
+                                           1e-8, 10.0, log=True),
+    }
+
+    model = Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', xgb.XGBClassifier(
+            **params,
+            scale_pos_weight=scale_pos_weight,
+            random_state=42,
+            eval_metric='logloss'
+        ))
+    ])
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train, y_train,
+                             cv=cv, scoring='roc_auc')
+    return scores.mean()
+
+
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=100, show_progress_bar=True)
+
+print(f"\nBest ROC-AUC: {study.best_value:.4f}")
+print(f"Best params: {study.best_params}")
+
+# Parameter importance
+optuna.visualization.plot_param_importances(study).show()
+```
+
+Notice Claude chose log-scale for learning rate and regularization (because those span orders of magnitude), integer ranges for tree depth, and bounded the search space based on dataset size. These aren't random — they're informed choices.
+
+## Model Comparison Framework
+
+When you've got multiple models, you need an apples-to-apples comparison:
+
+```bash
+claude "I've trained 4 models on the churn dataset:
+dummy, logistic regression, random forest, xgboost.
+
+Generate a comparison framework that shows:
+1. Table of metrics: accuracy, precision, recall, F1, ROC-AUC
+2. ROC curves for all models on one plot
+3. Precision-recall curves on one plot
+4. Confusion matrices in a 2x2 grid
+5. Training time comparison
+
+Highlight the best metric in each row."
+```
+
+Claude generates a complete comparison visualization. The output makes it trivially easy to present to your team: "Here are four models, here's how they compare, here's my recommendation and why."
+
+## Interpreting Results with Claude
+
+After you run the model, share the output back with Claude:
+
+```bash
+claude "Here are my XGBoost results:
+
+              precision    recall  f1-score   support
+    Retained       0.91      0.95      0.93      1600
+     Churned       0.78      0.67      0.72       400
+
+ROC-AUC: 0.89
+Top features: tenure_months, monthly_charges, contract_type,
+              num_support_tickets, charges_per_month
+
+Interpret these results. Is this model good enough to deploy?
+What should I try to improve recall on churned customers?"
+```
+
+Claude will tell you straight:
+
+```
+The model is decent but has a real problem: it misses 33% of
+churners (recall 0.67). For a churn prediction system, that's
+33% of at-risk customers you won't intervene on.
+
+To improve churned recall:
+1. Lower the classification threshold from 0.5 to ~0.35.
+   You'll get more false positives but catch more true churners.
+2. Try SMOTE or other oversampling on the training set.
+3. Engineer time-based features: change in monthly charges
+   over last 3 months, support ticket trend, etc.
+4. The feature importance shows tenure and charges matter most —
+   create interaction features (short tenure + high charges
+   is likely a strong churn signal).
+
+Is it deployable? Depends on the cost of intervention vs the
+cost of losing a customer. If sending a retention offer costs
+$5 and losing a customer costs $500, even a noisy model
+with more false positives is profitable.
+```
+
+That's not a generic answer. That's actionable ML engineering advice.
+
+## From Prototype to Production
+
+Once your model works, Claude helps you cross the production gap:
+
+```bash
+claude "My XGBoost churn model is ready. Help me:
+1. Save it with joblib
+2. Create a prediction function with input validation
+3. Write a FastAPI endpoint for real-time predictions
+4. Add logging for prediction monitoring
+5. Generate a model card documenting performance and limitations"
+```
+
+This takes the model from notebook artifact to something your backend team can integrate.
+
+## Key Takeaway
+
+Claude compresses ML prototyping from days to minutes by generating complete pipelines — from data preprocessing through feature engineering, model training, hyperparameter tuning, and evaluation. The critical habit is always starting with a baseline model so you know whether your complex model actually adds value. Give Claude your dataset characteristics (size, features, class balance, constraints) and it recommends sensible models and search spaces. After training, share the raw metrics back with Claude for interpretation — it will tell you whether the model is genuinely good or just looks good because of class imbalance. The prototype-to-production path (joblib, FastAPI, monitoring) closes the gap between "it works in a notebook" and "it works in production."

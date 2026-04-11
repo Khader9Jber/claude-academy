@@ -1,0 +1,415 @@
+---
+title: "Data Cleaning and Transformation"
+slug: "data-cleaning"
+order: 2
+difficulty: "intermediate"
+duration: 20
+tags: ["data-science", "cleaning", "pandas", "transformation"]
+objectives:
+  - "Generate comprehensive data cleaning pipelines using Claude"
+  - "Handle missing values, duplicates, and type casting through conversational prompts"
+  - "Tackle complex transformations: pivoting, melting, and multi-source joins"
+  - "Clean messy real-world data formats with Claude-generated code"
+quiz:
+  - id: "data-cleaning-1"
+    question: "What's the best way to ask Claude to handle missing values?"
+    type: "multiple-choice"
+    options:
+      - "\"Fill all NaN with 0\""
+      - "\"Here's what each column means: [context]. For each column with missing values, recommend and implement the appropriate strategy (drop, fill with median, forward-fill, etc.) and explain why.\""
+      - "\"Remove all rows with missing data\""
+      - "\"Ignore missing values\""
+    correct: 1
+    explanation: "Giving Claude column context lets it make intelligent decisions. A price column should be filled with the median, not zero. A timestamp column should be forward-filled, not dropped. Claude can only make these decisions if it understands what the data means."
+  - id: "data-cleaning-2"
+    question: "When Claude generates a cleaning pipeline, what should you always ask for?"
+    type: "multiple-choice"
+    options:
+      - "A single function that does everything"
+      - "A pipeline with logging that reports what changed — rows before/after, values modified, types converted"
+      - "The shortest possible code"
+      - "A one-liner"
+    correct: 1
+    explanation: "Cleaning pipelines should always report what they did: how many rows were dropped, how many values were filled, what types were converted. Without this logging, you have no idea if the cleaning was too aggressive (dropped 40% of data) or missed something."
+  - id: "data-cleaning-3"
+    question: "How should you handle a date column with 15 different formats?"
+    type: "multiple-choice"
+    options:
+      - "Pick the most common format and drop rows that don't match"
+      - "Ask Claude to detect all formats present, then generate a parser that handles each one and standardizes to ISO 8601"
+      - "Use pd.to_datetime and hope for the best"
+      - "Convert them all to Unix timestamps manually"
+    correct: 1
+    explanation: "Claude excels at this exact problem. Show it sample values from the column, ask it to identify all formats, then generate a robust parser. The result handles 'Jan 5, 2024', '2024-01-05', '01/05/2024', '5-Jan-24' and normalizes them all to one format."
+  - id: "data-cleaning-4"
+    question: "What's the advantage of using Polars over pandas for cleaning large datasets?"
+    type: "multiple-choice"
+    options:
+      - "Polars has more features"
+      - "Polars processes data lazily and in parallel, making it 5-10x faster on large datasets while using less memory"
+      - "Polars is older and more stable"
+      - "Polars has better documentation"
+    correct: 1
+    explanation: "Polars uses lazy evaluation and Rust-backed parallelism, making it dramatically faster than pandas for large datasets. Claude can generate either pandas or Polars code — just specify which you want. For datasets over 1M rows, Polars is usually the better choice."
+---
+
+## The 80/20 of Data Science
+
+Data scientists spend 80% of their time cleaning data and 20% doing the interesting stuff. Claude doesn't change the ratio — it changes how fast you move through that 80%.
+
+## Building Cleaning Pipelines
+
+The goal isn't to have Claude write a single cleaning command. It's to have Claude build a complete, reusable pipeline that documents every decision.
+
+### The Full Pipeline Prompt
+
+```bash
+claude "I have a messy dataset at ./data/raw_customers.csv.
+Read it and build a complete cleaning pipeline that:
+
+1. Identifies and reports all data quality issues
+2. Handles each issue with an appropriate strategy
+3. Logs every transformation (before/after counts)
+4. Saves the clean data to ./data/clean_customers.csv
+5. Generates a cleaning report
+
+Make it a reusable function I can apply to new data drops."
+```
+
+Claude generates something production-ready:
+
+```python
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import logging
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+def clean_customer_data(input_path: str,
+                        output_path: str) -> dict:
+    """Clean customer dataset and return a report."""
+    report = {"input_path": input_path, "steps": []}
+
+    # Load
+    df = pd.read_csv(input_path)
+    initial_rows = len(df)
+    logger.info(f"Loaded {initial_rows} rows, "
+                f"{len(df.columns)} columns")
+
+    # Step 1: Remove exact duplicates
+    dupes = df.duplicated().sum()
+    df = df.drop_duplicates()
+    report["steps"].append({
+        "step": "Remove duplicates",
+        "removed": int(dupes),
+        "remaining": len(df)
+    })
+    logger.info(f"Removed {dupes} duplicate rows")
+
+    # Step 2: Standardize column names
+    df.columns = (df.columns
+                  .str.strip()
+                  .str.lower()
+                  .str.replace(r'[^a-z0-9]', '_', regex=True)
+                  .str.replace(r'_+', '_', regex=True)
+                  .str.strip('_'))
+    logger.info("Standardized column names")
+
+    # Step 3: Handle missing values per column
+    missing_before = df.isnull().sum()
+    for col in df.columns:
+        missing = df[col].isnull().sum()
+        if missing == 0:
+            continue
+
+        pct = missing / len(df) * 100
+
+        if pct > 50:
+            # Too much missing — drop the column
+            df = df.drop(columns=[col])
+            logger.info(f"Dropped column '{col}' "
+                        f"({pct:.1f}% missing)")
+        elif df[col].dtype in ['float64', 'int64']:
+            # Numeric: fill with median
+            median_val = df[col].median()
+            df[col] = df[col].fillna(median_val)
+            logger.info(f"Filled '{col}' nulls with "
+                        f"median ({median_val})")
+        else:
+            # Categorical: fill with mode or 'Unknown'
+            mode_val = df[col].mode()
+            fill = mode_val[0] if len(mode_val) > 0 else "Unknown"
+            df[col] = df[col].fillna(fill)
+            logger.info(f"Filled '{col}' nulls with '{fill}'")
+
+    report["steps"].append({
+        "step": "Handle missing values",
+        "missing_before": missing_before.to_dict(),
+        "missing_after": df.isnull().sum().to_dict()
+    })
+
+    # Step 4: Type casting
+    date_candidates = [c for c in df.columns
+                       if 'date' in c or 'time' in c
+                       or 'created' in c or 'updated' in c]
+    for col in date_candidates:
+        if col in df.columns:
+            try:
+                df[col] = pd.to_datetime(df[col],
+                                         infer_datetime_format=True)
+                logger.info(f"Converted '{col}' to datetime")
+            except (ValueError, TypeError):
+                logger.warning(f"Could not convert '{col}' "
+                               f"to datetime")
+
+    # Step 5: Trim whitespace from string columns
+    str_cols = df.select_dtypes(include=['object']).columns
+    for col in str_cols:
+        df[col] = df[col].str.strip()
+
+    # Step 6: Standardize categorical values
+    for col in str_cols:
+        if col in df.columns and df[col].nunique() < 20:
+            df[col] = df[col].str.lower().str.strip()
+
+    # Save
+    df.to_csv(output_path, index=False)
+    report["output_path"] = output_path
+    report["initial_rows"] = initial_rows
+    report["final_rows"] = len(df)
+    report["rows_removed"] = initial_rows - len(df)
+    report["columns"] = list(df.columns)
+
+    logger.info(f"Saved {len(df)} clean rows to {output_path}")
+    return report
+
+
+if __name__ == "__main__":
+    report = clean_customer_data(
+        "./data/raw_customers.csv",
+        "./data/clean_customers.csv"
+    )
+    print(f"\nCleaning complete:")
+    print(f"  {report['initial_rows']} → {report['final_rows']} rows")
+    print(f"  {report['rows_removed']} rows removed")
+```
+
+That's a function, not a script. You can import it, test it, and reuse it next quarter when fresh data arrives.
+
+## The Nightmare Scenarios
+
+Every data scientist has war stories. Here are the ones Claude handles beautifully.
+
+### "My Date Column Has 15 Different Formats"
+
+This one's real. I once got a CSV where the `created_at` column had dates in every conceivable format because it was merged from three different systems.
+
+```bash
+claude "The 'created_at' column in my CSV has mixed date formats.
+Here are some sample values:
+
+2024-01-15
+01/15/2024
+Jan 15, 2024
+15-Jan-24
+2024/01/15 14:30:00
+1/15/24
+January 15, 2024
+15.01.2024
+20240115
+
+Write a robust parser that handles ALL of these and
+converts to ISO 8601 (YYYY-MM-DD). Log any values
+that couldn't be parsed."
+```
+
+Claude generates a parser with format detection:
+
+```python
+from dateutil import parser as dateparser
+import re
+
+def parse_flexible_date(value):
+    """Parse dates in any reasonable format to ISO 8601."""
+    if pd.isna(value):
+        return None
+
+    value = str(value).strip()
+
+    # Handle compact format: 20240115
+    if re.match(r'^\d{8}$', value):
+        try:
+            return datetime.strptime(value, '%Y%m%d').date().isoformat()
+        except ValueError:
+            pass
+
+    # Use dateutil for everything else — it handles most formats
+    try:
+        parsed = dateparser.parse(value, dayfirst=False)
+        return parsed.date().isoformat()
+    except (ValueError, TypeError):
+        logging.warning(f"Could not parse date: '{value}'")
+        return None
+
+
+# Apply to column
+df['created_at_clean'] = df['created_at'].apply(parse_flexible_date)
+unparsed = df['created_at_clean'].isna().sum()
+print(f"Parsed {len(df) - unparsed}/{len(df)} dates "
+      f"({unparsed} failures)")
+```
+
+### "These Two Datasets Need to Be Joined But the Keys Don't Match"
+
+Fuzzy matching. Customer names spelled differently. Product IDs from different systems. Claude handles it:
+
+```bash
+claude "I have two CSVs:
+- orders.csv has a 'customer_name' column
+- crm.csv has a 'full_name' column
+
+They refer to the same people but names don't match exactly.
+'John Smith' vs 'Smith, John' vs 'J. Smith' etc.
+
+Generate a fuzzy matching script that joins these datasets
+with a configurable similarity threshold. Use rapidfuzz for speed."
+```
+
+```python
+from rapidfuzz import fuzz, process
+import pandas as pd
+
+def fuzzy_join(left_df, right_df, left_key, right_key,
+               threshold=85):
+    """Join two DataFrames using fuzzy string matching."""
+    matches = []
+    right_names = right_df[right_key].tolist()
+
+    for idx, name in left_df[left_key].items():
+        # Normalize: lowercase, strip, remove punctuation
+        normalized = name.lower().strip()
+
+        result = process.extractOne(
+            normalized,
+            [n.lower().strip() for n in right_names],
+            scorer=fuzz.token_sort_ratio
+        )
+
+        if result and result[1] >= threshold:
+            match_idx = result[2]
+            matches.append({
+                'left_idx': idx,
+                'right_idx': right_df.index[match_idx],
+                'left_name': name,
+                'right_name': right_names[match_idx],
+                'score': result[1]
+            })
+
+    match_df = pd.DataFrame(matches)
+    print(f"Matched {len(match_df)}/{len(left_df)} records "
+          f"(threshold={threshold})")
+    print(f"Score distribution: "
+          f"min={match_df['score'].min()}, "
+          f"median={match_df['score'].median():.0f}, "
+          f"max={match_df['score'].max()}")
+
+    return match_df
+```
+
+### Missing Values: It's Not Always "Fill With Mean"
+
+The naive approach kills your analysis. Here's how to think about it with Claude's help:
+
+```bash
+claude "Here's my dataset's missing value situation:
+- price: 2% missing (float, product prices)
+- discount: 34% missing (float, 0-50 range)
+- customer_region: 5% missing (categorical, 12 regions)
+- review_score: 45% missing (int, 1-5 stars)
+- shipping_date: 8% missing (datetime)
+
+For each column, recommend AND implement the right
+missing value strategy. Explain why you chose each one."
+```
+
+Claude thinks through each column:
+
+```python
+# price (2% missing): Median fill — prices are often skewed,
+# mean would be pulled by luxury items
+df['price'] = df['price'].fillna(df['price'].median())
+
+# discount (34% missing): Fill with 0 — "no discount" is the
+# most likely meaning, not "we don't know the discount"
+df['discount'] = df['discount'].fillna(0)
+
+# customer_region (5% missing): Keep as 'Unknown' —
+# don't impute geography, it would poison regional analysis
+df['customer_region'] = df['customer_region'].fillna('Unknown')
+
+# review_score (45% missing): Leave as NaN — these are
+# customers who didn't leave a review. Filling with the mean
+# would artificially inflate your review coverage stats.
+# Filter them out during review-specific analysis instead.
+
+# shipping_date (8% missing): Investigate first — could mean
+# "not yet shipped" (valid) or "data entry failure" (problem)
+not_shipped = df[df['shipping_date'].isna()]
+print(f"Missing shipping dates by status:\n"
+      f"{not_shipped['order_status'].value_counts()}")
+# If status is 'pending' or 'processing', the null is correct.
+# If status is 'delivered', we have a data quality problem.
+```
+
+That context-aware reasoning is exactly what makes Claude valuable for cleaning.
+
+## Complex Transformations
+
+### Pivoting and Reshaping
+
+```bash
+claude "I have a long-format table with columns:
+date, metric_name, metric_value
+
+metric_name has values like 'revenue', 'users', 'conversion_rate'
+
+Pivot this to wide format where each metric becomes a column,
+indexed by date. Then calculate week-over-week growth rates
+for each metric."
+```
+
+### Multi-Source Merging
+
+```bash
+claude "I have three data sources that need to become one table:
+1. orders.csv — order_id, customer_id, amount, date
+2. customers.json — customer_id, name, region, segment
+3. products.parquet — product_id, category, cost
+
+orders.csv references both customer_id and product_id.
+Merge them all into a single denormalized analysis table.
+Handle any key mismatches gracefully (log them, don't silently drop)."
+```
+
+## Polars: When Pandas Isn't Enough
+
+For datasets over a million rows, ask Claude to use Polars instead:
+
+```bash
+claude "Rewrite this cleaning pipeline using Polars instead
+of pandas. The dataset is 5M rows and pandas is using
+too much memory.
+
+Keep the same logic but use Polars lazy evaluation
+for better performance."
+```
+
+Claude knows Polars syntax and will convert idiomatically — not just swap `pd` for `pl`. The lazy evaluation means your entire pipeline compiles to an optimized query plan before touching the data.
+
+## Key Takeaway
+
+Data cleaning with Claude is about having a conversation, not writing boilerplate. Give Claude the context it needs (what columns mean, what business rules apply, what "missing" actually means in each case) and it generates cleaning pipelines that are smarter than fill-everything-with-zero approaches. Always ask for logging so you can audit what changed. For messy real-world problems like mixed date formats and fuzzy joins, Claude saves hours of tedious regex and string manipulation. The key is treating each column as a decision, not applying blanket rules.

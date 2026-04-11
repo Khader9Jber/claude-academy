@@ -1,0 +1,412 @@
+---
+title: "Claude Code in Jupyter Workflows"
+slug: "jupyter-workflow"
+order: 5
+difficulty: "intermediate"
+duration: 18
+tags: ["data-science", "jupyter", "notebooks", "workflow"]
+objectives:
+  - "Integrate Claude Code into Jupyter notebook workflows effectively"
+  - "Generate notebook cells from plain English descriptions"
+  - "Convert notebook prototypes to production scripts with Claude"
+  - "Debug data issues and model regressions using Claude's analysis capabilities"
+quiz:
+  - id: "jupyter-workflow-1"
+    question: "What's the most effective way to use Claude Code with Jupyter notebooks?"
+    type: "multiple-choice"
+    options:
+      - "Ask Claude to run the notebook for you"
+      - "Use Claude Code in a terminal alongside your notebook — generate cells, debug errors, and refactor code while keeping Jupyter for interactive exploration"
+      - "Only use Claude in the notebook"
+      - "Avoid using notebooks entirely"
+    correct: 1
+    explanation: "The best workflow keeps Jupyter for interactive exploration and visualization while using Claude Code in a terminal for code generation, debugging, and refactoring. Copy cells to Claude when you need help, paste generated code back into the notebook."
+  - id: "jupyter-workflow-2"
+    question: "When should you convert a Jupyter notebook to a production Python script?"
+    type: "multiple-choice"
+    options:
+      - "Never — notebooks are fine for production"
+      - "When the analysis needs to run on a schedule, in CI/CD, or as part of a larger pipeline"
+      - "Immediately after creating the notebook"
+      - "Only when the notebook is too slow"
+    correct: 1
+    explanation: "Notebooks are for exploration and prototyping. When you need scheduled runs, CI/CD integration, error handling, logging, and testability, convert to a script. Claude handles this conversion — extracting logic, adding proper structure, error handling, and CLI arguments."
+  - id: "jupyter-workflow-3"
+    question: "Your model accuracy dropped from 0.92 to 0.71 after retraining. What's the best first prompt to Claude?"
+    type: "multiple-choice"
+    options:
+      - "\"Fix my model\""
+      - "\"My model accuracy dropped from 0.92 to 0.71 after retraining on new data. Generate a diagnostic script that compares old vs new training data distributions, checks for data drift, compares feature statistics, and identifies what changed.\""
+      - "\"Train a better model\""
+      - "\"Use more data\""
+    correct: 1
+    explanation: "Model degradation is almost always a data problem, not a model problem. The right approach is to compare old and new data distributions — Claude generates scripts that detect feature drift, target distribution changes, missing value pattern changes, and new categorical values that weren't in training."
+  - id: "jupyter-workflow-4"
+    question: "What's the advantage of Claude Code reading your .ipynb file directly?"
+    type: "multiple-choice"
+    options:
+      - "It's faster"
+      - "Claude can see your full notebook context — all cells, outputs, errors, and markdown — and give advice that accounts for the entire analysis flow"
+      - "It looks cooler"
+      - "Notebooks are easier to read than scripts"
+    correct: 1
+    explanation: "When Claude Code reads a .ipynb file, it sees everything: your code cells, their outputs, any error tracebacks, your markdown notes, and the overall flow. This full context means Claude can spot issues like using a variable defined in a cell you later deleted, or inconsistent data transformations across cells."
+---
+
+## Two Tools, One Workflow
+
+Jupyter notebooks are where data science happens — interactive, visual, iterative. Claude Code is where clean code gets written — structured, testable, production-ready. The magic is using both together.
+
+## The Side-by-Side Workflow
+
+Here's the setup I use daily: Jupyter open in a browser tab, Claude Code open in a terminal beside it.
+
+```
++---------------------------+---------------------------+
+|     Jupyter Notebook      |      Claude Code          |
+|                           |                           |
+|  [In 1]: df.head()        |  > claude "Generate a     |
+|  [Out 1]: ...             |    function that cleans    |
+|                           |    this date column"       |
+|  [In 2]: # paste from     |                           |
+|          # Claude          |  [Returns clean function] |
+|                           |                           |
+|  [In 3]: clean_df.plot()  |  > claude "Why is this    |
+|  [Out 3]: [chart]         |    merge dropping rows?"  |
++---------------------------+---------------------------+
+```
+
+The workflow:
+1. Explore in Jupyter — run quick commands, view data, plot things
+2. Hit a wall — complex transformation, weird error, need a function
+3. Ask Claude Code — describe what you need, paste in the error
+4. Copy result back to Jupyter — paste the generated code, run it
+5. Repeat
+
+It sounds simple, but this loop runs 10x faster than Googling + StackOverflow.
+
+## Generating Notebook Cells
+
+Claude can generate cells you paste directly into Jupyter:
+
+```bash
+claude "Generate a Jupyter notebook cell that:
+1. Loads the parquet file at ./data/events.parquet
+2. Shows shape, dtypes, and first 5 rows
+3. Plots the distribution of the 'event_type' column
+4. Calculates events per user (histogram)
+
+Format as separate code blocks I can paste as individual cells."
+```
+
+Claude returns distinct blocks, each meant to be a separate cell:
+
+```python
+# Cell 1: Load and inspect
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_parquet("./data/events.parquet")
+print(f"Shape: {df.shape}")
+print(f"\nDtypes:\n{df.dtypes}")
+df.head()
+```
+
+```python
+# Cell 2: Event type distribution
+fig, ax = plt.subplots(figsize=(10, 5))
+df['event_type'].value_counts().plot(kind='barh', ax=ax,
+                                      color='#3B82F6')
+ax.set_title('Event Type Distribution')
+ax.set_xlabel('Count')
+plt.tight_layout()
+plt.show()
+```
+
+```python
+# Cell 3: Events per user
+events_per_user = df.groupby('user_id').size()
+fig, ax = plt.subplots(figsize=(10, 5))
+events_per_user.hist(bins=50, ax=ax, color='#3B82F6',
+                      edgecolor='white')
+ax.set_title('Events per User')
+ax.set_xlabel('Number of Events')
+ax.set_ylabel('Number of Users')
+ax.axvline(events_per_user.median(), color='red',
+           linestyle='--', label=f'Median: {events_per_user.median():.0f}')
+ax.legend()
+plt.tight_layout()
+plt.show()
+```
+
+Paste each block into a cell. Run them. You've got an initial analysis in 30 seconds.
+
+## Reading Notebooks with Claude Code
+
+Claude Code can read `.ipynb` files directly. This is powerful for debugging:
+
+```bash
+claude "Read ./notebooks/churn_analysis.ipynb and tell me:
+1. What's the overall flow of the analysis?
+2. Are there any cells that would fail if run out of order?
+3. Any obvious issues with the data processing steps?
+4. What's the final model accuracy, and is it trustworthy?"
+```
+
+Claude parses the notebook JSON, reads all cells and outputs, and gives you a review:
+
+```
+Notebook flow:
+1. Data loading (cells 1-3)
+2. EDA with plots (cells 4-9)
+3. Feature engineering (cells 10-14)
+4. Model training (cells 15-18)
+5. Evaluation (cells 19-21)
+
+Issues found:
+- Cell 12 uses variable 'clean_df' but it's defined in cell 7
+  as 'df_clean'. This will throw a NameError.
+- Cell 15 uses the full dataset for training (no train/test split).
+  The 94% accuracy in cell 19 is on training data — meaningless.
+- Cell 8 drops 2,341 rows with missing regions but cell 14
+  references df.shape[0] as the original count for percentage
+  calculations — the denominator is wrong.
+- The feature engineering in cell 11 creates a ratio that will
+  produce inf values when tenure_months is 0 (23 rows).
+```
+
+A code review of your notebook. In 10 seconds.
+
+## Notebook to Production Script
+
+This is one of the highest-value transformations Claude does. Every data scientist has notebooks that "work" but can't be scheduled, tested, or integrated.
+
+```bash
+claude "Convert ./notebooks/daily_report.ipynb to a production
+Python script. It should:
+
+1. Be a proper Python module with functions, not a flat script
+2. Accept command-line arguments for the date range and output path
+3. Add logging instead of print statements
+4. Add error handling for missing data and API failures
+5. Include a main() function and __name__ guard
+6. Add type hints
+7. Generate the same PDF report the notebook produces"
+```
+
+Claude reads the notebook, understands the flow, and restructures it:
+
+```python
+"""Daily sales report generator.
+
+Converted from daily_report.ipynb.
+Usage: python daily_report.py --start 2024-01-01 --end 2024-01-31
+"""
+import argparse
+import logging
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+def load_data(start_date: str, end_date: str) -> pd.DataFrame:
+    """Load sales data for the given date range."""
+    try:
+        df = pd.read_parquet("./data/sales.parquet")
+        df['date'] = pd.to_datetime(df['date'])
+        mask = (df['date'] >= start_date) & (df['date'] <= end_date)
+        filtered = df[mask]
+        logger.info(f"Loaded {len(filtered)} rows for "
+                    f"{start_date} to {end_date}")
+        return filtered
+    except FileNotFoundError:
+        logger.error("Sales data file not found")
+        raise
+
+
+def compute_metrics(df: pd.DataFrame) -> dict:
+    """Calculate key business metrics."""
+    return {
+        'total_revenue': df['amount'].sum(),
+        'order_count': len(df),
+        'avg_order_value': df['amount'].mean(),
+        'unique_customers': df['customer_id'].nunique(),
+    }
+
+
+def generate_charts(df: pd.DataFrame,
+                    pdf: PdfPages) -> None:
+    """Generate report charts and add to PDF."""
+    # Revenue trend
+    fig, ax = plt.subplots(figsize=(12, 6))
+    daily = df.groupby('date')['amount'].sum()
+    daily.plot(ax=ax, color='#2563EB', linewidth=2)
+    ax.set_title('Daily Revenue')
+    ax.set_ylabel('Revenue ($)')
+    pdf.savefig(fig)
+    plt.close(fig)
+
+    # Category breakdown
+    fig, ax = plt.subplots(figsize=(10, 6))
+    df.groupby('category')['amount'].sum().sort_values().plot(
+        kind='barh', ax=ax, color='#3B82F6')
+    ax.set_title('Revenue by Category')
+    pdf.savefig(fig)
+    plt.close(fig)
+
+    logger.info("Generated report charts")
+
+
+def main(start_date: str, end_date: str,
+         output_path: Optional[str] = None) -> None:
+    """Generate the daily sales report."""
+    if output_path is None:
+        output_path = f"./reports/sales_{start_date}_{end_date}.pdf"
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Generating report: {start_date} to {end_date}")
+
+    df = load_data(start_date, end_date)
+    if df.empty:
+        logger.warning("No data for the given date range")
+        return
+
+    metrics = compute_metrics(df)
+    logger.info(f"Revenue: ${metrics['total_revenue']:,.2f} | "
+                f"Orders: {metrics['order_count']}")
+
+    with PdfPages(output_path) as pdf:
+        generate_charts(df, pdf)
+
+    logger.info(f"Report saved to {output_path}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate daily sales report")
+    parser.add_argument("--start", required=True,
+                        help="Start date (YYYY-MM-DD)")
+    parser.add_argument("--end", required=True,
+                        help="End date (YYYY-MM-DD)")
+    parser.add_argument("--output", help="Output PDF path")
+    args = parser.parse_args()
+    main(args.start, args.end, args.output)
+```
+
+Same logic, now schedulable with cron, testable with pytest, integratable with Airflow.
+
+## Debugging Data Issues
+
+The most valuable debugging skill: figuring out why your numbers changed.
+
+```bash
+claude "My model accuracy dropped from 0.92 to 0.71 after
+retraining on this month's data. Same code, new data.
+
+Generate a diagnostic script that:
+1. Loads old training data (./data/train_v1.csv)
+   and new training data (./data/train_v2.csv)
+2. Compares distributions of each feature (KS test)
+3. Checks if the target variable distribution changed
+4. Identifies new categorical values not seen in v1
+5. Compares missing value patterns
+6. Produces a drift report"
+```
+
+Claude generates a comprehensive drift detection script:
+
+```python
+from scipy import stats
+
+def detect_drift(old_df, new_df, numeric_cols, cat_cols,
+                 target_col):
+    """Compare two datasets and report drift."""
+    report = []
+
+    # Target distribution
+    old_target = old_df[target_col].mean()
+    new_target = new_df[target_col].mean()
+    target_shift = abs(new_target - old_target)
+    report.append(f"Target rate: {old_target:.3f} → "
+                  f"{new_target:.3f} (shift: {target_shift:.3f})")
+    if target_shift > 0.05:
+        report.append("  ⚠ SIGNIFICANT target drift detected!")
+
+    # Numeric feature drift (KS test)
+    report.append("\nNumeric Feature Drift:")
+    for col in numeric_cols:
+        stat, pval = stats.ks_2samp(
+            old_df[col].dropna(), new_df[col].dropna())
+        drift = "DRIFT" if pval < 0.01 else "OK"
+        report.append(f"  {col}: KS={stat:.3f}, "
+                      f"p={pval:.4f} [{drift}]")
+
+    # Categorical drift
+    report.append("\nCategorical Feature Drift:")
+    for col in cat_cols:
+        old_vals = set(old_df[col].dropna().unique())
+        new_vals = set(new_df[col].dropna().unique())
+        new_categories = new_vals - old_vals
+        if new_categories:
+            report.append(f"  {col}: NEW values: {new_categories}")
+
+    # Missing value pattern changes
+    report.append("\nMissing Value Changes:")
+    for col in old_df.columns:
+        old_missing = old_df[col].isna().mean()
+        new_missing = new_df[col].isna().mean()
+        if abs(new_missing - old_missing) > 0.05:
+            report.append(f"  {col}: {old_missing:.1%} → "
+                          f"{new_missing:.1%}")
+
+    return "\n".join(report)
+```
+
+You run it, find out that the target rate shifted from 20% to 35% because of a seasonal effect, and three features have new categories the model never saw. Mystery solved in 5 minutes instead of 5 hours.
+
+## Quick Notebook Helpers
+
+Daily-use prompts for the notebook workflow:
+
+```bash
+# Fix a cell that's throwing an error
+claude "This cell is throwing a KeyError: 'revenue'.
+Here's the cell code: [paste code]
+Here's the traceback: [paste error]
+Here's df.columns: [paste columns]
+What's wrong and how do I fix it?"
+
+# Explain someone else's notebook
+claude "Read ./notebooks/legacy_pipeline.ipynb — I inherited
+this from a teammate who left. Explain what it does step by step."
+
+# Optimize slow cells
+claude "This cell takes 45 seconds to run on 2M rows:
+[paste code]
+Rewrite it to be faster. Can use polars if it helps."
+
+# Generate markdown documentation cells
+claude "Generate markdown cells that document what each
+section of my notebook does. Here are the section breaks:
+cells 1-5: data loading, cells 6-12: cleaning, etc."
+```
+
+## The Golden Rule
+
+Notebooks are for thinking. Scripts are for doing. Claude helps you think faster in notebooks and converts your thinking into scripts that do. Don't try to make notebooks production-ready. Don't try to explore data in scripts. Use each tool for what it's good at, and let Claude bridge the gap.
+
+## Key Takeaway
+
+The Claude Code + Jupyter workflow keeps each tool in its sweet spot: Jupyter for interactive exploration and visualization, Claude Code for code generation, debugging, and refactoring. Claude reads `.ipynb` files directly, giving it full context of your analysis including outputs and errors. The highest-value use case is converting working notebooks into production scripts with proper structure, error handling, logging, and CLI arguments. When debugging data issues like model accuracy drops, Claude generates drift detection scripts that compare old and new data distributions — because model degradation is almost always a data problem, not a model problem.

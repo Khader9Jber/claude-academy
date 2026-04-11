@@ -28,7 +28,7 @@ export const ARC_DEFINITIONS: ArcDefinition[] = [
     color: "#5e9ed6",
     description:
       "Level up your workflow. Master configuration, context management, Git integration, and the Model Context Protocol.",
-    range: "Modules 5-8, 14, 18",
+    range: "Modules 5-8, 14, 18, 20, 22-24",
   },
   {
     id: "power-user",
@@ -44,7 +44,7 @@ export const ARC_DEFINITIONS: ArcDefinition[] = [
     color: "#d4a053",
     description:
       "Go to production. Deploy Claude in enterprise environments, handle security and compliance, and complete a capstone project.",
-    range: "Modules 12-13, 16-17, 19",
+    range: "Modules 12-13, 16-17, 19, 21, 25",
   },
 ];
 
@@ -68,6 +68,12 @@ export const MODULE_ORDER: string[] = [
   "claude-security",
   "tips-and-tricks",
   "claude-qa",
+  "claude-web-dev",
+  "claude-devops",
+  "claude-content",
+  "claude-data-science",
+  "claude-mobile",
+  "claude-databases",
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [

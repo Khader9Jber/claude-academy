@@ -17,6 +17,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [0.4.0] - 2026-04-11
+
+### Added
+
+- Module 14: Real-World Projects (6 lessons, practitioner arc) -- guided end-to-end projects using Claude Code
+- Module 15: Claude for Teams (5 lessons, power-user arc) -- team workflows, shared configs, onboarding patterns
+- 33 new lessons across existing modules (total: 107 lessons, up from 74)
+- Custom 404 page (`src/app/not-found.tsx`)
+- Global error boundary (`src/app/error.tsx`)
+- Skip-to-content accessibility link
+- Reading progress indicator on lesson pages
+- Scroll-to-top button
+- Dynamic sitemap.xml generation (`src/app/sitemap.ts`)
+- SEO meta improvements: Open Graph tags, JSON-LD structured data
+- Print styles and reduced motion support (`prefers-reduced-motion`)
+- Estimated reading time utility
+- `docs/ROADMAP.md` with prioritized feature backlog
+- 40 new unit tests (total: 86, up from 46)
+
+### Changed
+
+- Arc ranges updated: Practitioner now includes Module 14, Power User now includes Module 15
+- All ESLint errors fixed (admin, auth, layout pages)
+- next and vite updated to patch security vulnerabilities
+
+### Removed
+
+- GitHub Pages deploy disabled (admin dynamic routes incompatible with static export)
+
+---
+
 ## [0.3.0] - 2026-04-05
 
 ### Added

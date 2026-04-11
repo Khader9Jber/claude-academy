@@ -6,7 +6,7 @@ A personal refresher for when you come back to this project after a break.
 
 ## What You Built
 
-Klaude Academy is a complete interactive learning website for mastering Claude and Claude Code. It has 74 lessons across 13 modules organized in 4 skill arcs (Foundation, Practitioner, Power User, Expert), 294 quiz questions, interactive exercises, light/dark mode (dark default), and it's deployed to 2 platforms. It has an optional Supabase backend for authentication (email, Google, GitHub), cross-device progress sync, a public leaderboard, and completion certificates. The site works fully without a backend -- Supabase adds user accounts and sync on top.
+Klaude Academy is a complete interactive learning website for mastering Claude and Claude Code. It has 107 lessons across 15 modules organized in 4 skill arcs (Foundation, Practitioner, Power User, Expert), 294+ quiz questions, interactive exercises, light/dark mode (dark default), and it's deployed to Netlify (primary) with Vercel as backup. It has an optional Supabase backend for authentication (email, Google, GitHub), cross-device progress sync, a public leaderboard, and completion certificates. The site works fully without a backend -- Supabase adds user accounts and sync on top.
 
 It also has a full admin dashboard at `/admin` (admin-only, protected by `app_metadata.role === 'admin'`) with 6 sections: Dashboard (overview stats), Content (create/edit/delete lessons with markdown editor and quiz builder), Users (list, search, view details, manage roles), Analytics (page views, completion rates, quiz performance, user growth charts), Announcements (type badges and scheduling), and Settings (configurable site options). The admin system added 4 new database tables (`managed_content`, `site_settings`, `announcements`, `analytics_events`) via `supabase/migrations/002_admin.sql`, an `is_admin()` SQL function, a `useAdmin()` React hook, and an `AdminGuard` component. You can make a user admin with: `SUPABASE_SERVICE_ROLE_KEY=xxx npx tsx scripts/make-admin.ts user@email.com`.
 
@@ -28,7 +28,7 @@ It also has a full admin dashboard at `/admin` (admin-only, protected by `app_me
 ```bash
 npm run dev            # Local dev server (http://localhost:3000)
 npm run build          # Production build (outputs to /out)
-npm test               # Unit tests (46 tests)
+npm test               # Unit tests (86 tests)
 npm run test:coverage  # With coverage report
 npm run test:e2e       # Playwright E2E tests (36 tests)
 npm run lint           # ESLint
@@ -63,8 +63,8 @@ cp .env.example .env.local
 
 ## Project Stats
 
-- 74 lessons, 294 quiz questions, 13 modules, 4 arcs
-- 77 unit tests, 36 E2E tests, 97% statement coverage, 100% function coverage
+- 107 lessons, 294+ quiz questions, 15 modules, 4 arcs
+- 86 unit tests, 36 E2E tests
 - 4 CI/CD workflows, triple deployment (Netlify + GitHub Pages + Vercel backup)
 - 7 project docs (SRS, Test Plan, Test Suites, Architecture, Implementation Plan, Glossary, Changelog)
 - QA reports: content validation, build report, completeness audit
@@ -100,6 +100,11 @@ cp .env.example .env.local
 | Admin helpers | `src/lib/admin.ts` |
 | useAdmin hook | `src/hooks/useAdmin.ts` |
 | Make admin script | `scripts/make-admin.ts` |
+| Custom 404 page | `src/app/not-found.tsx` |
+| Global error boundary | `src/app/error.tsx` |
+| Dynamic sitemap | `src/app/sitemap.ts` |
+| Reading time util | `src/lib/reading-time.ts` |
+| Feature roadmap | `docs/ROADMAP.md` |
 | CI pipeline | `.github/workflows/{ci,security,deploy,pr-preview}.yml` |
 | Vitest config | `vitest.config.ts` |
 | Playwright config | `playwright.config.ts` |
@@ -169,6 +174,13 @@ cp .env.example .env.local
 
 ### Medium Priority
 
+- [x] ~~Skip-to-content accessibility link~~ -- DONE
+- [x] ~~Reading progress indicator on lessons~~ -- DONE
+- [x] ~~Scroll-to-top button~~ -- DONE
+- [x] ~~SEO improvements (Open Graph, JSON-LD structured data)~~ -- DONE
+- [x] ~~Dynamic sitemap.xml generation~~ -- DONE
+- [x] ~~Print styles and reduced motion support~~ -- DONE
+- [x] ~~Custom 404 page and global error boundary~~ -- DONE
 - [ ] Accessibility audit (WCAG 2.1 AA compliance)
 - [ ] Performance optimization (Lighthouse 95+ target)
 - [ ] OG images for social sharing

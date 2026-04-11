@@ -234,7 +234,7 @@ npx tsc --noEmit     # Type check without building
 ```
 klaude-academy/
 ├── content/              # All lesson content (MDX + JSON)
-│   ├── modules/          # 13 module folders, each with _module.json + lesson MDX files
+│   ├── modules/          # 15 module folders, each with _module.json + lesson MDX files
 │   ├── templates/        # Copy-paste template library data
 │   └── cheatsheet/       # Parsed cheatsheet reference data
 ├── src/

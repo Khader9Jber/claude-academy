@@ -1,7 +1,7 @@
 # Klaude Academy — Project Briefing
 
 ## What This Is
-Klaude Academy is an interactive learning website for mastering Claude and Claude Code. 74 lessons across 13 modules, 4 difficulty arcs, with quizzes, exercises, and a complete admin dashboard.
+Klaude Academy is an interactive learning website for mastering Claude and Claude Code. 107 lessons across 15 modules, 4 difficulty arcs, with quizzes, exercises, and a complete admin dashboard.
 
 ## Live URLs
 - **Primary:** https://klaude-academy.netlify.app
@@ -18,7 +18,7 @@ Klaude Academy is an interactive learning website for mastering Claude and Claud
 - Deploy: Netlify (primary) + GitHub Pages (static)
 
 ## Key Directories
-- `content/modules/` — 13 modules with MDX lessons
+- `content/modules/` — 15 modules with MDX lessons
 - `src/app/` — Pages (curriculum, prompt-lab, cheatsheet, templates, progress, auth, admin, profile, leaderboard, certificate)
 - `src/components/` — UI, layout, content, interactive, lesson, progress, search, admin
 - `src/lib/` — utils, constants, content loader, progress store, supabase clients, admin helpers
@@ -32,7 +32,7 @@ Klaude Academy is an interactive learning website for mastering Claude and Claud
 ```bash
 npm run dev          # Local dev server
 npm run build        # Production build
-npm test             # 77 unit tests
+npm test             # 86 unit tests
 npm run test:e2e     # Playwright E2E tests
 npm run lint         # ESLint
 git push             # Auto-deploys via CI/CD

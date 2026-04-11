@@ -26,7 +26,7 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 ### 1.2 Scope
 
-Klaude Academy is a free, open-source, static-first web application that delivers a structured curriculum of 13 modules organized into 4 skill arcs: Foundation, Practitioner, Power User, and Expert. The platform provides interactive lessons written in MDX, embedded quizzes and exercises, progress tracking with gamification features (streaks, achievements), a searchable cheatsheet for Claude Code commands, a template library for configuration files, and a Prompt Engineering Lab with an interactive 6-layer prompt builder.
+Klaude Academy is a free, open-source, static-first web application that delivers a structured curriculum of 15 modules organized into 4 skill arcs: Foundation, Practitioner, Power User, and Expert. The platform provides interactive lessons written in MDX, embedded quizzes and exercises, progress tracking with gamification features (streaks, achievements), a searchable cheatsheet for Claude Code commands, a template library for configuration files, and a Prompt Engineering Lab with an interactive 6-layer prompt builder.
 
 The system is built with Next.js 16 (App Router, static export), React 19, TypeScript, Tailwind CSS 4, and Zustand for client-side state management. All data persistence uses the browser's localStorage API. There is no backend, no authentication, and no server-side logic in the current phase.
 
@@ -82,7 +82,7 @@ A future phase may introduce a backend (Supabase) for user accounts, cross-devic
 
 The system provides the following major function groups:
 
-1. **Curriculum Delivery** -- Structured display of 13 modules across 4 arcs, with individual lesson pages rendering MDX content that includes prose, code blocks, callouts, file trees, comparison tables, and step lists.
+1. **Curriculum Delivery** -- Structured display of 15 modules across 4 arcs, with individual lesson pages rendering MDX content that includes prose, code blocks, callouts, file trees, comparison tables, and step lists.
 
 2. **Interactive Learning** -- Multiple-choice and true/false quiz components with scoring and feedback, fill-in-the-blank exercises with multi-answer validation, a terminal simulator for practicing Claude Code commands, code exercise blocks with starter code and validation, and a prompt playground with a 6-layer prompt builder.
 
@@ -146,7 +146,7 @@ All user classes share the same interface. Content difficulty is indicated by ba
 
 | ID | Requirement | Priority |
 |----|------------|----------|
-| **FR-01** | The system shall display 13 modules organized into 4 arcs: Foundation (Modules 1-4), Practitioner (Modules 5-8), Power User (Modules 9-11), and Expert (Modules 12-13). | P1 |
+| **FR-01** | The system shall display 15 modules organized into 4 arcs: Foundation (Modules 1-4), Practitioner (Modules 5-8, 14), Power User (Modules 9-11, 15), and Expert (Modules 12-13). | P1 |
 | **FR-02** | The system shall display lessons within each module, sorted by their `order` field from the lesson frontmatter. Each lesson card shows the lesson title, duration, and difficulty badge. | P1 |
 | **FR-03** | The system shall render MDX content with embedded interactive components (Quiz, FillInBlank, TerminalSimulator, CodeBlock, Callout, FileTree, KeyCombo, ComparisonTable, StepList). Content is parsed at build time using `gray-matter` for frontmatter and rendered with `next-mdx-remote`. | P1 |
 | **FR-04** | The system shall provide previous/next navigation between lessons within a module. The first lesson shows a "Back to Module" link instead of "Previous"; the last lesson shows a "Module Complete" link instead of "Next". Navigation links display the target lesson title. | P1 |
@@ -155,7 +155,7 @@ All user classes share the same interface. Content difficulty is indicated by ba
 | **FR-07** | The system shall display a lesson sidebar on the left side of lesson pages (visible on screens >= 1024px / `lg` breakpoint) listing all lessons in the current module. The current lesson is visually highlighted. | P1 |
 | **FR-08** | The system shall generate a table of contents from h2 and h3 headings in the lesson content. The TOC is displayed in a right sidebar on screens >= 1280px (`xl` breakpoint). Each heading links to its anchor within the page. h3 headings are indented relative to h2 headings. | P2 |
 | **FR-09** | The system shall support responsive layout across mobile (320px-767px), tablet (768px-1023px), and desktop (1024px+) viewports. The site header collapses navigation links into a hamburger menu on screens below 768px (`md` breakpoint). Lesson sidebars are hidden on smaller screens. | P1 |
-| **FR-10** | The system shall provide a curriculum roadmap page (`/curriculum`) displaying all 13 modules grouped by arc, each as a card showing: module icon, order number, title, description, lesson count, estimated hours, difficulty badge, and a progress bar. | P1 |
+| **FR-10** | The system shall provide a curriculum roadmap page (`/curriculum`) displaying all 15 modules grouped by arc, each as a card showing: module icon, order number, title, description, lesson count, estimated hours, difficulty badge, and a progress bar. | P1 |
 
 #### FR-11 to FR-20: Interactive Learning
 
@@ -560,7 +560,7 @@ RootLayout (src/app/layout.tsx)
 | Route | File | Type | Description |
 |-------|------|------|-------------|
 | `/` | `src/app/page.tsx` | Client | Landing page with hero, arcs, features, CTA |
-| `/curriculum` | `src/app/curriculum/page.tsx` | Client | All 13 modules grouped by arc |
+| `/curriculum` | `src/app/curriculum/page.tsx` | Client | All 15 modules grouped by arc |
 | `/curriculum/[moduleSlug]` | `src/app/curriculum/[moduleSlug]/page.tsx` | Server + SSG | Module overview with lesson list |
 | `/curriculum/[moduleSlug]/[lessonSlug]` | `src/app/curriculum/[moduleSlug]/[lessonSlug]/page.tsx` | Server + SSG | Individual lesson content |
 | `/cheatsheet` | `src/app/cheatsheet/page.tsx` | Client | Searchable command reference |

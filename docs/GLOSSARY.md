@@ -307,7 +307,7 @@ A single educational unit within a module. Each lesson is an MDX file with front
 
 ### Module
 
-A collection of related lessons organized under a common topic. Each module has metadata (title, slug, arc, order, icon, color, prerequisites) defined in `_module.json`. There are 13 modules total.
+A collection of related lessons organized under a common topic. Each module has metadata (title, slug, arc, order, icon, color, prerequisites) defined in `_module.json`. There are 15 modules total.
 
 ### Prompt Lab
 

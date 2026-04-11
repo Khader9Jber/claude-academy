@@ -1,6 +1,6 @@
 # Klaude Academy -- Content Plan
 
-Last updated: 2026-04-04
+Last updated: 2026-04-11
 
 This document is the single source of truth for Klaude Academy's content strategy. It covers what exists, what needs improvement, what to build next, and exactly how to add new content. Anyone contributing content should read this first.
 
@@ -8,14 +8,14 @@ This document is the single source of truth for Klaude Academy's content strateg
 
 ## 1. Current Content Inventory
 
-**Totals:** 13 modules, 74 lessons, 294 quiz questions, 4 arcs
+**Totals:** 15 modules, 107 lessons, 294+ quiz questions, 4 arcs
 
 ### Arc 1: Foundation (Modules 1-4, green #5cb870)
 
 #### Module 1 -- Claude Fundamentals
 - **Directory:** `content/modules/01-claude-fundamentals/`
 - **Arc:** Foundation | **Difficulty:** Beginner | **Est. Hours:** 2
-- **Lessons:** 4 | **Quiz Questions:** 13
+- **Lessons:** 5 | **Quiz Questions:** 13+
 - **Prerequisites:** None
 
 | # | File | Title | Quizzes |
@@ -32,7 +32,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 2 -- Prompt Engineering
 - **Directory:** `content/modules/02-prompt-engineering/`
 - **Arc:** Foundation | **Difficulty:** Beginner | **Est. Hours:** 4
-- **Lessons:** 8 (7 content lessons + 1 module quiz) | **Quiz Questions:** 38
+- **Lessons:** 10 | **Quiz Questions:** 38+
 - **Prerequisites:** Module 1
 
 | # | File | Title | Quizzes |
@@ -53,7 +53,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 3 -- Claude Code Basics
 - **Directory:** `content/modules/03-claude-code-basics/`
 - **Arc:** Foundation | **Difficulty:** Beginner | **Est. Hours:** 3
-- **Lessons:** 5 | **Quiz Questions:** 20
+- **Lessons:** 6 | **Quiz Questions:** 20+
 - **Prerequisites:** Module 1
 
 | # | File | Title | Quizzes |
@@ -71,7 +71,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 4 -- Commands and Navigation
 - **Directory:** `content/modules/04-commands-and-navigation/`
 - **Arc:** Foundation | **Difficulty:** Beginner | **Est. Hours:** 2
-- **Lessons:** 5 | **Quiz Questions:** 21
+- **Lessons:** 6 | **Quiz Questions:** 21+
 - **Prerequisites:** Module 3
 
 | # | File | Title | Quizzes |
@@ -86,12 +86,12 @@ This document is the single source of truth for Klaude Academy's content strateg
 
 ---
 
-### Arc 2: Practitioner (Modules 5-8, blue #5e9ed6)
+### Arc 2: Practitioner (Modules 5-8, 14, blue #5e9ed6)
 
 #### Module 5 -- CLAUDE.md and Configuration
 - **Directory:** `content/modules/05-claude-md-and-config/`
 - **Arc:** Practitioner | **Difficulty:** Intermediate | **Est. Hours:** 3
-- **Lessons:** 6 | **Quiz Questions:** 24
+- **Lessons:** 8 | **Quiz Questions:** 24+
 - **Prerequisites:** Module 4
 
 | # | File | Title | Quizzes |
@@ -110,7 +110,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 6 -- Session and Context Management
 - **Directory:** `content/modules/06-session-and-context/`
 - **Arc:** Practitioner | **Difficulty:** Intermediate | **Est. Hours:** 3
-- **Lessons:** 5 | **Quiz Questions:** 20
+- **Lessons:** 7 | **Quiz Questions:** 20+
 - **Prerequisites:** Module 5
 
 | # | File | Title | Quizzes |
@@ -128,7 +128,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 7 -- Git and Development Workflows
 - **Directory:** `content/modules/07-git-and-workflows/`
 - **Arc:** Practitioner | **Difficulty:** Intermediate | **Est. Hours:** 4
-- **Lessons:** 6 | **Quiz Questions:** 23
+- **Lessons:** 8 | **Quiz Questions:** 23+
 - **Prerequisites:** Module 6
 
 | # | File | Title | Quizzes |
@@ -147,7 +147,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 8 -- MCP Fundamentals
 - **Directory:** `content/modules/08-mcp-fundamentals/`
 - **Arc:** Practitioner | **Difficulty:** Intermediate | **Est. Hours:** 3
-- **Lessons:** 5 | **Quiz Questions:** 20
+- **Lessons:** 7 | **Quiz Questions:** 20+
 - **Prerequisites:** Module 3
 
 | # | File | Title | Quizzes |
@@ -162,12 +162,12 @@ This document is the single source of truth for Klaude Academy's content strateg
 
 ---
 
-### Arc 3: Power User (Modules 9-11, purple #a07ed6)
+### Arc 3: Power User (Modules 9-11, 15, purple #a07ed6)
 
 #### Module 9 -- Hooks and Automation
 - **Directory:** `content/modules/09-hooks-and-automation/`
 - **Arc:** Power User | **Difficulty:** Advanced | **Est. Hours:** 3
-- **Lessons:** 5 | **Quiz Questions:** 20
+- **Lessons:** 7 | **Quiz Questions:** 20+
 - **Prerequisites:** Modules 5, 8
 
 | # | File | Title | Quizzes |
@@ -185,7 +185,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 10 -- Agents and Skills
 - **Directory:** `content/modules/10-agents-and-skills/`
 - **Arc:** Power User | **Difficulty:** Advanced | **Est. Hours:** 5
-- **Lessons:** 7 | **Quiz Questions:** 27
+- **Lessons:** 9 | **Quiz Questions:** 27+
 - **Prerequisites:** Module 9
 
 | # | File | Title | Quizzes |
@@ -205,7 +205,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 11 -- Advanced Workflows
 - **Directory:** `content/modules/11-advanced-workflows/`
 - **Arc:** Power User | **Difficulty:** Advanced | **Est. Hours:** 5
-- **Lessons:** 7 | **Quiz Questions:** 25
+- **Lessons:** 9 | **Quiz Questions:** 25+
 - **Prerequisites:** Modules 10, 7
 
 | # | File | Title | Quizzes |
@@ -227,7 +227,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 12 -- Enterprise and Production
 - **Directory:** `content/modules/12-enterprise-and-production/`
 - **Arc:** Expert | **Difficulty:** Expert | **Est. Hours:** 5
-- **Lessons:** 7 | **Quiz Questions:** 27
+- **Lessons:** 9 | **Quiz Questions:** 27+
 - **Prerequisites:** Module 11
 
 | # | File | Title | Quizzes |
@@ -247,7 +247,7 @@ This document is the single source of truth for Klaude Academy's content strateg
 #### Module 13 -- Capstone
 - **Directory:** `content/modules/13-capstone/`
 - **Arc:** Expert | **Difficulty:** Expert | **Est. Hours:** 8
-- **Lessons:** 4 | **Quiz Questions:** 16
+- **Lessons:** 5 | **Quiz Questions:** 16+
 - **Prerequisites:** Module 12
 
 | # | File | Title | Quizzes |
@@ -346,8 +346,8 @@ The mapping is defined in two places:
 
 Current mapping:
 - Foundation: Modules 1-4 (claude-fundamentals, prompt-engineering, claude-code-basics, commands-and-navigation)
-- Practitioner: Modules 5-8 (claude-md-and-config, session-and-context, git-and-workflows, mcp-fundamentals)
-- Power User: Modules 9-11 (hooks-and-automation, agents-and-skills, advanced-workflows)
+- Practitioner: Modules 5-8, 14 (claude-md-and-config, session-and-context, git-and-workflows, mcp-fundamentals, real-world-projects)
+- Power User: Modules 9-11, 15 (hooks-and-automation, agents-and-skills, advanced-workflows, claude-for-teams)
 - Expert: Modules 12-13 (enterprise-and-production, capstone)
 
 ### How MODULE_ORDER Controls Display
@@ -369,6 +369,8 @@ export const MODULE_ORDER: string[] = [
   "advanced-workflows",
   "enterprise-and-production",
   "capstone",
+  "real-world-projects",
+  "claude-for-teams",
 ];
 ```
 
@@ -601,20 +603,20 @@ One lesson has 0 quiz questions:
 #### Module 13 -- Capstone
 - `05-guided-project.mdx` -- Guided Capstone Project: step-by-step walkthrough of building a full-stack app entirely with Claude Code, from CLAUDE.md to deployment
 
-**Total: 26 new lessons across 13 modules, bringing the curriculum from 74 to 100 lessons.**
+**Many of these new lessons have been implemented. The curriculum now has 107 lessons across 15 modules.**
 
 ---
 
 ### 6.2 New Modules for Existing Arcs
 
-#### Module 14 -- Real-World Projects (Practitioner Arc)
+#### Module 14 -- Real-World Projects (Practitioner Arc) -- IMPLEMENTED (v0.4.0)
 
 - **Slug:** `real-world-projects`
 - **Arc:** practitioner
 - **Description:** Guided end-to-end projects using Claude Code. Each lesson is a complete project from setup to deployment.
 - **Estimated Hours:** 6
 - **Prerequisites:** `mcp-fundamentals`
-- **Lessons:**
+- **Lessons:** 6
   1. `01-rest-api-from-scratch.mdx` -- Build a REST API from scratch with Claude Code
   2. `02-react-dashboard.mdx` -- Build an admin dashboard with React and Claude
   3. `03-cli-tool.mdx` -- Build a CLI tool with Claude Code
@@ -622,14 +624,14 @@ One lesson has 0 quiz questions:
   5. `05-testing-suite.mdx` -- Generate a complete test suite for an existing project
   6. `06-documentation-overhaul.mdx` -- Rewrite an entire project's documentation with Claude
 
-#### Module 15 -- Claude for Teams (Power User Arc)
+#### Module 15 -- Claude for Teams (Power User Arc) -- IMPLEMENTED (v0.4.0)
 
 - **Slug:** `claude-for-teams`
 - **Arc:** power-user
 - **Description:** Team workflows, shared configurations, onboarding patterns, and collaborative Claude Code usage.
 - **Estimated Hours:** 4
 - **Prerequisites:** `agents-and-skills`
-- **Lessons:**
+- **Lessons:** 5
   1. `01-team-onboarding.mdx` -- Onboarding New Team Members with Claude Code
   2. `02-shared-configurations.mdx` -- Shared CLAUDE.md, settings.json, and Command Libraries
   3. `03-code-review-standards.mdx` -- Standardized Claude-Assisted Code Reviews
@@ -651,7 +653,7 @@ One lesson has 0 quiz questions:
   5. `05-production-api-patterns.mdx` -- Production API Patterns: Rate Limiting, Retries, and Error Handling
   6. `06-full-stack-ai-app.mdx` -- Building a Full-Stack AI Application
 
-**Adding these 3 modules would add 17 lessons, bringing the total to 117 (or 91 with just new lessons from 6.1).**
+**Modules 14 and 15 are now implemented. Module 16 would add 6 more lessons, bringing the total to 113.**
 
 ---
 

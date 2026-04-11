@@ -1,8 +1,8 @@
 # Klaude Academy
 
-**Master Claude from Zero to Hero** — an interactive learning website with 74 lessons, quizzes, exercises, and a complete prompt engineering lab.
+**Master Claude from Zero to Hero** — an interactive learning website with 107 lessons, quizzes, exercises, and a complete prompt engineering lab.
 
-**Live:** [klaude-academy.netlify.app](https://klaude-academy.netlify.app) | [GitHub Pages](https://khader9jber.github.io/klaude-academy/)
+**Live:** [klaude-academy.netlify.app](https://klaude-academy.netlify.app)
 
 ---
 
@@ -69,7 +69,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npm run build` | Build static production site (outputs to `/out`) |
 | `npm run start` | Serve the production build locally |
 | `npm run lint` | Run ESLint checks |
-| `npm test` | Run unit tests (Vitest, 46 tests) |
+| `npm test` | Run unit tests (Vitest, 86 tests) |
 | `npm run test:coverage` | Run tests with coverage report (97% statements) |
 | `npm run test:e2e` | Run Playwright E2E tests (36 tests, desktop + mobile) |
 | `npm run test:e2e:ui` | Open Playwright UI mode for debugging tests |
@@ -82,13 +82,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ```
 klaude-academy/
 ├── content/                    # All lesson content
-│   ├── modules/               # 13 modules with MDX lessons
+│   ├── modules/               # 15 modules with MDX lessons
 │   │   ├── 01-claude-fundamentals/
 │   │   │   ├── _module.json   # Module metadata
 │   │   │   ├── 01-what-is-claude.mdx
 │   │   │   └── ...
 │   │   ├── 02-prompt-engineering/
-│   │   └── ... (13 modules total)
+│   │   ├── ...
+│   │   ├── 14-real-world-projects/
+│   │   ├── 15-claude-for-teams/
+│   │   └── ... (15 modules total)
 │   ├── templates/             # Copy-paste template data
 │   └── cheatsheet/            # Cheatsheet reference data
 ├── src/
@@ -127,11 +130,12 @@ klaude-academy/
 │   ├── SRS.md                 # Software Requirements Specification
 │   ├── ARCHITECTURE.md        # System architecture
 │   ├── TEST_PLAN.md           # Test strategy
-│   ├── TEST_SUITES.md         # All test cases (96 unit + 36 E2E)
+│   ├── TEST_SUITES.md         # All test cases
 │   ├── IMPLEMENTATION_PLAN.md # Phase-by-phase build plan
 │   ├── GLOSSARY.md            # Term definitions
 │   ├── CHANGELOG.md           # What changed and when
 │   ├── REFRESHER.md           # Quick refresher — what you built & what's next
+│   ├── ROADMAP.md             # Prioritized feature backlog
 │   └── qa-results/            # QA validation reports
 ├── .github/workflows/         # CI/CD pipelines
 │   ├── ci.yml                 # Lint → Type Check → Unit Test → Coverage → E2E
@@ -191,7 +195,7 @@ Your lesson content here in Markdown...
 
 ### Add a new module
 
-1. Create a folder: `content/modules/14-your-module/`
+1. Create a folder: `content/modules/16-your-module/`
 2. Add `_module.json`:
 
 ```json
@@ -200,7 +204,7 @@ Your lesson content here in Markdown...
   "slug": "your-module",
   "description": "What this module covers",
   "arc": "foundation",
-  "order": 14,
+  "order": 16,
   "icon": "BookOpen",
   "color": "#5cb870",
   "estimatedHours": 3,
@@ -250,7 +254,7 @@ Every push to `main` triggers:
 ```
 Push to main
     │
-    ├── CI ──────────── Lint → Type Check → Unit Tests (46) → Coverage (97%) → E2E (36)
+    ├── CI ──────────── Lint → Type Check → Unit Tests (86) → Coverage → E2E (36)
     │                          All must pass before deploy
     │
     ├── Security ────── npm audit → CodeQL analysis → TruffleHog secret scan
@@ -258,7 +262,6 @@ Push to main
     │
     └── Deploy ──────── CI Gate (waits for CI to pass)
                               ├── Netlify       → klaude-academy.netlify.app (primary)
-                              ├── GitHub Pages  → khader9jber.github.io/klaude-academy
                               └── Vercel        → backup (has deployment protection issues on free plan)
 
 Pull Requests to main
@@ -276,8 +279,8 @@ Pull Requests to main
 
 ### Unit Tests (Vitest)
 ```bash
-npm test                # Run all 46 tests
-npm run test:coverage   # With coverage report (97% statements)
+npm test                # Run all 86 tests
+npm run test:coverage   # With coverage report
 npm run test:watch      # Watch mode for development
 ```
 
@@ -323,8 +326,8 @@ All selectors use `data-testid` attributes — stable, decoupled from content.
 Push to `main`. The pipeline handles everything:
 - Builds with correct config for each platform
 - Deploys to Netlify (primary, SSR with full auth support)
-- Deploys to GitHub Pages (with `/klaude-academy` basePath, static)
 - Vercel available as backup (has deployment protection issues on free plan)
+- GitHub Pages deploy disabled (admin dynamic routes incompatible with static export)
 
 ### Manual Netlify deploy
 ```bash
@@ -470,7 +473,7 @@ Full details in [TECH_STACK.md](./TECH_STACK.md).
 | [docs/SRS.md](./docs/SRS.md) | Software Requirements Specification |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System architecture |
 | [docs/TEST_PLAN.md](./docs/TEST_PLAN.md) | Test strategy and coverage |
-| [docs/TEST_SUITES.md](./docs/TEST_SUITES.md) | All test cases (132 total) |
+| [docs/TEST_SUITES.md](./docs/TEST_SUITES.md) | All test cases |
 | [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) | Build phases (all complete) |
 | [docs/CHANGELOG.md](./docs/CHANGELOG.md) | What changed and when |
 | [docs/GLOSSARY.md](./docs/GLOSSARY.md) | Term definitions |

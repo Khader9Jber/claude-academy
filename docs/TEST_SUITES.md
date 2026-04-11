@@ -350,15 +350,15 @@
 **Target:** `src/lib/content.ts`
 **Tool:** Vitest
 
-### TC-CL-001: getModules() returns array of 13 modules
+### TC-CL-001: getModules() returns array of 15 modules
 
 | Field | Value |
 |-------|-------|
 | **ID** | TC-CL-001 |
-| **Description** | `getModules()` reads all module directories and returns exactly 13 modules |
-| **Preconditions** | All 13 module directories exist with valid `_module.json` files |
+| **Description** | `getModules()` reads all module directories and returns exactly 15 modules |
+| **Preconditions** | All 15 module directories exist with valid `_module.json` files |
 | **Steps** | 1. Call `getModules()` 2. Check the length of the returned array |
-| **Expected Result** | Array length is 13 |
+| **Expected Result** | Array length is 15 |
 | **Priority** | P1 |
 | **Status** | Not Run |
 
@@ -367,10 +367,10 @@
 | Field | Value |
 |-------|-------|
 | **ID** | TC-CL-002 |
-| **Description** | The array returned by `getModules()` is sorted by the `order` field (1 through 13) |
-| **Preconditions** | All 13 module directories exist |
-| **Steps** | 1. Call `getModules()` 2. Extract the `order` field from each module 3. Verify the array is `[1, 2, 3, ..., 13]` |
-| **Expected Result** | Orders are strictly ascending from 1 to 13 |
+| **Description** | The array returned by `getModules()` is sorted by the `order` field (1 through 15) |
+| **Preconditions** | All 15 module directories exist |
+| **Steps** | 1. Call `getModules()` 2. Extract the `order` field from each module 3. Verify the array is `[1, 2, 3, ..., 15]` |
+| **Expected Result** | Orders are strictly ascending from 1 to 15 |
 | **Priority** | P1 |
 | **Status** | Not Run |
 
@@ -1714,15 +1714,15 @@
 | **Priority** | P1 |
 | **Status** | Not Run |
 
-### TC-E2E-003: Curriculum page shows all 13 module cards
+### TC-E2E-003: Curriculum page shows all 15 module cards
 
 | Field | Value |
 |-------|-------|
 | **ID** | TC-E2E-003 |
-| **Description** | The curriculum page displays a card for each of the 13 modules |
-| **Preconditions** | All 13 modules have `_module.json` files |
+| **Description** | The curriculum page displays a card for each of the 15 modules |
+| **Preconditions** | All 15 modules have `_module.json` files |
 | **Steps** | 1. Navigate to `/curriculum` 2. Count module card elements |
-| **Expected Result** | 13 module cards are visible |
+| **Expected Result** | 15 module cards are visible |
 | **Priority** | P1 |
 | **Status** | Not Run |
 
@@ -1744,9 +1744,9 @@
 |-------|-------|
 | **ID** | TC-E2E-005 |
 | **Description** | The module page lists all lessons belonging to that module |
-| **Preconditions** | Module has lessons (e.g., Claude Fundamentals has 4) |
+| **Preconditions** | Module has lessons (e.g., Claude Fundamentals has 5) |
 | **Steps** | 1. Navigate to `/curriculum/claude-fundamentals` 2. Count lesson list items |
-| **Expected Result** | 4 lesson items are visible (matching `_module.json` lesson count) |
+| **Expected Result** | 5 lesson items are visible (matching `_module.json` lesson count) |
 | **Priority** | P1 |
 | **Status** | Not Run |
 
@@ -2130,15 +2130,15 @@
 | **Priority** | P1 |
 | **Status** | Pending |
 
-### TC-CON-002: MODULE_ORDER has 13 modules
+### TC-CON-002: MODULE_ORDER has 15 modules
 
 | Field | Value |
 |-------|-------|
 | **ID** | TC-CON-002 |
-| **Description** | The `MODULE_ORDER` array contains exactly 13 module slugs |
+| **Description** | The `MODULE_ORDER` array contains exactly 15 module slugs |
 | **Preconditions** | None |
 | **Steps** | 1. Import `MODULE_ORDER` from constants 2. Check `MODULE_ORDER.length` |
-| **Expected Result** | Length is 13 |
+| **Expected Result** | Length is 15 |
 | **Priority** | P1 |
 | **Status** | Pending |
 

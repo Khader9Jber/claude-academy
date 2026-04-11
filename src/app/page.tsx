@@ -226,53 +226,54 @@ export default function HomePage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           >
             {ARC_DEFINITIONS.map((arc) => (
-              <motion.div
-                key={arc.id}
-                variants={fadeUp}
-                transition={{ duration: 0.4 }}
-                className={cn(
-                  "group relative rounded-2xl p-6",
-                  "bg-surface border border-border",
-                  "hover:border-border-accent hover:bg-surface-2",
-                  "transition-all duration-300"
-                )}
-              >
-                {/* Arc color indicator */}
-                <div
-                  className="h-1 w-12 rounded-full mb-4"
-                  style={{ backgroundColor: arc.color }}
-                />
-
-                {/* Icon */}
-                <div
-                  className="flex h-12 w-12 items-center justify-center rounded-xl mb-4"
-                  style={{
-                    backgroundColor: `${arc.color}15`,
-                    color: arc.color,
-                  }}
+              <Link key={arc.id} href="/curriculum" className="block">
+                <motion.div
+                  variants={fadeUp}
+                  transition={{ duration: 0.4 }}
+                  className={cn(
+                    "group relative rounded-2xl p-6 h-full",
+                    "bg-surface border border-border",
+                    "hover:border-border-accent hover:bg-surface-2",
+                    "transition-all duration-300 cursor-pointer"
+                  )}
                 >
-                  {arcIcons[arc.id]}
-                </div>
+                  {/* Arc color indicator */}
+                  <div
+                    className="h-1 w-12 rounded-full mb-4"
+                    style={{ backgroundColor: arc.color }}
+                  />
 
-                {/* Content */}
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  {arc.name}
-                </h3>
-                <p className="text-sm text-muted leading-relaxed mb-4">
-                  {arc.description}
-                </p>
-
-                {/* Meta */}
-                <div className="flex items-center gap-3 text-xs text-muted">
-                  <span
-                    className="font-medium"
-                    style={{ color: arc.color }}
+                  {/* Icon */}
+                  <div
+                    className="flex h-12 w-12 items-center justify-center rounded-xl mb-4"
+                    style={{
+                      backgroundColor: `${arc.color}15`,
+                      color: arc.color,
+                    }}
                   >
-                    {arcModuleCounts[arc.id]} modules
-                  </span>
-                  <span>{arc.range}</span>
-                </div>
-              </motion.div>
+                    {arcIcons[arc.id]}
+                  </div>
+
+                  {/* Content */}
+                  <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-accent transition-colors">
+                    {arc.name}
+                  </h3>
+                  <p className="text-sm text-muted leading-relaxed mb-4">
+                    {arc.description}
+                  </p>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-3 text-xs text-muted">
+                    <span
+                      className="font-medium"
+                      style={{ color: arc.color }}
+                    >
+                      {arcModuleCounts[arc.id]} modules
+                    </span>
+                    <span>{arc.range}</span>
+                  </div>
+                </motion.div>
+              </Link>
             ))}
           </motion.div>
         </div>

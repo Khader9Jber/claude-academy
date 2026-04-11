@@ -1,0 +1,290 @@
+---
+title: "Content Repurposing: One Piece, Many Formats"
+slug: "content-repurposing"
+order: 3
+difficulty: "intermediate"
+duration: 20
+tags: ["content", "repurposing", "social-media", "formats"]
+objectives:
+  - "Transform a single blog post into multiple content formats"
+  - "Write platform-specific adaptation prompts"
+  - "Maintain key messages across formats"
+  - "Build a batch repurposing workflow"
+quiz:
+  - id: "content-repurposing-1"
+    question: "What is the core principle of content repurposing?"
+    type: "multiple-choice"
+    options:
+      - "Copy-pasting the same content everywhere"
+      - "Extracting key ideas from one piece and adapting the format, length, and tone to fit each platform's conventions and audience expectations"
+      - "Writing completely new content for each platform"
+      - "Only posting on one platform"
+    correct: 1
+    explanation: "Repurposing is not cross-posting. A 2,000-word blog post does not work on Twitter. But the key insights from that post can become a Twitter thread, a LinkedIn carousel, a newsletter section, and a video script — each adapted to the platform's format, length norms, and audience behavior. Same ideas, different packaging."
+  - id: "content-repurposing-2"
+    question: "Why should you repurpose into platform-native formats?"
+    type: "multiple-choice"
+    options:
+      - "It's easier than creating original content"
+      - "Each platform's algorithm and audience favors specific formats — threads on X, carousels on LinkedIn, short-form on TikTok — and native content performs significantly better than cross-posted links"
+      - "Platforms require it"
+      - "It saves money on advertising"
+    correct: 1
+    explanation: "Platform algorithms deprioritize outbound links and favor native content that keeps users on the platform. A Twitter thread gets 3-5x more engagement than a tweet with a link to a blog post. A LinkedIn carousel gets more visibility than a text post linking elsewhere. Adapting to each platform's native format is the difference between content being seen and being buried."
+  - id: "content-repurposing-3"
+    question: "How do you maintain key messages across formats?"
+    type: "multiple-choice"
+    options:
+      - "Use the exact same sentences everywhere"
+      - "Identify 3-5 core takeaways from the original piece and ensure each repurposed format includes at least 2-3 of them, adapted for the platform"
+      - "Let Claude decide the key messages"
+      - "Add a disclaimer linking to the original"
+    correct: 1
+    explanation: "Identify the core takeaways before repurposing. A blog post might have 5 key insights. A Twitter thread can cover 3 of them. A LinkedIn post might focus on 1 with more depth. The newsletter might cover all 5 as bullet points. The messages stay consistent, but the depth and framing adapt to the format."
+  - id: "content-repurposing-4"
+    question: "What is the most efficient batch repurposing workflow?"
+    type: "multiple-choice"
+    options:
+      - "Repurpose each piece individually as you publish it"
+      - "Write the long-form piece first, extract key messages, then generate all platform formats in one session using Claude"
+      - "Hire a social media manager"
+      - "Repurpose only your most popular content"
+    correct: 1
+    explanation: "Batching is faster because Claude has the full context of the original piece in one session. Extract the key messages once, then generate all formats sequentially. This ensures consistency across platforms and takes 15-20 minutes instead of multiple separate sessions. Schedule the outputs across the week for consistent publishing."
+---
+
+## One Piece of Content, Seven Touchpoints
+
+I used to write a blog post, share it once on Twitter, and move on. That 2,000-word post represented 4 hours of work reaching maybe 200 people. Now I repurpose every post into 5-7 formats, and the same ideas reach 5x more people with only 20 minutes of additional effort using Claude.
+
+## The Repurposing Pipeline
+
+Start with your longest, most substantial piece — usually a blog post or article. This is your "pillar content." Everything else derives from it.
+
+Here is the complete pipeline:
+
+```
+Blog post (2,000 words)
+  ├── Twitter/X thread (8-12 tweets)
+  ├── LinkedIn post (300 words)
+  ├── Newsletter section (400 words)
+  ├── Video script (5 minutes)
+  ├── Instagram carousel (10 slides)
+  └── Reddit post (adapted for specific subreddit)
+```
+
+## Step 1: Extract Key Messages
+
+Before repurposing, identify what matters:
+
+```
+Read this blog post and extract:
+1. The main thesis (one sentence)
+2. The 5 most important takeaways
+3. The best story or anecdote
+4. The most shareable quote or insight
+5. The most practical tip or action item
+
+Post: [paste full blog post]
+```
+
+Claude distills the post into its essential elements. These become the building blocks for every format.
+
+## Step 2: Platform-Specific Adaptation
+
+### Twitter/X Thread
+
+```
+Convert this blog post into a Twitter thread:
+- 8-12 tweets
+- First tweet: strong hook that makes people want to read the thread
+  (no "Thread:" or "1/n" prefix — those are outdated)
+- Each tweet: one idea, standalone value, under 280 characters
+- Use line breaks for readability
+- Include 1-2 specific examples or data points from the post
+- Last tweet: actionable takeaway + soft CTA (not "follow me for more")
+- No hashtags (they reduce engagement on X)
+- No emojis in every tweet (one or two total is fine)
+
+Blog post: [paste]
+```
+
+Claude generates:
+
+```
+Most developers think microservices are the default architecture for
+serious applications.
+
+I spent 6 months migrating a monolith to microservices, then spent
+3 months migrating back.
+
+Here's what I learned about architecture decisions:
+
+---
+
+The monolith served 50,000 users with sub-200ms response times. There
+was nothing wrong with it.
+
+But the team had grown to 12 developers, and "microservices scale
+better for teams" was the received wisdom.
+
+---
+
+We split into 7 services. Within a month:
+
+- Deploy time went from 5 minutes to 45 minutes
+- Debugging a request meant tracing across 3-4 services
+- Our monitoring costs tripled
+
+---
+
+[continues for 8-10 more tweets]
+```
+
+### LinkedIn Post
+
+```
+Adapt this blog post into a LinkedIn post:
+- 200-300 words
+- Open with a counterintuitive statement or personal story
+- Professional tone but not corporate — approachable, like talking
+  to a colleague
+- Focus on the business impact, not just the technical details
+- End with a question to encourage comments
+- Use line breaks between paragraphs (LinkedIn formatting)
+- No hashtags in the body text (add 3-5 relevant ones at the very end)
+- No emojis as bullet points
+
+Blog post: [paste]
+```
+
+### Newsletter Section
+
+```
+Adapt this blog post into a newsletter section:
+- 300-400 words
+- Conversational, like writing to a friend
+- Assume the reader has limited time — lead with the insight,
+  not the backstory
+- Include one "if you take away one thing" summary
+- Link to the full post for readers who want more depth
+- Tone: helpful, personal, not promotional
+
+Blog post: [paste]
+```
+
+### Video Script
+
+```
+Convert this blog post into a 5-minute YouTube video script:
+- Hook (first 15 seconds): the most surprising or counterintuitive point
+- Structure: problem, my experience, what I learned, what to do instead
+- Conversational — written for speaking, not reading
+- Include [B-roll] markers for where to show screen recordings or diagrams
+- Include [cut] markers for pacing
+- End with a clear call to action (subscribe/comment)
+- Estimated runtime annotations for each section
+
+Blog post: [paste]
+```
+
+### Instagram/LinkedIn Carousel
+
+```
+Convert this blog post into a 10-slide carousel:
+- Slide 1: bold title/hook (large text, minimal words)
+- Slides 2-8: one key point per slide, max 3 lines of text
+- Slide 9: summary of all key points
+- Slide 10: CTA (follow for more, save this post, share with a friend)
+- For each slide, specify: headline, body text, and any visual suggestion
+- Write as if the reader sees only text on a colored background
+
+Blog post: [paste]
+```
+
+### Reddit Post
+
+```
+Adapt this blog post for r/programming:
+- Title: informative, not clickbait (Reddit downvotes clickbait)
+- Body: share the key insight directly, don't just link to the blog
+- Include the code examples — Reddit appreciates seeing the actual code
+- Tone: peer-to-peer, no self-promotion
+- Preemptively address the most likely criticism or question
+- Add a "TL;DR" at the top with the main takeaway in 2 sentences
+
+Blog post: [paste]
+```
+
+## Maintaining Message Consistency
+
+The risk with repurposing is distortion. By the time an idea goes through 6 format adaptations, it might not resemble the original.
+
+Prevent this with a message checklist:
+
+```
+Before finalizing each repurposed piece, verify:
+1. Does it include the main thesis from the original?
+2. Are the supporting claims accurate (not exaggerated for engagement)?
+3. Would someone who read the blog post AND the Twitter thread see
+   them as consistent?
+4. Have I added any claims in the short format that aren't supported
+   in the long form?
+```
+
+Claude can run this check:
+
+```
+Compare this Twitter thread against the original blog post. Flag any
+places where the thread:
+- Exaggerates a claim from the original
+- Oversimplifies to the point of being misleading
+- Adds a claim not supported by the original
+- Misses a critical nuance from the original
+```
+
+## The Batch Workflow
+
+Here is my exact workflow for repurposing a blog post in one Claude session:
+
+```
+I'm going to repurpose this blog post into multiple formats.
+First, read it and extract the key messages.
+
+[paste full blog post]
+
+Then generate, one at a time:
+1. Twitter thread (10 tweets)
+2. LinkedIn post (250 words)
+3. Newsletter section (350 words)
+4. Video script outline (5 minutes)
+5. Carousel text (10 slides)
+
+After each, I'll review and we'll refine before moving to the next.
+```
+
+This sequential approach in a single session means Claude maintains context about the original post across all formats. The key messages stay consistent because Claude remembers what the post actually says.
+
+Total time: 20-30 minutes for all five formats. Compare that to writing each from scratch — you would spend that long on the Twitter thread alone.
+
+## Scheduling Repurposed Content
+
+Spreading the outputs across a week maximizes reach:
+
+```
+Create a publishing schedule for this week's repurposed content:
+
+Monday: Blog post goes live
+Tuesday: Twitter thread (morning)
+Wednesday: LinkedIn post (8 AM local time)
+Thursday: Newsletter includes the section
+Friday: Reddit post
+Weekend: Instagram carousel
+
+For each, suggest the optimal posting time and any platform-specific
+timing notes.
+```
+
+## Key Takeaway
+
+Content repurposing turns one piece of substantial content into 5-7 platform-specific pieces, multiplying your reach without multiplying your effort. The key is extracting core messages first, then adapting the format, length, and tone to each platform's conventions — not cross-posting identical content. Use Claude in a single session to batch all formats while maintaining message consistency. A 2,000-word blog post can become a week of content across every platform in under 30 minutes.

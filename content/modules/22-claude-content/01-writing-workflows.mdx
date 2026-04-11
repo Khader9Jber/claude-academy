@@ -1,0 +1,282 @@
+---
+title: "Long-Form Writing with Claude"
+slug: "writing-workflows"
+order: 1
+difficulty: "intermediate"
+duration: 22
+tags: ["content", "writing", "blog", "articles"]
+objectives:
+  - "Use Claude for blog posts, articles, documentation, and guides"
+  - "Follow the outline-first workflow for consistent, high-quality writing"
+  - "Maintain voice consistency by feeding Claude your previous writing"
+  - "Know when Claude helps your writing and when it makes it worse"
+quiz:
+  - id: "writing-workflows-1"
+    question: "What is the most effective workflow for writing a blog post with Claude?"
+    type: "multiple-choice"
+    options:
+      - "Ask Claude to write the entire post in one prompt"
+      - "Topic ideation, then outline, then expand section by section, then polish — each as a separate prompt"
+      - "Write the post yourself and ask Claude to rewrite it"
+      - "Give Claude a title and let it decide the content"
+    correct: 1
+    explanation: "The outline-first workflow gives you control at every stage. You approve the outline before expansion begins, so the structure matches your intent. Expanding section by section lets you give feedback on tone and depth as you go. Polishing at the end tightens the language. One-shot prompts produce generic content because Claude has to guess your preferences for structure, depth, and voice."
+  - id: "writing-workflows-2"
+    question: "How do you maintain your voice when using Claude for writing?"
+    type: "multiple-choice"
+    options:
+      - "You can't — Claude always sounds like Claude"
+      - "Feed Claude 2-3 examples of your previous writing and ask it to match the tone, sentence structure, and vocabulary"
+      - "Use a special 'voice' parameter in the prompt"
+      - "Edit every sentence manually after Claude writes it"
+    correct: 1
+    explanation: "Claude can adapt to your writing style remarkably well when given examples. Paste 2-3 paragraphs of your best writing and say 'match this voice.' Claude picks up on sentence length, vocabulary level, use of analogies, level of formality, and even humor patterns. The more distinct your voice, the better Claude matches it."
+  - id: "writing-workflows-3"
+    question: "When does Claude make writing WORSE?"
+    type: "multiple-choice"
+    options:
+      - "Never — Claude always improves writing"
+      - "When the writing requires deeply personal stories, strong opinions, or domain expertise that Claude doesn't have — resulting in generic, hedge-heavy text"
+      - "When the post is longer than 1,000 words"
+      - "When writing in English"
+    correct: 1
+    explanation: "Claude tends to hedge ('it's important to note that...'), generalize where specifics are needed, and water down strong opinions. Personal essays, opinion pieces, and deep technical content from firsthand experience suffer when Claude writes them because it lacks your unique experiences and perspectives. Use Claude for structure and polish in these cases, not for generating the core content."
+  - id: "writing-workflows-4"
+    question: "What should you include in a writing brief for Claude?"
+    type: "multiple-choice"
+    options:
+      - "Just the topic"
+      - "Topic, target audience, desired tone, key points to cover, approximate length, and any specific examples or data to include"
+      - "The URL of a similar article"
+      - "Keywords for SEO"
+    correct: 1
+    explanation: "A complete brief constrains Claude's output to match your vision. The audience determines vocabulary and depth. The tone sets the style. Key points ensure nothing important is missed. Length prevents Claude from over-expanding or under-developing. Specific examples and data ground the content in reality rather than generic advice."
+---
+
+## Writing Is Still Thinking
+
+Let me be clear upfront: Claude does not replace the thinking that makes writing valuable. What it does is remove the friction between having ideas and having a finished piece. The outline-first workflow I describe here is how I produce 2-3 articles per week without burning out.
+
+## The Outline-First Workflow
+
+### Step 1: Topic and Brief
+
+Start with a clear brief:
+
+```
+I want to write a blog post about migrating from REST to GraphQL.
+
+Target audience: Backend developers who have built REST APIs and are
+considering GraphQL for their next project.
+
+Tone: Practical, opinionated, not academic. I want to share what
+actually worked for me and what didn't.
+
+Key points:
+- Why I migrated (specific pain points with REST for this use case)
+- The migration was not a rewrite — it was incremental
+- What surprised me (both positive and negative)
+- Specific tooling: Apollo Server, code-first schema, Prisma integration
+- Performance comparison with numbers
+
+Length: ~2,000 words
+```
+
+### Step 2: Generate the Outline
+
+```
+Create a detailed outline for this post. Each section should have:
+- A heading
+- 2-3 bullet points of what the section covers
+- Approximate word count per section
+```
+
+Claude produces:
+
+```markdown
+## Outline: "We Migrated to GraphQL — Here's What Actually Happened"
+
+1. **The REST Endpoint Sprawl** (~300 words)
+   - 47 endpoints for 8 resources, most with 3-4 query param variations
+   - Frontend team making 4-6 requests per page load
+   - The breaking point: a dashboard that needed data from 7 endpoints
+
+2. **Why Not a Full Rewrite** (~250 words)
+   - 18 months of REST endpoints, all with consumers
+   - Incremental approach: GraphQL gateway in front of existing REST
+   - The "strangler fig" pattern for API migration
+
+3. **The First GraphQL Endpoint** (~350 words)
+   - Choosing the dashboard as the pilot
+   - Code-first schema with type-graphql
+   - Mapping existing Prisma models to GraphQL types
+   - The "aha moment" when one query replaced 7 REST calls
+
+4. **What Went Well** (~300 words)
+   - Frontend development speed increased measurably
+   - API documentation became self-generating (GraphQL introspection)
+   - Reduced payload sizes by 40-60% (no over-fetching)
+
+5. **What Surprised Us (Negatively)** (~400 words)
+   - N+1 queries were a real problem until we added DataLoader
+   - Caching was harder — no HTTP caching by default
+   - Error handling is different and took adjustment
+   - Not every developer liked the learning curve
+
+6. **Performance Numbers** (~200 words)
+   - Dashboard load time: 2.4s → 0.9s
+   - Payload size: 340KB → 85KB
+   - Backend response time: mixed (some faster, some slower)
+
+7. **Would I Do It Again?** (~200 words)
+   - Yes, but only for use cases with complex data requirements
+   - REST is still better for simple CRUD APIs
+   - The key lesson: GraphQL is a tool, not an upgrade
+```
+
+I review this outline, reorder sections, add points I want to cover, remove things that do not fit. Then I approve it.
+
+### Step 3: Expand Section by Section
+
+```
+Expand section 1 ("The REST Endpoint Sprawl") based on the outline.
+Use the tone I described: practical, opinionated, from personal
+experience. Include a specific example of the endpoint sprawl.
+```
+
+Claude writes the section. I read it, give feedback:
+
+```
+Good structure, but it sounds too formal. Shorten the sentences.
+Drop the phrase "it's worth noting that." Start with the dashboard
+story — that's the hook, not background about REST.
+```
+
+Claude rewrites. Better. I move to the next section.
+
+This expand-and-refine loop produces much better content than asking Claude to write the entire post at once. Each section gets individual attention.
+
+### Step 4: Polish
+
+After all sections are drafted:
+
+```
+Polish this complete draft:
+- Tighten any wordy sentences
+- Ensure transitions between sections flow naturally
+- Check for repeated words or phrases
+- Verify the introduction hooks the reader and the conclusion
+  leaves them with a clear takeaway
+- Cut anything that doesn't directly support the main argument
+```
+
+Claude tightens the prose without changing the voice (because by this point, the voice is established through the section-by-section writing).
+
+## Voice Consistency
+
+This is the hardest part of using AI for writing. Claude has a default voice — slightly formal, hedge-heavy, balanced to a fault. Your writing probably does not sound like that.
+
+### Feeding Claude Your Voice
+
+```
+Here are three paragraphs from my previous writing. Match this voice
+for everything you write in this session:
+
+"I've been building APIs for six years and I still can't center a
+div on the first try. That's not a joke — CSS is genuinely harder
+than distributed systems. At least with distributed systems, the
+failure modes are documented."
+
+"The startup advice ecosystem is broken. Everyone tells you to
+'move fast and break things' but nobody mentions that the things
+you break include your sleep schedule, your relationships, and your
+confidence in your own judgment."
+
+"Here's what I actually learned from reading 40 books this year:
+most of them were forgettable. The five that changed my thinking
+were the ones that disagreed with me."
+```
+
+After reading these examples, Claude adjusts. It writes shorter sentences. It uses more direct language. It includes the dry humor. It stops hedging.
+
+The more distinctive your voice, the easier Claude adapts. If your writing style is generic, Claude cannot distinguish it from its own default, and you end up with AI-sounding text.
+
+### Voice Guide in CLAUDE.md
+
+For ongoing projects, document your voice:
+
+```markdown
+## Writing Voice
+- Short sentences. Long ones only when the rhythm demands it.
+- First person. Share real experiences, not hypothetical ones.
+- Opinionated. If I have a strong take, state it directly.
+- No hedging: drop "it's worth noting", "it's important to consider",
+  "one could argue"
+- Use analogies from everyday life, not academic references
+- Humor: dry, self-deprecating, never forced
+- Start sections with the most interesting thing, not background
+```
+
+## When Claude Helps vs. When It Hurts
+
+### Claude helps with:
+
+**Structure and organization.** Claude is excellent at taking a jumble of ideas and organizing them into a logical flow. If you have 12 points to make and do not know what order they should go in, Claude will find the thread.
+
+**First drafts of explanatory content.** Tutorials, how-to guides, documentation — anything where the goal is to explain something clearly. Claude produces clean, logical explanations.
+
+**Transitions and flow.** "Write a transition between the section about performance and the section about developer experience" — Claude handles this smoothly.
+
+**Cutting and tightening.** "Reduce this 500-word section to 300 words without losing key information." Claude is a better editor than writer.
+
+### Claude hurts with:
+
+**Personal stories.** Claude will fabricate details, generalize experiences, and strip the specificity that makes personal writing compelling. Write these yourself and let Claude polish them.
+
+**Strong opinions.** Claude's default is balanced and nuanced. If your article's value is a strong, controversial take, Claude will water it down. Write the opinion yourself, let Claude organize and polish it.
+
+**Domain-specific expertise.** If you are writing about a niche technical topic from your unique experience, Claude's contribution will be generic. Use Claude for structure, but the content needs to come from you.
+
+**Humor.** Claude can maintain humor you have written, but it rarely generates humor that is genuinely funny. The jokes feel written by committee.
+
+## Documentation and Technical Writing
+
+For technical content, Claude is especially effective:
+
+```
+Write a getting-started guide for our API:
+- Target: developers who have never used our API before
+- Prerequisite: they have an API key
+- Goal: make their first API call within 5 minutes
+- Include: curl examples, Node.js examples, Python examples
+- Tone: friendly but concise, no filler
+
+API base URL: https://api.example.com/v2
+Auth: Bearer token in the Authorization header
+First endpoint to try: GET /users/me
+```
+
+Claude produces clean documentation that follows established conventions (step-by-step, code examples, expected output). Technical docs are one of the best use cases because the structure is well-defined and the content is factual.
+
+## Batch Writing Workflow
+
+When you need multiple pieces of content:
+
+```
+I need to write 4 blog posts this week. Here are the topics:
+1. "Why We Chose Hono Over Express" — 1,500 words, technical
+2. "Our First 100 Users: Lessons Learned" — 2,000 words, personal/startup
+3. "Setting Up Monitoring for Small Teams" — 1,800 words, tutorial
+4. "The Problem With AI-Generated Content" — 1,200 words, opinion
+
+For each, generate:
+- A title (suggest 3 options)
+- An outline with section headings and key points
+- An estimated writing time
+```
+
+Claude generates all four outlines. You pick the titles, refine the outlines, then expand each post in separate sessions. This approach lets you produce a week of content in a couple of focused afternoons.
+
+## Key Takeaway
+
+The outline-first workflow — brief, outline, expand section by section, polish — produces consistently better content than single-prompt generation. Feed Claude your previous writing to maintain your voice, and document your voice characteristics in CLAUDE.md for ongoing projects. Use Claude for structure, explanations, transitions, and editing. Write personal stories, strong opinions, and domain-specific insights yourself. The best AI-assisted writing feels entirely like yours because Claude handled the scaffolding while you provided the substance.

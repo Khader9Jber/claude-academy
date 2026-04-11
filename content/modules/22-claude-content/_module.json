@@ -1,0 +1,12 @@
+{
+  "title": "Claude for Content Creators",
+  "slug": "claude-content",
+  "description": "Apply Claude to content creation workflows: long-form writing, editing and revision, content repurposing, SEO optimization, and content calendar management.",
+  "arc": "practitioner",
+  "order": 22,
+  "icon": "PenTool",
+  "color": "#5e9ed6",
+  "estimatedHours": 4,
+  "prerequisites": ["prompt-engineering"],
+  "lessonCount": 5
+}

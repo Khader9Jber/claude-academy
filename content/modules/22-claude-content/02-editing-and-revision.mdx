@@ -1,0 +1,269 @@
+---
+title: "Editing and Revision"
+slug: "editing-and-revision"
+order: 2
+difficulty: "intermediate"
+duration: 18
+tags: ["content", "editing", "revision", "feedback"]
+objectives:
+  - "Use Claude as a multi-level editor: proofreading, structural, and developmental"
+  - "Maintain your voice while using Claude for editing"
+  - "Get actionable feedback on drafts for technical accuracy and clarity"
+  - "Iterate on content efficiently without over-editing"
+quiz:
+  - id: "editing-revision-1"
+    question: "What are the three levels of editing Claude can perform?"
+    type: "multiple-choice"
+    options:
+      - "Small, medium, and large edits"
+      - "Proofreading (grammar/typos), structural editing (organization/flow), and developmental editing (argument/depth/audience fit)"
+      - "Manual, semi-automatic, and automatic editing"
+      - "English, French, and Spanish editing"
+    correct: 1
+    explanation: "These three levels match professional editing practice. Proofreading catches surface errors. Structural editing reorganizes content for better flow. Developmental editing evaluates whether the content achieves its goals — is the argument persuasive, is the depth appropriate for the audience, are there gaps in the logic. Each level requires a different prompt."
+  - id: "editing-revision-2"
+    question: "How do you prevent Claude from changing your voice during editing?"
+    type: "multiple-choice"
+    options:
+      - "You cannot — Claude always imposes its own style"
+      - "Explicitly instruct Claude to preserve your voice and only fix the specific issues you identified, not to rewrite for 'improvement'"
+      - "Edit the output manually to restore your voice"
+      - "Use a different AI for editing"
+    correct: 1
+    explanation: "Claude will respect 'preserve my voice' instructions. Tell it: 'Fix grammar and tighten wordy sentences, but do not change my sentence structure, vocabulary choices, or tone. If a sentence is informal, keep it informal. If I used a fragment for effect, keep it.' This constrains Claude to surface-level fixes without overwriting your style."
+  - id: "editing-revision-3"
+    question: "What is the best way to get technical accuracy feedback from Claude?"
+    type: "multiple-choice"
+    options:
+      - "Ask 'is this correct?'"
+      - "Ask Claude to flag any technical claims it can verify or challenge, with specific concerns explained for each flag"
+      - "Have Claude rewrite the technical sections"
+      - "Only trust human reviewers for technical content"
+    correct: 1
+    explanation: "Asking Claude to 'flag and explain' rather than 'correct' gives you the most useful output. Claude highlights questionable claims, explains why they might be wrong, and lets you decide whether to revise. This catches real errors while avoiding false corrections on things Claude is uncertain about. You remain the final authority on your domain."
+  - id: "editing-revision-4"
+    question: "What is a sign that you are over-editing with Claude?"
+    type: "multiple-choice"
+    options:
+      - "The word count changed"
+      - "The writing has lost its personality, sounds generic, and every sentence follows the same polished-but-lifeless pattern"
+      - "Claude suggests no more changes"
+      - "The editing took more than 10 minutes"
+    correct: 1
+    explanation: "Over-editing smooths out the texture that makes writing distinctive. If every paragraph sounds equally polished and every sentence is syntactically perfect, the writing has been sanded smooth. Good writing has rhythm — some sentences long, some short, some fragments, some run-on for effect. Over-editing with Claude flattens this into uniformity."
+---
+
+## Claude as Your Editor
+
+Every writer needs an editor. The problem is that good editors are expensive, busy, and not available at midnight when you are finishing a draft. Claude fills this gap — not as a replacement for human editors on high-stakes pieces, but as a tireless first-pass editor that catches what you miss.
+
+## The Three Levels of Editing
+
+### Level 1: Proofreading
+
+The simplest use case. Fix surface-level errors:
+
+```
+Proofread this article. Fix:
+- Grammar and spelling errors
+- Punctuation issues
+- Inconsistent formatting (capitalization, bullet style, heading style)
+- Awkward phrasing that could be smoother
+
+Do NOT change my voice, sentence structure, or vocabulary choices.
+If I used a sentence fragment intentionally, keep it. If I wrote
+informally, keep it informal. Only fix errors.
+```
+
+This prompt is critical because without the constraint, Claude will "improve" your writing into its own voice. The explicit instructions to preserve your style keep the edits minimal and appropriate.
+
+### Level 2: Structural Editing
+
+Evaluate and improve the organization:
+
+```
+Review this draft's structure:
+- Does the introduction hook the reader effectively?
+- Do the sections flow logically from one to the next?
+- Are there any sections that feel out of place or redundant?
+- Does each section earn its place (i.e., does it add value)?
+- Does the conclusion deliver a satisfying takeaway?
+- Are there any gaps — topics I mention but don't follow up on?
+
+Give me specific feedback with section references. Don't rewrite
+anything — just tell me what to change and why.
+```
+
+Claude identifies structural issues that are hard to see when you are deep in the writing. It might say: "Section 3 covers caching, but you don't mention caching in the introduction or conclusion. Either expand it into a proper section with transitions, or cut it and save it for a separate post."
+
+This feedback-only approach is important. You do not want Claude to restructure your piece — you want it to tell you where the structure is weak so you can fix it your way.
+
+### Level 3: Developmental Editing
+
+The deepest level — evaluating whether the content achieves its goals:
+
+```
+Developmental review of this draft:
+
+Target audience: Senior developers considering microservices
+Goal: Convince them to start with a monolith instead
+My thesis: Microservices are over-adopted; most teams should start
+monolithic and split only when they have evidence of where to split
+
+Review for:
+- Does the argument build persuasively toward the thesis?
+- Are the supporting examples strong enough? Which are weak?
+- Is the depth appropriate for the audience? Where am I too shallow
+  or too detailed?
+- What counterarguments should I address that I'm ignoring?
+- Is the tone right for this audience? Too preachy? Too casual?
+- What's the strongest and weakest section, and why?
+```
+
+Claude provides substantive feedback: "Your argument is strongest when you cite specific companies that started with microservices and regretted it. Section 4 (operational overhead) is your weakest because you state the overhead without quantifying it. Add numbers — how many more deploy pipelines, how much more monitoring infrastructure, what percentage increase in operational cost."
+
+This is the kind of feedback that makes your next draft significantly better.
+
+## Editing Without Losing Your Voice
+
+The number one risk of AI editing is homogenization. Your writing starts sounding like everyone else's AI-edited writing. Here is how to prevent it.
+
+### The "Track Changes" Approach
+
+Instead of asking Claude to rewrite, ask it to annotate:
+
+```
+Review this section and suggest edits, but don't make them. Format
+your suggestions like track changes:
+
+For each suggestion:
+- Quote the original text
+- Suggest the change
+- Explain why
+
+I'll decide which suggestions to accept.
+```
+
+This gives you control. You see every proposed change and its reasoning. You accept the grammar fixes, reject the voice changes, and consider the structural suggestions on their own merits.
+
+### Preserving Informal Voice
+
+```
+Edit this paragraph for clarity without making it more formal:
+
+"Look, I've tried every productivity system out there. GTD,
+Pomodoro, time blocking, eating the frog, whatever. None of them
+worked for more than two weeks. Not because the systems are bad —
+they're not. They failed because they assumed I have consistent
+energy levels, which I absolutely do not."
+
+Keep the conversational tone. Keep "look" as a sentence opener.
+Keep the dash for emphasis. Keep the short final sentence for punch.
+Fix only actual errors.
+```
+
+Claude returns it with maybe one minor fix (if there is an actual error) and leaves the voice intact. The explicit instructions about what to keep are essential.
+
+## Technical Accuracy Review
+
+For technical content, Claude serves as a fact-checker:
+
+```
+Review this article about database indexing for technical accuracy.
+Flag anything that is:
+1. Factually incorrect (wrong information)
+2. Oversimplified to the point of being misleading
+3. Outdated (has changed in recent versions)
+4. Missing important caveats
+
+For each flag, explain:
+- What the text says
+- What the issue is
+- What the correction should be
+- How confident you are (high/medium/low)
+
+Don't change the text — just flag and explain.
+```
+
+Claude might flag: "You say 'B-tree indexes are always faster for range queries than hash indexes.' This is generally true but oversimplified. Hash indexes don't support range queries at all in most databases — they only support equality. The comparison is misleading because it implies hash indexes can do range queries, just slower. Confidence: high."
+
+This is more useful than having Claude rewrite the section, because you understand the nuance and can decide how to address it.
+
+## Iteration Without Over-Editing
+
+A common trap: running the same text through Claude repeatedly until all personality has been polished away.
+
+### The Two-Pass Rule
+
+I follow a simple rule: two editing passes maximum.
+
+**Pass 1: Structural and content.** Fix organization, fill gaps, strengthen weak arguments.
+
+**Pass 2: Surface and polish.** Fix grammar, tighten sentences, smooth transitions.
+
+After two passes, the piece is done. If you are still finding "issues" on pass three, you are over-editing. The diminishing returns curve for AI editing is steep — pass one catches 80% of issues, pass two catches 15%, and everything after that is noise.
+
+### Signs of Over-Editing
+
+- Every sentence is the same length
+- No sentence fragments, no one-word paragraphs, no stylistic risks
+- The writing sounds "professional" but not distinctive
+- You cannot tell who wrote it
+- All humor has been smoothed away
+- Strong statements have been qualified with "generally" and "in most cases"
+
+If you notice these, revert to your pre-editing draft and try a more constrained editing prompt.
+
+## Editing Different Content Types
+
+### Blog Posts
+
+```
+Edit for engagement: Is the hook strong enough? Are there sections
+where the reader might lose interest? Where can I add a concrete
+example to replace an abstract statement?
+```
+
+### Technical Documentation
+
+```
+Edit for clarity and completeness: Can a developer follow these steps
+without getting stuck? Are there assumptions I haven't stated? Are
+the code examples correct and complete?
+```
+
+### Email Newsletters
+
+```
+Edit for scannability: Can a reader get the key takeaway from
+headings and bold text alone? Is the CTA clear? Is this under
+500 words?
+```
+
+### Social Media Posts
+
+```
+Edit for impact: Is this punchy enough for [platform]? Does it
+hook in the first line? Is the call to action natural, not forced?
+Cut it to under [character limit].
+```
+
+## Feedback Prompts That Produce Actionable Results
+
+The quality of Claude's editing depends entirely on the quality of your prompt. Vague requests produce vague feedback.
+
+**Vague**: "Is this good?"
+
+**Specific**: "Rate each section 1-5 for clarity. For any section below 4, explain what makes it unclear and suggest how to fix it."
+
+**Vague**: "Edit this."
+
+**Specific**: "Tighten this from 2,000 words to 1,500 without losing the three main arguments. Tell me what you cut and why."
+
+**Vague**: "Make it better."
+
+**Specific**: "This post should convince a skeptical CTO to try our tool. Does the current draft do that? Where is the argument weakest? What evidence would strengthen it?"
+
+## Key Takeaway
+
+Claude is most effective as an editor when you give it specific instructions about what level of editing you want (proofreading, structural, or developmental) and explicitly constrain it to preserve your voice. Use the "flag and explain" approach for technical accuracy rather than letting Claude rewrite technical content. Follow the two-pass rule to avoid over-editing, and watch for signs that your writing has been polished into generic sameness. The goal is not perfect prose — it is clear, engaging writing that sounds like you.

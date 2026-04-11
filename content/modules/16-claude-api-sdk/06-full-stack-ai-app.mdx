@@ -1,0 +1,532 @@
+---
+title: "Building a Full-Stack AI App"
+slug: "full-stack-ai-app"
+order: 6
+difficulty: "expert"
+duration: 25
+tags: ["api", "full-stack", "app", "project"]
+objectives:
+  - "Build an end-to-end AI chat application with Next.js and Claude API"
+  - "Stream responses from the API through a server route to the browser"
+  - "Manage conversation history and context window limits"
+  - "Deploy to Vercel with proper environment variable handling"
+quiz:
+  - id: "fullstack-1"
+    question: "Why should you call the Anthropic API from a server route, not directly from the browser?"
+    type: "multiple-choice"
+    options:
+      - "The API is faster from a server"
+      - "Your API key would be exposed in client-side JavaScript — anyone could steal it and run up your bill"
+      - "The browser can't make HTTP requests"
+      - "CORS prevents it automatically"
+    correct: 1
+    explanation: "Any JavaScript in the browser is visible to users via DevTools. If your API key is in client-side code, anyone can extract it and make requests on your account. Always call the Anthropic API from a server-side route where the key stays in environment variables, never sent to the browser."
+  - id: "fullstack-2"
+    question: "How do you stream Claude's response to the browser?"
+    type: "multiple-choice"
+    options:
+      - "WebSocket connection"
+      - "Return a ReadableStream from the server route that forwards SSE events as they arrive from Claude"
+      - "Long polling with setInterval"
+      - "The browser automatically handles streaming"
+    correct: 1
+    explanation: "Your server route creates a ReadableStream (or uses the Web Streams API) that reads from Claude's SSE stream and writes chunks to the HTTP response. The browser reads this stream using fetch() with response.body.getReader(), displaying text as it arrives."
+  - id: "fullstack-3"
+    question: "What happens when conversation history exceeds the model's context window?"
+    type: "multiple-choice"
+    options:
+      - "The API automatically truncates old messages"
+      - "You get a 400 error — you must implement your own truncation strategy"
+      - "Messages are automatically compressed"
+      - "The model switches to a larger context window"
+    correct: 1
+    explanation: "The API returns a 400 error if your messages exceed the context window. You must manage this yourself — common strategies include truncating old messages, summarizing early conversation, or using a sliding window that keeps the system prompt and recent messages."
+  - id: "fullstack-4"
+    question: "What is the recommended way to store the API key in a Vercel deployment?"
+    type: "multiple-choice"
+    options:
+      - "In the source code"
+      - "In a .env file committed to git"
+      - "In Vercel's environment variables settings, scoped to production/preview"
+      - "In a comment in the code"
+    correct: 2
+    explanation: "Vercel's environment variables are encrypted and injected at build/runtime. Set ANTHROPIC_API_KEY in the Vercel dashboard under Settings > Environment Variables. Scope it to production and preview environments. Never commit it to git or include it in client-side bundles."
+---
+
+## The Full Picture
+
+You've learned the API, streaming, tool use, and production patterns. Now we put it all together into a real application — a chat interface that streams Claude's responses to users in real time.
+
+We're building with Next.js because it gives us both the frontend and the API routes in one project. Everything here applies to any full-stack framework.
+
+## Project Setup
+
+```bash
+npx create-next-app@latest claude-chat --typescript --tailwind --app
+cd claude-chat
+npm install @anthropic-ai/sdk
+```
+
+Create `.env.local`:
+
+```
+ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+```
+
+Add `.env.local` to `.gitignore` (Next.js does this by default, but verify):
+
+```bash
+echo ".env.local" >> .gitignore
+```
+
+## The API Route
+
+Create `app/api/chat/route.ts` — this is where the Anthropic API call lives, server-side only:
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import { NextRequest } from "next/server";
+
+const client = new Anthropic();
+
+export async function POST(req: NextRequest) {
+  const { messages, system } = await req.json();
+
+  // Validate input
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: "Messages required" }), {
+      status: 400,
+    });
+  }
+
+  // Create streaming response
+  const stream = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4096,
+    system: system || "You are a helpful assistant.",
+    messages,
+    stream: true,
+  });
+
+  // Convert Anthropic's SSE stream to a ReadableStream for the browser
+  const encoder = new TextEncoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            const data = JSON.stringify({ text: event.delta.text });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+
+          if (event.type === "message_delta") {
+            const data = JSON.stringify({
+              usage: event.usage,
+              stop_reason: event.delta.stop_reason,
+            });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+        }
+
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      } catch (error) {
+        const errorData = JSON.stringify({
+          error: error instanceof Error ? error.message : "Stream error",
+        });
+        controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+```
+
+The API key never leaves the server. The browser only talks to your `/api/chat` route.
+
+## The Chat Hook
+
+Create `hooks/useChat.ts` to handle the client-side streaming logic:
+
+```typescript
+"use client";
+
+import { useState, useCallback, useRef } from "react";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export function useChat(systemPrompt?: string) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const sendMessage = useCallback(
+    async (userMessage: string) => {
+      const newMessages: Message[] = [
+        ...messages,
+        { role: "user", content: userMessage },
+      ];
+
+      setMessages(newMessages);
+      setIsStreaming(true);
+
+      // Add empty assistant message to fill in
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: newMessages,
+            system: systemPrompt,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+
+          for (const line of lines) {
+            const data = line.slice(6);
+            if (data === "[DONE]") break;
+
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.text) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = {
+                    ...last,
+                    content: last.content + parsed.text,
+                  };
+                  return updated;
+                });
+              }
+              if (parsed.error) {
+                console.error("Stream error:", parsed.error);
+              }
+            } catch {
+              // Skip malformed JSON
+            }
+          }
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          // User cancelled — keep partial response
+        } else {
+          console.error("Chat error:", error);
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              role: "assistant",
+              content: "Sorry, something went wrong. Please try again.",
+            };
+            return updated;
+          });
+        }
+      } finally {
+        setIsStreaming(false);
+        abortRef.current = null;
+      }
+    },
+    [messages, systemPrompt]
+  );
+
+  const stopStreaming = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
+
+  return { messages, isStreaming, sendMessage, stopStreaming, clearMessages };
+}
+```
+
+## The Chat UI
+
+Create `app/page.tsx`:
+
+```tsx
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { useChat } from "@/hooks/useChat";
+
+export default function ChatPage() {
+  const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { messages, isStreaming, sendMessage, stopStreaming } = useChat(
+    "You are a helpful coding assistant. Use markdown for code blocks."
+  );
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isStreaming) return;
+    sendMessage(input.trim());
+    setInput("");
+  };
+
+  return (
+    <div className="flex flex-col h-screen max-w-3xl mx-auto">
+      <header className="p-4 border-b">
+        <h1 className="text-xl font-bold">Claude Chat</h1>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-3 ${
+                msg.role === "user"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-800"
+              }`}
+            >
+              <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+            </div>
+          </div>
+        ))}
+        {isStreaming && (
+          <button
+            onClick={stopStreaming}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Stop generating
+          </button>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-4 border-t flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 rounded-lg border p-2 dark:bg-gray-800"
+          disabled={isStreaming}
+        />
+        <button
+          type="submit"
+          disabled={isStreaming || !input.trim()}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+        >
+          Send
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+## Conversation History Management
+
+The context window is finite. A long conversation will eventually exceed it. Handle this before it becomes a 400 error:
+
+```typescript
+// In your API route
+function trimConversation(
+  messages: Message[],
+  maxTokens: number = 150000
+): Message[] {
+  // Rough estimate: 1 token ≈ 4 characters
+  const estimateTokens = (msgs: Message[]) =>
+    msgs.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
+
+  if (estimateTokens(messages) <= maxTokens) {
+    return messages;
+  }
+
+  // Strategy: keep first message (often important context) + recent messages
+  const first = messages[0];
+  let remaining = messages.slice(1);
+
+  while (estimateTokens([first, ...remaining]) > maxTokens && remaining.length > 2) {
+    remaining = remaining.slice(2); // drop oldest user+assistant pair
+  }
+
+  return [first, ...remaining];
+}
+
+// Advanced: summarize old messages instead of dropping them
+async function summarizeAndTrim(
+  messages: Message[],
+  client: Anthropic
+): Promise<Message[]> {
+  const oldMessages = messages.slice(0, -6); // keep last 3 pairs
+  const recentMessages = messages.slice(-6);
+
+  if (oldMessages.length === 0) return messages;
+
+  const summary = await client.messages.create({
+    model: "claude-haiku-3-5-20241022", // cheap model for summaries
+    max_tokens: 500,
+    messages: [
+      {
+        role: "user",
+        content: `Summarize this conversation in 2-3 sentences, preserving key decisions and context:\n\n${
+          oldMessages.map((m) => `${m.role}: ${m.content}`).join("\n\n")
+        }`,
+      },
+    ],
+  });
+
+  return [
+    {
+      role: "user",
+      content: `[Previous conversation summary: ${summary.content[0].type === "text" ? summary.content[0].text : ""}]`,
+    },
+    { role: "assistant", content: "Understood, I have the context from our earlier conversation." },
+    ...recentMessages,
+  ];
+}
+```
+
+I learned this the hard way. A user testing my chat app had a 45-minute conversation, and the app crashed with a cryptic 400 error at message 87. The context window was full. Now I always implement trimming from day one.
+
+## Adding Prompt Caching
+
+For a chat app with a long system prompt, cache it:
+
+```typescript
+// In your API route
+const stream = await client.messages.create({
+  model: "claude-sonnet-4-20250514",
+  max_tokens: 4096,
+  system: [
+    {
+      type: "text",
+      text: longSystemPrompt, // your detailed system instructions
+      cache_control: { type: "ephemeral" },
+    },
+  ],
+  messages: trimmedMessages,
+  stream: true,
+});
+```
+
+Every request after the first saves 90% on the system prompt tokens. For a 3,000-token system prompt handling 1,000 daily conversations, that's roughly $8/day saved.
+
+## Deployment to Vercel
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel
+
+# Set environment variable
+vercel env add ANTHROPIC_API_KEY
+# Paste your key when prompted
+# Select: production, preview, development
+```
+
+Or through the Vercel dashboard:
+1. Import your GitHub repo
+2. Go to **Settings > Environment Variables**
+3. Add `ANTHROPIC_API_KEY` with your key
+4. Redeploy
+
+### Netlify Alternative
+
+```bash
+# netlify.toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Set env var
+netlify env:set ANTHROPIC_API_KEY "sk-ant-api03-..."
+```
+
+### Security Checklist Before Deploying
+
+```
+[ ] API key is in environment variables, not source code
+[ ] .env.local is in .gitignore
+[ ] API route validates input (message format, length limits)
+[ ] Rate limiting on your API route (prevent abuse)
+[ ] No API key in client-side bundles (check with: grep -r "sk-ant" .next/)
+[ ] CORS configured if API is on a different domain
+```
+
+## Adding Rate Limiting to Your Route
+
+Protect your API key from abuse:
+
+```typescript
+// Simple in-memory rate limiter
+const rateLimit = new Map<string, { count: number; resetTime: number }>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const limit = rateLimit.get(ip);
+
+  if (!limit || now > limit.resetTime) {
+    rateLimit.set(ip, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return false;
+  }
+
+  limit.count++;
+  return limit.count > 20; // 20 requests per minute per IP
+}
+
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+
+  if (isRateLimited(ip)) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+    });
+  }
+
+  // ... rest of your handler
+}
+```
+
+For production, use a proper rate limiter like `@upstash/ratelimit` with Redis.
+
+## Key Takeaway
+
+A full-stack AI app is three pieces: a server-side API route that holds your key and calls Claude, a client-side hook that manages streaming and conversation state, and a UI that displays it all. Always call the API from the server, never the browser. Manage conversation history before it hits the context limit — trim or summarize old messages. Cache your system prompt for 90% savings on repeated tokens. Rate-limit your route to prevent abuse. Deploy with environment variables, never committed keys. This architecture scales from a side project to a production SaaS.

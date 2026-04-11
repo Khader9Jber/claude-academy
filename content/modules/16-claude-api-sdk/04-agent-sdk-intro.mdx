@@ -1,0 +1,336 @@
+---
+title: "Claude Agent SDK"
+slug: "agent-sdk-intro"
+order: 4
+difficulty: "expert"
+duration: 22
+tags: ["sdk", "agents", "automation", "claude-code"]
+objectives:
+  - "Understand what the Agent SDK is and how it differs from the raw API"
+  - "Build a simple agent that reads files and makes decisions"
+  - "Implement agent loops with tool integration"
+  - "Choose between Agent SDK, raw API, and Claude Code for different use cases"
+quiz:
+  - id: "agent-sdk-1"
+    question: "What is the main difference between the Agent SDK and the raw Messages API?"
+    type: "multiple-choice"
+    options:
+      - "The Agent SDK uses a different model"
+      - "The Agent SDK manages the tool-use loop, conversation state, and agent orchestration automatically"
+      - "The Agent SDK is faster"
+      - "The Agent SDK is free to use"
+    correct: 1
+    explanation: "The raw Messages API requires you to manually manage the tool-use loop (check stop_reason, execute tools, send results back) and conversation state. The Agent SDK handles this orchestration automatically — you define tools and the agent runs the loop until it completes the task."
+  - id: "agent-sdk-2"
+    question: "When should you use the raw API instead of the Agent SDK?"
+    type: "multiple-choice"
+    options:
+      - "Always — the raw API is better"
+      - "When you need fine-grained control over each step, custom retry logic, or minimal dependencies"
+      - "When building agents"
+      - "When you need tool use"
+    correct: 1
+    explanation: "The raw API gives you complete control over every request, response, and tool execution. Use it when you need custom retry logic, want to inspect and modify messages between turns, need to integrate with existing frameworks, or want minimal dependencies."
+  - id: "agent-sdk-3"
+    question: "What are guardrails in the Agent SDK?"
+    type: "multiple-choice"
+    options:
+      - "Physical barriers"
+      - "Validation checks that run in parallel with the agent to detect off-topic, unsafe, or incorrect behavior"
+      - "Rate limits"
+      - "Token counters"
+    correct: 1
+    explanation: "Guardrails are checks that run alongside the agent at each step. They can validate that the agent stays on topic, doesn't produce harmful content, follows required formats, or meets any custom criteria. If a guardrail trips, you can halt or redirect the agent."
+  - id: "agent-sdk-4"
+    question: "What is the agent loop pattern?"
+    type: "multiple-choice"
+    options:
+      - "An infinite loop that never stops"
+      - "A cycle where the agent reasons, selects tools, executes them, observes results, and repeats until the task is complete"
+      - "A loop that retries failed API calls"
+      - "A loop that switches between models"
+    correct: 1
+    explanation: "The agent loop is: (1) reason about the current state, (2) decide which tool to call or whether to respond, (3) execute the tool, (4) observe the result, (5) repeat until the task is done. The Agent SDK manages this loop automatically, including conversation state between iterations."
+---
+
+## Beyond Single Requests
+
+The Messages API handles one request at a time. You send a message, get a response, maybe handle a tool call. But real-world AI applications need more: agents that pursue goals across multiple steps, use multiple tools, and make decisions based on intermediate results.
+
+The Claude Agent SDK handles this orchestration so you don't have to write the loop yourself.
+
+## What the Agent SDK Is
+
+The Agent SDK is a Python framework (with TypeScript support) that sits on top of the Messages API and provides:
+
+- **Automatic tool-use loops** — no manual `while stop_reason == "tool_use"` checking
+- **Agent definitions** — package instructions, tools, and behavior into reusable agents
+- **Handoffs** — agents can delegate to other specialized agents
+- **Guardrails** — validation checks that run alongside the agent
+- **Tracing** — built-in observability for debugging agent behavior
+
+```bash
+pip install anthropic-agent-sdk
+```
+
+## Your First Agent
+
+```python
+from agent_sdk import Agent, Runner, function_tool
+import os
+
+# Define tools as simple Python functions
+@function_tool
+def read_file(path: str) -> str:
+    """Read a file and return its contents."""
+    try:
+        with open(path, "r") as f:
+            return f.read()
+    except FileNotFoundError:
+        return f"Error: File '{path}' not found"
+
+@function_tool
+def list_directory(path: str = ".") -> str:
+    """List files in a directory."""
+    try:
+        entries = os.listdir(path)
+        return "\n".join(sorted(entries))
+    except FileNotFoundError:
+        return f"Error: Directory '{path}' not found"
+
+@function_tool
+def write_file(path: str, content: str) -> str:
+    """Write content to a file."""
+    with open(path, "w") as f:
+        f.write(content)
+    return f"Successfully wrote {len(content)} characters to {path}"
+
+# Create the agent
+file_agent = Agent(
+    name="File Assistant",
+    instructions="""You help users manage files. You can read, list, and write files. 
+    Always confirm before writing or overwriting files.
+    When listing directories, explain what you see.""",
+    tools=[read_file, list_directory, write_file],
+    model="claude-sonnet-4-20250514"
+)
+
+# Run it
+async def main():
+    result = await Runner.run(
+        file_agent, 
+        "Read the package.json in the current directory and tell me what dependencies this project uses."
+    )
+    print(result.final_output)
+```
+
+That's it. The SDK handles the entire loop — the agent reads the file, processes the contents, and returns a summary. No manual tool execution, no conversation state management.
+
+## How the Agent Loop Works
+
+Under the hood, when you call `Runner.run()`:
+
+```
+1. Send user message + agent instructions + tool definitions to Claude
+2. Claude responds:
+   - If stop_reason is "end_turn" → return the response (done)
+   - If stop_reason is "tool_use" → execute the requested tools
+3. Send tool results back to Claude
+4. Go to step 2
+```
+
+The SDK adds safeguards:
+
+- **Max turns** — prevents infinite loops (default: 10)
+- **Token tracking** — monitors cumulative usage
+- **Error recovery** — handles tool failures gracefully
+
+```python
+result = await Runner.run(
+    file_agent,
+    "Organize all .py files in src/ into logical subdirectories",
+    max_turns=20  # allow more steps for complex tasks
+)
+
+print(f"Completed in {result.total_turns} turns")
+print(f"Tokens used: {result.total_tokens}")
+```
+
+## Multi-Agent Handoffs
+
+The real power of the Agent SDK is composing specialized agents:
+
+```python
+from agent_sdk import Agent, Runner, function_tool
+
+# Specialist: code reviewer
+code_reviewer = Agent(
+    name="Code Reviewer",
+    instructions="""You review code for quality, bugs, and security issues.
+    Be specific about line numbers and provide fix suggestions.
+    Rate severity: critical, warning, info.""",
+    tools=[read_file, list_directory],
+    model="claude-sonnet-4-20250514"
+)
+
+# Specialist: test writer
+test_writer = Agent(
+    name="Test Writer",
+    instructions="""You write comprehensive tests for the provided code.
+    Use pytest. Cover happy path, edge cases, and error conditions.
+    Match the project's existing test patterns.""",
+    tools=[read_file, write_file, list_directory],
+    model="claude-sonnet-4-20250514"
+)
+
+# Orchestrator that delegates to specialists
+orchestrator = Agent(
+    name="Dev Assistant",
+    instructions="""You coordinate code review and testing tasks.
+    For code review requests, hand off to the Code Reviewer.
+    For test writing requests, hand off to the Test Writer.
+    For tasks that need both, run review first, then write tests.""",
+    handoffs=[code_reviewer, test_writer],
+    model="claude-sonnet-4-20250514"
+)
+
+result = await Runner.run(
+    orchestrator,
+    "Review src/auth.py for security issues, then write tests for it."
+)
+```
+
+The orchestrator decides which specialist to use. The Code Reviewer analyzes the file first, then the Test Writer creates tests informed by the review findings. Each agent has its own instructions, tools, and context.
+
+## Guardrails
+
+Guardrails validate agent behavior at each step:
+
+```python
+from agent_sdk import Agent, Runner, GuardrailResult
+
+async def no_destructive_ops(agent, message) -> GuardrailResult:
+    """Prevent the agent from deleting or overwriting important files."""
+    for block in message.content:
+        if block.type == "tool_use" and block.name == "write_file":
+            path = block.input.get("path", "")
+            protected = [".env", "package.json", "docker-compose.yml"]
+            if any(path.endswith(p) for p in protected):
+                return GuardrailResult(
+                    passed=False,
+                    message=f"Cannot modify protected file: {path}"
+                )
+    return GuardrailResult(passed=True)
+
+safe_agent = Agent(
+    name="Safe File Assistant",
+    instructions="You help with file operations.",
+    tools=[read_file, write_file, list_directory],
+    guardrails=[no_destructive_ops],
+    model="claude-sonnet-4-20250514"
+)
+```
+
+When a guardrail fails, the agent stops and reports the violation. This is how you prevent AI agents from doing things they shouldn't — essential for production deployments.
+
+## Tracing and Debugging
+
+The SDK includes built-in tracing:
+
+```python
+from agent_sdk import Runner, trace
+
+async def main():
+    with trace("debug-file-task") as t:
+        result = await Runner.run(
+            file_agent,
+            "Analyze the error handling in src/api/routes.py"
+        )
+    
+    # Inspect the trace
+    for step in t.steps:
+        print(f"Turn {step.turn}: {step.type}")
+        if step.type == "tool_call":
+            print(f"  Tool: {step.tool_name}({step.tool_input})")
+        elif step.type == "response":
+            print(f"  Response: {step.text[:100]}...")
+```
+
+I ran a file analysis agent against a medium-sized Express.js project, and the trace showed it reading 12 files across 4 turns before synthesizing its answer. Without tracing, I would have had no idea why it was taking 30 seconds — turns out it was reading test files too, which I fixed by updating the agent instructions.
+
+## When to Use What
+
+| Use Case | Raw API | Agent SDK | Claude Code |
+|----------|---------|-----------|-------------|
+| Single Q&A | Best | Overkill | Overkill |
+| Multi-turn chat app | Good | Good | Not applicable |
+| Automated workflows | Manual loops | Best | Good for one-off |
+| File operations | Manual tools | Built-in | Built-in |
+| Multi-agent systems | Very manual | Best | Not applicable |
+| Interactive dev work | Not applicable | Not applicable | Best |
+| Quick prototyping | Good | Good | Best |
+
+**Use the raw API when:**
+- Building a simple chatbot or Q&A system
+- You need complete control over every request
+- Integrating into an existing framework
+- Minimal dependencies matter
+
+**Use the Agent SDK when:**
+- Building automated workflows with multiple tools
+- You need multiple specialized agents working together
+- Guardrails and tracing are important
+- The tool-use loop is the core of your application
+
+**Use Claude Code when:**
+- Interactive development work
+- You're the user, not building for other users
+- Quick prototyping before building a proper API integration
+
+## Building a Practical Agent
+
+Here's a real-world example — a code documentation agent:
+
+```python
+@function_tool
+def read_file(path: str) -> str:
+    """Read a file from the project."""
+    with open(path, "r") as f:
+        return f.read()
+
+@function_tool
+def find_files(pattern: str, directory: str = ".") -> str:
+    """Find files matching a glob pattern."""
+    import glob
+    matches = glob.glob(f"{directory}/**/{pattern}", recursive=True)
+    return "\n".join(matches[:50])  # limit results
+
+@function_tool
+def write_file(path: str, content: str) -> str:
+    """Write documentation to a file."""
+    with open(path, "w") as f:
+        f.write(content)
+    return f"Wrote {len(content)} chars to {path}"
+
+doc_agent = Agent(
+    name="Documentation Generator",
+    instructions="""Generate clear, concise documentation for code files.
+    1. First, find the relevant source files
+    2. Read each file to understand the code
+    3. Write a markdown documentation file for each module
+    4. Include: purpose, public API, usage examples, and dependencies
+    Do NOT document test files or config files.""",
+    tools=[read_file, find_files, write_file],
+    model="claude-sonnet-4-20250514"
+)
+
+result = await Runner.run(
+    doc_agent,
+    "Document all Python modules in src/services/",
+    max_turns=30  # documentation needs many file reads
+)
+```
+
+## Key Takeaway
+
+The Agent SDK eliminates the boilerplate of building AI agents — automatic tool-use loops, conversation state management, multi-agent handoffs, and guardrails. Define your tools as Python functions with `@function_tool`, create agents with instructions and tools, and let `Runner.run()` handle the orchestration. Use the raw API for simple integrations, the Agent SDK for multi-step automated workflows, and Claude Code for interactive development. The SDK's tracing makes debugging agent behavior transparent — always enable it during development.

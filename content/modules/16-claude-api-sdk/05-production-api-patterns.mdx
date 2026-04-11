@@ -1,0 +1,385 @@
+---
+title: "Production API Patterns"
+slug: "production-api-patterns"
+order: 5
+difficulty: "expert"
+duration: 20
+tags: ["api", "production", "rate-limiting", "reliability"]
+objectives:
+  - "Implement rate limiting and exponential backoff strategies"
+  - "Use prompt caching to cut costs by up to 90%"
+  - "Handle 429, 500, and 529 errors properly in production"
+  - "Monitor API usage and set cost alerts"
+quiz:
+  - id: "prod-api-1"
+    question: "What is the correct retry strategy for a 429 (rate limited) response?"
+    type: "multiple-choice"
+    options:
+      - "Retry immediately"
+      - "Exponential backoff — wait 1s, then 2s, then 4s, with jitter"
+      - "Wait exactly 60 seconds"
+      - "Stop making requests permanently"
+    correct: 1
+    explanation: "Exponential backoff with jitter is the standard pattern: wait 1s, 2s, 4s, 8s between retries, adding random jitter (e.g., +/- 25%) to prevent thundering herd problems. The Anthropic SDK does this automatically, but understanding it matters when you customize retry behavior."
+  - id: "prod-api-2"
+    question: "How does prompt caching reduce costs?"
+    type: "multiple-choice"
+    options:
+      - "It compresses the prompt"
+      - "It caches the processed prefix of your prompt so repeated calls with the same prefix skip re-processing those tokens at 90% discount"
+      - "It stores responses and returns them without calling the API"
+      - "It uses a cheaper model"
+    correct: 1
+    explanation: "Prompt caching tells Anthropic to cache the KV-cache for a prompt prefix. On subsequent requests that share the same prefix, those cached tokens are processed at 90% discount. This is huge for applications with long system prompts, few-shot examples, or shared context across requests."
+  - id: "prod-api-3"
+    question: "What does a 529 status code mean from the Anthropic API?"
+    type: "multiple-choice"
+    options:
+      - "Invalid API key"
+      - "The API is overloaded — back off and retry later"
+      - "Your account is suspended"
+      - "The model doesn't exist"
+    correct: 1
+    explanation: "529 means the API is temporarily overloaded. Unlike 429 (you're sending too many requests), 529 means the service itself is under heavy load. The correct response is the same — exponential backoff with retry — but 529s may take longer to resolve."
+  - id: "prod-api-4"
+    question: "What is the best way to process 1000 independent prompts efficiently?"
+    type: "multiple-choice"
+    options:
+      - "Send them one at a time in a loop"
+      - "Use the Message Batches API to submit them all at once for asynchronous processing at 50% discount"
+      - "Send them all simultaneously"
+      - "Use streaming for all 1000"
+    correct: 1
+    explanation: "The Message Batches API lets you submit up to 100,000 requests in a single batch. They process asynchronously (results within 24 hours, usually much faster) at a 50% discount on token costs. Perfect for data processing, evaluation, and any workload that doesn't need real-time responses."
+---
+
+## From Prototype to Production
+
+Your API integration works on your laptop. Now it needs to handle real traffic, real failures, and real costs. This lesson covers the patterns that separate a weekend project from a production system.
+
+## Rate Limiting and Retries
+
+The Anthropic API has rate limits based on your tier:
+
+| Tier | Requests/min | Input tokens/min | Output tokens/min |
+|------|-------------|-------------------|-------------------|
+| Tier 1 (new) | 50 | 40,000 | 8,000 |
+| Tier 2 | 1,000 | 80,000 | 16,000 |
+| Tier 3 | 2,000 | 160,000 | 32,000 |
+| Tier 4 | 4,000 | 400,000 | 80,000 |
+
+When you hit a limit, you get a 429 response. The SDK retries automatically, but here's how to customize it:
+
+```python
+import anthropic
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+client = anthropic.Anthropic(
+    max_retries=5,   # SDK's built-in retry (default 2)
+)
+
+# For more control, use tenacity
+@retry(
+    retry=retry_if_exception_type(anthropic.RateLimitError),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(5)
+)
+def call_claude(messages: list) -> str:
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2048,
+        messages=messages
+    )
+    return response.content[0].text
+```
+
+### Handling Different Error Types
+
+```python
+import anthropic
+import time
+
+def robust_call(messages: list, max_attempts: int = 3) -> str:
+    for attempt in range(max_attempts):
+        try:
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=2048,
+                messages=messages
+            )
+            return response.content[0].text
+            
+        except anthropic.RateLimitError:
+            # 429 — we're sending too fast
+            wait = (2 ** attempt) + random.uniform(0, 1)
+            print(f"Rate limited. Waiting {wait:.1f}s...")
+            time.sleep(wait)
+            
+        except anthropic.InternalServerError:
+            # 500 — Anthropic's problem, retry
+            wait = (2 ** attempt) + random.uniform(0, 1)
+            print(f"Server error. Retrying in {wait:.1f}s...")
+            time.sleep(wait)
+            
+        except anthropic.APIStatusError as e:
+            if e.status_code == 529:
+                # Overloaded — wait longer
+                wait = 30 + random.uniform(0, 30)
+                print(f"API overloaded. Waiting {wait:.1f}s...")
+                time.sleep(wait)
+            else:
+                raise  # Unknown error, don't retry
+    
+    raise Exception(f"Failed after {max_attempts} attempts")
+```
+
+## Prompt Caching
+
+This is the single biggest cost optimization. If your application sends the same system prompt, few-shot examples, or document context with every request, you're paying full price for tokens the API has already processed.
+
+Prompt caching fixes this:
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system=[
+        {
+            "type": "text",
+            "text": "You are an expert code reviewer. Here are the project's coding standards:\n\n" + 
+                    coding_standards_doc +  # 5000 tokens of standards
+                    "\n\nReview all code against these standards.",
+            "cache_control": {"type": "ephemeral"}  # Cache this prefix
+        }
+    ],
+    messages=[
+        {"role": "user", "content": "Review this function:\n\n" + code_snippet}
+    ]
+)
+
+# Check cache usage
+print(f"Cache read tokens: {message.usage.cache_read_input_tokens}")
+print(f"Cache creation tokens: {message.usage.cache_creation_input_tokens}")
+print(f"Regular input tokens: {message.usage.input_tokens}")
+```
+
+The pricing math:
+
+| Token Type | Cost (Sonnet per 1M) |
+|-----------|----------------------|
+| Regular input | $3.00 |
+| Cache write (first time) | $3.75 |
+| Cache read (subsequent) | $0.30 |
+
+That's a **90% discount** on cached tokens after the first request. If your system prompt is 5,000 tokens and you make 100 requests:
+
+- Without caching: 5,000 * 100 * $3.00/1M = $1.50
+- With caching: 5,000 * $3.75/1M + 5,000 * 99 * $0.30/1M = $0.17
+
+You just saved 89% on input token costs.
+
+### What to Cache
+
+Cache anything that stays the same across requests:
+
+```python
+# Cache system prompt + few-shot examples
+system = [
+    {
+        "type": "text",
+        "text": long_system_prompt + few_shot_examples,
+        "cache_control": {"type": "ephemeral"}
+    }
+]
+
+# Cache a shared document
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": large_document_text,
+                "cache_control": {"type": "ephemeral"}
+            },
+            {
+                "type": "text",
+                "text": "Summarize section 3 of this document."
+            }
+        ]
+    }
+]
+```
+
+Cache has a 5-minute TTL. If no request hits the cache within 5 minutes, it expires and the next request pays the full write cost again.
+
+## Message Batches API
+
+For batch processing — classification, summarization, data extraction — use the Batches API:
+
+```python
+# Create a batch of requests
+batch = client.messages.batches.create(
+    requests=[
+        {
+            "custom_id": f"review-{i}",
+            "params": {
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 1024,
+                "messages": [
+                    {"role": "user", "content": f"Review this code:\n\n{code}"}
+                ]
+            }
+        }
+        for i, code in enumerate(code_snippets)
+    ]
+)
+
+print(f"Batch ID: {batch.id}")
+print(f"Status: {batch.processing_status}")
+
+# Poll for completion
+import time
+while True:
+    status = client.messages.batches.retrieve(batch.id)
+    if status.processing_status == "ended":
+        break
+    print(f"Processing: {status.request_counts.succeeded}/{status.request_counts.processing}")
+    time.sleep(10)
+
+# Get results
+results = list(client.messages.batches.results(batch.id))
+for result in results:
+    print(f"{result.custom_id}: {result.result.message.content[0].text[:100]}...")
+```
+
+Batches give you a 50% discount and don't count against rate limits. The tradeoff is latency — results come within 24 hours (usually much faster, often minutes).
+
+## Concurrent Request Management
+
+When you need real-time responses but have many requests:
+
+```python
+import asyncio
+from anthropic import AsyncAnthropic
+
+client = AsyncAnthropic()
+
+async def process_with_semaphore(items: list, max_concurrent: int = 10):
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def process_one(item):
+        async with semaphore:
+            response = await client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1024,
+                messages=[{"role": "user", "content": item}]
+            )
+            return response.content[0].text
+    
+    tasks = [process_one(item) for item in items]
+    return await asyncio.gather(*tasks)
+
+# Process 100 items, max 10 at a time
+results = asyncio.run(process_with_semaphore(prompts, max_concurrent=10))
+```
+
+The semaphore prevents you from blasting the API with 100 simultaneous requests and getting rate limited.
+
+## Usage Monitoring
+
+Track everything in production:
+
+```python
+import json
+import time
+from dataclasses import dataclass, field, asdict
+from datetime import datetime
+
+@dataclass
+class APIMetrics:
+    requests: int = 0
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    errors: dict = field(default_factory=dict)
+    latencies: list = field(default_factory=list)
+    
+    def record(self, response, latency_ms: float):
+        self.requests += 1
+        self.total_input_tokens += response.usage.input_tokens
+        self.total_output_tokens += response.usage.output_tokens
+        self.cache_read_tokens += getattr(response.usage, "cache_read_input_tokens", 0)
+        self.cache_write_tokens += getattr(response.usage, "cache_creation_input_tokens", 0)
+        self.latencies.append(latency_ms)
+    
+    def record_error(self, error_type: str):
+        self.errors[error_type] = self.errors.get(error_type, 0) + 1
+    
+    def estimated_cost(self) -> float:
+        """Estimate cost in USD for Sonnet pricing."""
+        regular_input = self.total_input_tokens - self.cache_read_tokens
+        cost = (regular_input * 3.0 + 
+                self.total_output_tokens * 15.0 + 
+                self.cache_read_tokens * 0.30 + 
+                self.cache_write_tokens * 3.75) / 1_000_000
+        return cost
+    
+    def summary(self) -> str:
+        avg_latency = sum(self.latencies) / len(self.latencies) if self.latencies else 0
+        return (
+            f"Requests: {self.requests} | "
+            f"Tokens: {self.total_input_tokens:,} in / {self.total_output_tokens:,} out | "
+            f"Cache hits: {self.cache_read_tokens:,} | "
+            f"Avg latency: {avg_latency:.0f}ms | "
+            f"Est. cost: ${self.estimated_cost():.4f} | "
+            f"Errors: {self.errors}"
+        )
+
+metrics = APIMetrics()
+
+# Wrap every API call
+def tracked_call(messages, **kwargs):
+    start = time.time()
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            messages=messages,
+            **kwargs
+        )
+        metrics.record(response, (time.time() - start) * 1000)
+        return response
+    except anthropic.APIStatusError as e:
+        metrics.record_error(str(e.status_code))
+        raise
+
+# Periodically log metrics
+print(metrics.summary())
+```
+
+Set cost alerts. I once left a test harness running over a weekend that made 40,000 requests. The $200 bill would have been $20 with prompt caching and batching.
+
+## Timeouts
+
+Set appropriate timeouts for your use case:
+
+```python
+# Short timeout for simple queries
+client_fast = anthropic.Anthropic(timeout=30.0)
+
+# Long timeout for complex generation
+client_slow = anthropic.Anthropic(timeout=300.0)
+
+# Per-request timeout
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    messages=messages,
+    timeout=60.0  # override for this request
+)
+```
+
+## Key Takeaway
+
+Production API usage is about reliability and cost. Use exponential backoff with jitter for retries. Enable prompt caching on any shared context for a 90% discount on repeated tokens. Use the Batches API for non-real-time workloads at 50% off. Control concurrency with semaphores to stay under rate limits. Monitor every request — track tokens, latency, errors, and cost. The difference between a $500/month API bill and a $50/month one is usually prompt caching and smart batching, not fewer features.

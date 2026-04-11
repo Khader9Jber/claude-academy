@@ -1,0 +1,346 @@
+---
+title: "Anthropic API: Your First Request"
+slug: "api-fundamentals"
+order: 1
+difficulty: "expert"
+duration: 22
+tags: ["api", "anthropic", "authentication", "requests"]
+objectives:
+  - "Set up API authentication and make your first request"
+  - "Use the Python and TypeScript SDKs for common operations"
+  - "Understand model selection, temperature, and token parameters"
+  - "Handle API errors and understand rate limits"
+quiz:
+  - id: "api-fund-1"
+    question: "How do you authenticate with the Anthropic API?"
+    type: "multiple-choice"
+    options:
+      - "OAuth2 flow with client credentials"
+      - "An x-api-key header containing your API key"
+      - "A JWT token in the Authorization header"
+      - "Basic auth with username and password"
+    correct: 1
+    explanation: "The Anthropic API uses a simple API key passed via the x-api-key header. No OAuth flows, no JWT tokens. Get your key from console.anthropic.com, set it as an environment variable, and the SDK handles the rest."
+  - id: "api-fund-2"
+    question: "What is the correct role order in a messages array?"
+    type: "multiple-choice"
+    options:
+      - "Any order works"
+      - "System, then alternating user and assistant messages"
+      - "User messages only"
+      - "Assistant first, then user"
+    correct: 1
+    explanation: "The messages array must alternate between user and assistant roles. The system prompt is separate (passed as the 'system' parameter, not in the messages array). The conversation must start with a user message."
+  - id: "api-fund-3"
+    question: "What does temperature control in the API?"
+    type: "multiple-choice"
+    options:
+      - "How fast the model responds"
+      - "The randomness/creativity of the output — lower is more deterministic"
+      - "The maximum length of the response"
+      - "The cost per token"
+    correct: 1
+    explanation: "Temperature (0.0 to 1.0) controls output randomness. At 0, Claude gives the most likely response every time (deterministic). At 1.0, it samples more creatively. For code generation, use 0-0.3. For creative writing, 0.7-1.0."
+  - id: "api-fund-4"
+    question: "What happens if you set max_tokens to 100 but the full response would be 500 tokens?"
+    type: "multiple-choice"
+    options:
+      - "The API returns an error"
+      - "The response is truncated at 100 tokens with stop_reason 'max_tokens'"
+      - "The API automatically increases the limit"
+      - "The full 500 token response is returned"
+    correct: 1
+    explanation: "When the response hits max_tokens, it stops mid-generation and returns what it has with stop_reason set to 'max_tokens'. This is important to handle — you might get cut-off JSON or incomplete code. Always set max_tokens high enough for your expected output."
+---
+
+## From User to Builder
+
+You've been using Claude through the web interface and Claude Code. Now you're going to talk to Claude directly through the API — the same way every AI application in production does. This is where you go from using Claude to building with Claude.
+
+## Getting Your API Key
+
+Head to [console.anthropic.com](https://console.anthropic.com). Create an account if you haven't, then:
+
+1. Go to **API Keys** in the sidebar
+2. Click **Create Key**
+3. Name it something descriptive: `my-app-dev`
+4. Copy the key immediately — you won't see it again
+
+```bash
+# Set it as an environment variable (add to .bashrc/.zshrc)
+export ANTHROPIC_API_KEY="sk-ant-api03-..."
+```
+
+Never commit this key to git. Never put it in client-side code. Treat it like a database password.
+
+## Your First Request: curl
+
+Let's start raw. No SDK, no library — just HTTP:
+
+```bash
+curl https://api.anthropic.com/v1/messages \
+  -H "content-type: application/json" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 1024,
+    "messages": [
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }'
+```
+
+The response:
+
+```json
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "The capital of France is Paris."
+    }
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 14,
+    "output_tokens": 10
+  }
+}
+```
+
+That `usage` field tells you exactly what you're paying for. 14 input tokens, 10 output tokens. At Sonnet rates ($3/$15 per million), this request cost about $0.00019. Basically free.
+
+## Python SDK
+
+Install and make the same request in three lines:
+
+```bash
+pip install anthropic
+```
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from env
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[
+        {"role": "user", "content": "Explain quicksort in 3 sentences."}
+    ]
+)
+
+print(message.content[0].text)
+# Quicksort works by selecting a pivot element and partitioning
+# the array into elements less than and greater than the pivot...
+
+print(f"Tokens used: {message.usage.input_tokens} in, {message.usage.output_tokens} out")
+```
+
+The SDK handles authentication, retries, and serialization. You focus on the prompt.
+
+## TypeScript SDK
+
+```bash
+npm install @anthropic-ai/sdk
+```
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
+
+const message = await client.messages.create({
+  model: "claude-sonnet-4-20250514",
+  max_tokens: 1024,
+  messages: [
+    { role: "user", content: "Explain quicksort in 3 sentences." }
+  ],
+});
+
+console.log(message.content[0].type === "text" ? message.content[0].text : "");
+console.log(`Tokens: ${message.usage.input_tokens} in, ${message.usage.output_tokens} out`);
+```
+
+Same API, same structure, different language. Pick whichever your project uses.
+
+## System Prompts
+
+The system prompt sets Claude's behavior for the entire conversation. It's separate from the messages array:
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are a senior Python developer. Respond only with code, no explanations. Include type hints and docstrings.",
+    messages=[
+        {"role": "user", "content": "Write a function to merge two sorted lists."}
+    ]
+)
+```
+
+This produces clean, typed Python code without the usual preamble. The system prompt is your most powerful lever for controlling output format and behavior.
+
+## Model Selection
+
+Every request specifies a model. Here's what's available and what each costs:
+
+| Model ID | Cost (Input / Output per 1M tokens) | Best For |
+|----------|--------------------------------------|----------|
+| `claude-opus-4-20250514` | $15 / $75 | Complex reasoning, architecture |
+| `claude-sonnet-4-20250514` | $3 / $15 | General purpose, daily driver |
+| `claude-haiku-3-5-20241022` | $0.80 / $4 | High volume, simple tasks |
+
+For most applications, start with Sonnet. Escalate to Opus only for tasks that genuinely need deeper reasoning. Use Haiku for classification, extraction, and high-volume pipelines where cost matters.
+
+## Temperature and Sampling
+
+```python
+# Deterministic — same input always gives same output
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    temperature=0,
+    messages=[{"role": "user", "content": "What is 2+2?"}]
+)
+
+# Creative — varied outputs each time
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    temperature=0.8,
+    messages=[{"role": "user", "content": "Write a haiku about debugging."}]
+)
+```
+
+**Rules of thumb:**
+- `temperature=0` — Code generation, factual Q&A, structured output
+- `temperature=0.3` — Slight variation while staying accurate
+- `temperature=0.7-1.0` — Creative writing, brainstorming
+
+## Multi-Turn Conversations
+
+The API is stateless. You manage conversation history yourself:
+
+```python
+conversation = []
+
+def chat(user_message: str) -> str:
+    conversation.append({"role": "user", "content": user_message})
+    
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2048,
+        system="You are a helpful coding assistant.",
+        messages=conversation
+    )
+    
+    assistant_text = response.content[0].text
+    conversation.append({"role": "assistant", "content": assistant_text})
+    
+    return assistant_text
+
+# First turn
+print(chat("What's the difference between a list and a tuple in Python?"))
+
+# Second turn — Claude remembers the context
+print(chat("Show me an example where using a tuple is better."))
+```
+
+Every turn, you send the entire conversation history. This means token usage grows with conversation length — something you need to manage in production.
+
+## Error Handling
+
+The API returns specific HTTP error codes. Handle them:
+
+```python
+import anthropic
+
+try:
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "Hello"}]
+    )
+except anthropic.AuthenticationError:
+    # 401 — bad API key
+    print("Check your ANTHROPIC_API_KEY")
+except anthropic.RateLimitError:
+    # 429 — too many requests
+    print("Rate limited. Back off and retry.")
+except anthropic.APIStatusError as e:
+    # 500, 529 — server errors
+    print(f"API error {e.status_code}: {e.message}")
+```
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| 400 | Bad request (invalid params) | Fix your request |
+| 401 | Invalid API key | Check credentials |
+| 403 | Forbidden | Check permissions |
+| 429 | Rate limited | Exponential backoff |
+| 500 | Server error | Retry with backoff |
+| 529 | Overloaded | Wait and retry |
+
+The SDK handles retries automatically for 429 and 5xx errors with exponential backoff. You can customize this behavior:
+
+```python
+client = anthropic.Anthropic(
+    max_retries=3,      # default is 2
+    timeout=60.0,       # default is 10 minutes
+)
+```
+
+## Cost Tracking
+
+Always track what you're spending. Here's a simple wrapper:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class UsageTracker:
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    request_count: int = 0
+    
+    def track(self, response):
+        self.total_input_tokens += response.usage.input_tokens
+        self.total_output_tokens += response.usage.output_tokens
+        self.request_count += 1
+    
+    def cost_usd(self, model: str = "sonnet") -> float:
+        rates = {
+            "sonnet": (3.0, 15.0),
+            "opus": (15.0, 75.0),
+            "haiku": (0.80, 4.0),
+        }
+        input_rate, output_rate = rates[model]
+        return (self.total_input_tokens * input_rate + 
+                self.total_output_tokens * output_rate) / 1_000_000
+
+tracker = UsageTracker()
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello"}]
+)
+tracker.track(message)
+
+print(f"Total cost so far: ${tracker.cost_usd():.4f}")
+print(f"Requests: {tracker.request_count}")
+```
+
+I run something like this in every project. The first time I forgot to track usage, I got a $47 bill from a test script that ran in a loop overnight. Never again.
+
+## Key Takeaway
+
+The Anthropic API is refreshingly simple — one endpoint, one authentication method, predictable request/response structure. Set your API key, pick a model, send messages, get responses. The Python and TypeScript SDKs handle retries and serialization so you can focus on what matters: building something useful. Start with Sonnet, track your token usage from day one, and always handle errors gracefully.

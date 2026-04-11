@@ -1,0 +1,12 @@
+{
+  "title": "Claude API and SDK",
+  "slug": "claude-api-sdk",
+  "description": "Building applications with the Anthropic API and Claude Agent SDK. From simple API calls to full agent applications.",
+  "arc": "expert",
+  "order": 16,
+  "icon": "Code",
+  "color": "#d4a053",
+  "estimatedHours": 6,
+  "prerequisites": ["enterprise-and-production"],
+  "lessonCount": 6
+}

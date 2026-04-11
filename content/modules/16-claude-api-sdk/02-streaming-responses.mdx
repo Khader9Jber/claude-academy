@@ -1,0 +1,378 @@
+---
+title: "Streaming Responses"
+slug: "streaming-responses"
+order: 2
+difficulty: "expert"
+duration: 18
+tags: ["api", "streaming", "sse", "real-time"]
+objectives:
+  - "Implement streaming responses with Server-Sent Events"
+  - "Build streaming with both Python and TypeScript SDKs"
+  - "Handle partial responses and token-by-token output"
+  - "Build a streaming chat interface"
+quiz:
+  - id: "streaming-1"
+    question: "What protocol does the Anthropic API use for streaming?"
+    type: "multiple-choice"
+    options:
+      - "WebSockets"
+      - "Server-Sent Events (SSE)"
+      - "gRPC"
+      - "Long polling"
+    correct: 1
+    explanation: "The Anthropic API uses Server-Sent Events (SSE) for streaming. SSE is a standard HTTP protocol where the server keeps the connection open and pushes events to the client. It's simpler than WebSockets and works through proxies and load balancers without special configuration."
+  - id: "streaming-2"
+    question: "What event type signals that Claude has finished generating a content block?"
+    type: "multiple-choice"
+    options:
+      - "message_stop"
+      - "content_block_stop"
+      - "stream_end"
+      - "done"
+    correct: 1
+    explanation: "The content_block_stop event signals the end of a single content block (like a text block). The message_stop event signals the end of the entire message. Understanding the event hierarchy — message_start > content_block_start > content_block_delta > content_block_stop > message_stop — is key to handling streams correctly."
+  - id: "streaming-3"
+    question: "Why is streaming important for user-facing applications?"
+    type: "multiple-choice"
+    options:
+      - "It reduces API costs"
+      - "It reduces perceived latency — users see tokens as they're generated instead of waiting for the full response"
+      - "It improves response quality"
+      - "It's required by the API"
+    correct: 1
+    explanation: "Streaming dramatically improves perceived latency. Without streaming, a 2000-token response might take 8 seconds — the user stares at a loading spinner the whole time. With streaming, they see the first token in ~200ms and can start reading immediately while generation continues."
+  - id: "streaming-4"
+    question: "How do you accumulate the full response text from a stream?"
+    type: "multiple-choice"
+    options:
+      - "The final event contains the complete text"
+      - "Concatenate all content_block_delta text values in order"
+      - "Call a separate API endpoint after streaming finishes"
+      - "The SDK does this automatically with no code needed"
+    correct: 1
+    explanation: "Each content_block_delta event contains a small chunk of text. You concatenate them in order to build the full response. The SDK helpers (like stream.get_final_message() in Python) can do this for you, but under the hood, they're concatenating deltas."
+---
+
+## Why Streaming Matters
+
+Without streaming, a typical Claude response works like this:
+
+1. You send a request
+2. You wait 3-10 seconds (depending on response length)
+3. The entire response arrives at once
+
+With streaming, it works like this:
+
+1. You send a request
+2. First token arrives in ~200ms
+3. Tokens flow in continuously as they're generated
+4. User reads while Claude is still thinking
+
+The difference in user experience is night and day. Every chat interface you've used — ChatGPT, Claude.ai, Claude Code — uses streaming. Now you'll build it yourself.
+
+## Raw SSE: What the Wire Looks Like
+
+Before using the SDK, let's see the raw stream:
+
+```bash
+curl https://api.anthropic.com/v1/messages \
+  -H "content-type: application/json" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 256,
+    "stream": true,
+    "messages": [{"role": "user", "content": "Count from 1 to 5."}]
+  }'
+```
+
+The response is a series of SSE events:
+
+```
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_01...","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-20250514","usage":{"input_tokens":14,"output_tokens":0}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"1"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":", 2"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":", 3, 4"}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":", 5"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":15}}
+
+event: message_stop
+data: {"type":"message_stop"}
+```
+
+The event hierarchy:
+1. `message_start` — message metadata, input token count
+2. `content_block_start` — beginning of a text block
+3. `content_block_delta` — chunks of text (this is what you display)
+4. `content_block_stop` — text block complete
+5. `message_delta` — stop reason, output token count
+6. `message_stop` — stream complete
+
+## Python SDK Streaming
+
+The Python SDK makes streaming simple:
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Basic streaming — print tokens as they arrive
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Explain how HTTPS works."}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+
+print()  # newline at the end
+```
+
+That's it. The `stream.text_stream` iterator yields text chunks as they arrive. The `flush=True` ensures each chunk prints immediately instead of being buffered.
+
+### Getting the Final Message
+
+Often you need both the streaming display and the complete message object:
+
+```python
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Write a Python fibonacci function."}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+    
+    # After streaming completes, get the full message
+    final = stream.get_final_message()
+
+print(f"\n\nTokens: {final.usage.input_tokens} in, {final.usage.output_tokens} out")
+print(f"Stop reason: {final.stop_reason}")
+```
+
+### Event-Level Control
+
+For more control, handle individual events:
+
+```python
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "List 3 sorting algorithms."}]
+) as stream:
+    for event in stream:
+        if event.type == "content_block_delta":
+            print(event.delta.text, end="", flush=True)
+        elif event.type == "message_start":
+            print(f"[Input tokens: {event.message.usage.input_tokens}]")
+        elif event.type == "message_delta":
+            print(f"\n[Output tokens: {event.usage.output_tokens}]")
+```
+
+## TypeScript SDK Streaming
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic();
+
+// Basic streaming
+const stream = client.messages.stream({
+  model: "claude-sonnet-4-20250514",
+  max_tokens: 1024,
+  messages: [{ role: "user", content: "Explain how HTTPS works." }],
+});
+
+stream.on("text", (text) => {
+  process.stdout.write(text);
+});
+
+const finalMessage = await stream.finalMessage();
+console.log(`\nTokens: ${finalMessage.usage.input_tokens} in, ${finalMessage.usage.output_tokens} out`);
+```
+
+### Async Iterator Pattern
+
+```typescript
+const stream = await client.messages.create({
+  model: "claude-sonnet-4-20250514",
+  max_tokens: 1024,
+  stream: true,
+  messages: [{ role: "user", content: "Explain recursion." }],
+});
+
+for await (const event of stream) {
+  if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+    process.stdout.write(event.delta.text);
+  }
+}
+```
+
+## Building a Streaming Chat in the Terminal
+
+Here's a complete interactive chat with streaming:
+
+```python
+import anthropic
+
+client = anthropic.Anthropic()
+conversation = []
+
+def stream_chat(user_input: str) -> str:
+    conversation.append({"role": "user", "content": user_input})
+    
+    full_response = ""
+    
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2048,
+        system="You are a helpful assistant. Be concise.",
+        messages=conversation
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+            full_response += text
+    
+    print()  # newline
+    conversation.append({"role": "assistant", "content": full_response})
+    return full_response
+
+# Interactive loop
+print("Chat with Claude (type 'quit' to exit)")
+while True:
+    user_input = input("\nYou: ")
+    if user_input.lower() == "quit":
+        break
+    print("Claude: ", end="")
+    stream_chat(user_input)
+```
+
+I built something like this as my first Claude project — a terminal chat client in 30 lines. The streaming made it feel responsive even on a slow connection. Without streaming, the 2-3 second delay between typing and seeing a response made it feel broken.
+
+## Streaming in Web Applications
+
+For web apps, you pipe the SSE stream to the browser. Here's an Express.js example:
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import express from "express";
+
+const app = express();
+const client = new Anthropic();
+
+app.post("/api/chat", async (req, res) => {
+  // Set SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const stream = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 2048,
+    stream: true,
+    messages: req.body.messages,
+  });
+
+  for await (const event of stream) {
+    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+      res.write(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`);
+    }
+  }
+
+  res.write("data: [DONE]\n\n");
+  res.end();
+});
+```
+
+On the client side:
+
+```typescript
+const response = await fetch("/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ messages }),
+});
+
+const reader = response.body!.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  
+  const chunk = decoder.decode(value);
+  const lines = chunk.split("\n").filter(line => line.startsWith("data: "));
+  
+  for (const line of lines) {
+    const data = line.slice(6); // remove "data: "
+    if (data === "[DONE]") break;
+    
+    const { text } = JSON.parse(data);
+    appendToChat(text); // update your UI
+  }
+}
+```
+
+## Handling Stream Errors
+
+Streams can fail mid-generation. Handle it:
+
+```python
+try:
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        messages=[{"role": "user", "content": "Write a long essay."}]
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+except anthropic.APIConnectionError:
+    print("\n[Connection lost. Partial response above.]")
+except anthropic.APIStatusError as e:
+    print(f"\n[API error: {e.status_code}]")
+```
+
+In production, you'd save the partial response and potentially retry from where you left off, or at least show the user what was generated before the error.
+
+## When Not to Stream
+
+Streaming adds complexity. Skip it when:
+
+- **Batch processing** — no human watching, just collect the full result
+- **Structured output** — you need to parse JSON; partial JSON is useless
+- **Short responses** — if the response is under 50 tokens, streaming overhead isn't worth it
+- **Tool use responses** — tool calls arrive as complete blocks, streaming them token-by-token doesn't help
+
+```python
+# For batch/structured work, use the non-streaming API
+result = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Return a JSON object with fields: name, age, city"}]
+)
+# Parse the complete response
+data = json.loads(result.content[0].text)
+```
+
+## Key Takeaway
+
+Streaming transforms the user experience from "wait and hope" to "watch it think." Use `client.messages.stream()` in Python or `client.messages.stream()` in TypeScript for the simplest implementation. For web apps, pipe the SSE events through your API route to the browser using `ReadableStream`. Always handle stream errors gracefully — partial responses are better than nothing. And skip streaming entirely for batch processing and structured output where you need the complete response before doing anything with it.

@@ -1,0 +1,398 @@
+---
+title: "Tool Use: Giving Claude Functions"
+slug: "tool-use"
+order: 3
+difficulty: "expert"
+duration: 25
+tags: ["api", "tools", "function-calling", "integration"]
+objectives:
+  - "Define tools with JSON schema and handle tool_use responses"
+  - "Build multi-turn conversations with tool calls"
+  - "Implement parallel tool calls and error handling"
+  - "Build a real example with multiple integrated tools"
+quiz:
+  - id: "tool-use-1"
+    question: "How does Claude know what tools are available?"
+    type: "multiple-choice"
+    options:
+      - "It automatically discovers them from the internet"
+      - "You define them in the 'tools' array with name, description, and input_schema"
+      - "You install them as plugins"
+      - "They're built into the model"
+    correct: 1
+    explanation: "You explicitly define available tools in the 'tools' parameter of the API request. Each tool has a name, description (which Claude uses to decide when to use it), and an input_schema (JSON Schema defining expected parameters). Claude reads these definitions and decides when and how to call them."
+  - id: "tool-use-2"
+    question: "What happens when Claude decides to use a tool?"
+    type: "multiple-choice"
+    options:
+      - "Claude calls the tool directly"
+      - "Claude returns a response with stop_reason 'tool_use' containing the tool name and arguments — you execute it and send results back"
+      - "The API automatically executes the tool"
+      - "Claude pauses and waits for you to provide tool output"
+    correct: 1
+    explanation: "Claude never executes tools directly. It returns a message with stop_reason 'tool_use' containing the tool name and input arguments. Your code is responsible for executing the tool, then sending the result back in a new message with role 'user' and a tool_result content block. This keeps you in control of all side effects."
+  - id: "tool-use-3"
+    question: "How do you send tool results back to Claude?"
+    type: "multiple-choice"
+    options:
+      - "Call a separate API endpoint"
+      - "Include a tool_result content block in a user message with the matching tool_use_id"
+      - "Set a response header"
+      - "Tool results are sent automatically"
+    correct: 1
+    explanation: "After executing the tool, send a new user message containing a content block with type 'tool_result', the tool_use_id from Claude's response, and the result content. This continues the conversation — Claude processes the tool result and generates its final response."
+  - id: "tool-use-4"
+    question: "What should you do if a tool execution fails?"
+    type: "multiple-choice"
+    options:
+      - "Retry the entire conversation"
+      - "Return a tool_result with is_error set to true and include the error message"
+      - "Ignore the error and continue"
+      - "Send an empty result"
+    correct: 1
+    explanation: "Set is_error: true in the tool_result and include a descriptive error message. Claude will acknowledge the error and adjust its response — it might try a different approach, ask for clarification, or explain the limitation. This is much better than silently failing."
+---
+
+## What Tool Use Actually Is
+
+Tool use (also called function calling) lets Claude call functions you define. But here's the key: **Claude doesn't execute anything.** It tells you what it wants to call and with what arguments. You execute it. You send the results back. Claude continues.
+
+This is a deliberate design. You stay in control of every side effect — every API call, every database query, every file write.
+
+## Defining Tools
+
+Tools are defined with JSON Schema in the API request:
+
+```python
+import anthropic
+import json
+
+client = anthropic.Anthropic()
+
+tools = [
+    {
+        "name": "get_weather",
+        "description": "Get the current weather for a specific city. Returns temperature, conditions, and humidity.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "City name, e.g., 'San Francisco' or 'London'"
+                },
+                "units": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature unit (default: celsius)"
+                }
+            },
+            "required": ["city"]
+        }
+    }
+]
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[
+        {"role": "user", "content": "What's the weather in Tokyo?"}
+    ]
+)
+```
+
+Claude's response when it decides to use the tool:
+
+```json
+{
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "I'll check the weather in Tokyo for you."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01A09q90qw90lq917835lq9",
+      "name": "get_weather",
+      "input": {
+        "city": "Tokyo",
+        "units": "celsius"
+      }
+    }
+  ],
+  "stop_reason": "tool_use"
+}
+```
+
+Notice `stop_reason` is `"tool_use"` — Claude stopped generating because it needs you to execute the tool and send results back.
+
+## The Tool Use Loop
+
+The full flow is a loop:
+
+```python
+def run_tool_conversation(user_message: str) -> str:
+    messages = [{"role": "user", "content": user_message}]
+    
+    while True:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            tools=tools,
+            messages=messages
+        )
+        
+        # If Claude is done (no more tool calls), return the text
+        if response.stop_reason == "end_turn":
+            return "".join(
+                block.text for block in response.content 
+                if block.type == "text"
+            )
+        
+        # Claude wants to use tools
+        messages.append({"role": "assistant", "content": response.content})
+        
+        # Execute each tool call
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                result = execute_tool(block.name, block.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result)
+                })
+        
+        # Send results back to Claude
+        messages.append({"role": "user", "content": tool_results})
+
+
+def execute_tool(name: str, inputs: dict):
+    """Execute a tool and return the result."""
+    if name == "get_weather":
+        # In real code, call a weather API
+        return {
+            "temperature": 22,
+            "conditions": "partly cloudy",
+            "humidity": 65,
+            "city": inputs["city"]
+        }
+    else:
+        return {"error": f"Unknown tool: {name}"}
+```
+
+## A Real Multi-Tool Example
+
+Let's build something practical — an assistant with weather, calculator, and database lookup:
+
+```python
+tools = [
+    {
+        "name": "get_weather",
+        "description": "Get current weather for a city.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string", "description": "City name"}
+            },
+            "required": ["city"]
+        }
+    },
+    {
+        "name": "calculate",
+        "description": "Evaluate a mathematical expression. Supports +, -, *, /, **, sqrt(), sin(), cos(), log().",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "expression": {"type": "string", "description": "Math expression, e.g., '(15 * 3) + sqrt(144)'"}
+            },
+            "required": ["expression"]
+        }
+    },
+    {
+        "name": "lookup_user",
+        "description": "Look up a user in the database by email or username.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Email address or username"},
+                "field": {
+                    "type": "string",
+                    "enum": ["email", "username"],
+                    "description": "Which field to search"
+                }
+            },
+            "required": ["query", "field"]
+        }
+    }
+]
+
+def execute_tool(name: str, inputs: dict) -> dict:
+    if name == "get_weather":
+        # Call weather API (simplified)
+        import requests
+        resp = requests.get(
+            f"https://wttr.in/{inputs['city']}?format=j1"
+        )
+        if resp.ok:
+            data = resp.json()
+            current = data["current_condition"][0]
+            return {
+                "temperature_c": current["temp_C"],
+                "description": current["weatherDesc"][0]["value"],
+                "humidity": current["humidity"]
+            }
+        return {"error": "Weather API unavailable"}
+    
+    elif name == "calculate":
+        import math
+        try:
+            # Safe eval with math functions only
+            allowed = {"sqrt": math.sqrt, "sin": math.sin, 
+                       "cos": math.cos, "log": math.log, "pi": math.pi}
+            result = eval(inputs["expression"], {"__builtins__": {}}, allowed)
+            return {"result": result, "expression": inputs["expression"]}
+        except Exception as e:
+            return {"error": str(e)}
+    
+    elif name == "lookup_user":
+        # Query your database (simplified)
+        users_db = {
+            "alice@example.com": {"name": "Alice", "role": "admin", "joined": "2024-01-15"},
+            "bob": {"name": "Bob", "role": "user", "joined": "2024-03-22"}
+        }
+        user = users_db.get(inputs["query"])
+        if user:
+            return user
+        return {"error": f"No user found for {inputs['field']}: {inputs['query']}"}
+    
+    return {"error": f"Unknown tool: {name}"}
+```
+
+Now Claude can handle complex queries:
+
+```python
+print(run_tool_conversation(
+    "What's the weather in Paris, and if the temperature in Celsius "
+    "is multiplied by 1.8 plus 32, what's that in Fahrenheit? "
+    "Also, look up the user alice@example.com."
+))
+```
+
+Claude will make three tool calls — potentially in parallel — combine all results, and give a coherent answer.
+
+## Parallel Tool Calls
+
+When Claude needs multiple tools that don't depend on each other, it can call them in parallel. You'll see multiple `tool_use` blocks in a single response:
+
+```json
+{
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_01...",
+      "name": "get_weather",
+      "input": {"city": "Paris"}
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_02...",
+      "name": "lookup_user",
+      "input": {"query": "alice@example.com", "field": "email"}
+    }
+  ],
+  "stop_reason": "tool_use"
+}
+```
+
+Execute them in parallel for better performance:
+
+```python
+import asyncio
+
+async def execute_tools_parallel(tool_calls):
+    tasks = [
+        asyncio.to_thread(execute_tool, call.name, call.input)
+        for call in tool_calls
+    ]
+    results = await asyncio.gather(*tasks)
+    return [
+        {
+            "type": "tool_result",
+            "tool_use_id": call.id,
+            "content": json.dumps(result)
+        }
+        for call, result in zip(tool_calls, results)
+    ]
+```
+
+## Error Handling in Tools
+
+When a tool fails, tell Claude about it properly:
+
+```python
+def execute_tool_safe(name: str, inputs: dict) -> dict:
+    try:
+        result = execute_tool(name, inputs)
+        return {
+            "type": "tool_result",
+            "tool_use_id": tool_id,
+            "content": json.dumps(result)
+        }
+    except Exception as e:
+        return {
+            "type": "tool_result",
+            "tool_use_id": tool_id,
+            "is_error": True,
+            "content": f"Tool execution failed: {str(e)}"
+        }
+```
+
+Claude handles errors gracefully. I tested this by intentionally making a database lookup fail — Claude responded with "I wasn't able to find that user in the database. Could you double-check the email address?" instead of crashing or hallucinating a result.
+
+## Tool Description Quality Matters
+
+Claude decides which tool to use based on the description. Bad descriptions lead to wrong tool choices:
+
+```python
+# Bad — Claude won't know when to use this
+{"name": "do_thing", "description": "Does a thing"}
+
+# Good — Claude knows exactly when and how
+{
+    "name": "search_orders",
+    "description": "Search customer orders by order ID, customer email, or date range. Returns order status, items, total amount, and shipping info. Use this when the user asks about order status, tracking, or purchase history."
+}
+```
+
+The description is essentially a prompt. Write it like you'd explain the tool to a new developer on your team.
+
+## Forcing Tool Use
+
+Sometimes you want Claude to always use a specific tool:
+
+```python
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    tool_choice={"type": "tool", "name": "calculate"},  # force this tool
+    messages=[{"role": "user", "content": "What is 15% of 340?"}]
+)
+
+# Or force ANY tool (Claude must use at least one)
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    tool_choice={"type": "any"},
+    messages=[{"role": "user", "content": "Help me with my math homework"}]
+)
+```
+
+Use `tool_choice` sparingly. Most of the time, Claude makes the right choice on its own.
+
+## Key Takeaway
+
+Tool use turns Claude from a text generator into an agent that can interact with the real world — your APIs, your databases, your services. Define tools with clear names, detailed descriptions, and typed input schemas. Build a loop that handles `stop_reason: "tool_use"`, executes the tools, and sends results back. Always handle tool errors with `is_error: true` so Claude can recover gracefully. The quality of your tool descriptions directly determines how well Claude uses them — write them like documentation, not afterthoughts.

@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getModules } from "@/lib/content";
 
+export const dynamic = "force-static";
+
 const BASE_URL = "https://klaude-academy.netlify.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {

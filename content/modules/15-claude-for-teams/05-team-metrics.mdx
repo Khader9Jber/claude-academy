@@ -1,0 +1,273 @@
+---
+title: "Measuring Team Productivity with Claude Code"
+slug: "team-metrics"
+order: 5
+difficulty: "advanced"
+duration: 18
+tags: ["team", "metrics", "productivity", "measurement"]
+objectives:
+  - "Define and track meaningful productivity metrics for Claude Code adoption"
+  - "Avoid vanity metrics and focus on outcomes that matter"
+  - "Build a measurement framework that demonstrates ROI to leadership"
+quiz:
+  - id: "metrics-1"
+    question: "What is the most important metric for measuring Claude Code's impact on a team?"
+    type: "multiple-choice"
+    options:
+      - "Lines of code generated"
+      - "Cycle time — the time from task start to merged PR — because it measures actual delivery speed, not activity"
+      - "Number of Claude sessions"
+      - "Token usage"
+    correct: 1
+    explanation: "Lines of code is a vanity metric — more lines is not better. Session count measures activity, not output. Cycle time measures what matters: how quickly does a task go from 'started' to 'shipped'? If Claude Code reduces cycle time from 3 days to 1 day, that is a concrete, meaningful improvement that leadership understands."
+  - id: "metrics-2"
+    question: "Why is 'lines of code generated' a bad metric for Claude Code productivity?"
+    type: "multiple-choice"
+    options:
+      - "It is hard to measure"
+      - "More lines of code often means worse code — the best code is concise, and Claude may generate boilerplate that inflates line counts without adding value"
+      - "Claude does not generate code"
+      - "Lines of code are always useful"
+    correct: 1
+    explanation: "A 500-line function Claude generates might be better written as a 50-line function. Generated test boilerplate can inflate line counts by 10x. Lines of code measures volume, not value. Better metrics: features shipped per sprint, bugs found before production, and cycle time reduction."
+  - id: "metrics-3"
+    question: "How should you measure the quality impact of Claude-assisted code reviews?"
+    type: "multiple-choice"
+    options:
+      - "Count the number of review comments"
+      - "Track escape rate — the percentage of bugs that reach production before and after implementing Claude-assisted reviews"
+      - "Measure review speed"
+      - "Count PR approvals"
+    correct: 1
+    explanation: "Escape rate (bugs reaching production / total bugs) directly measures review effectiveness. If escape rate drops from 15% to 5% after implementing Claude-assisted reviews, that is a concrete quality improvement. Review comment count is a vanity metric — 50 trivial comments are less valuable than 2 critical ones."
+  - id: "metrics-4"
+    question: "What is the recommended timeframe for evaluating Claude Code ROI?"
+    type: "multiple-choice"
+    options:
+      - "1 week"
+      - "3 months — the first month is onboarding and adoption, the second is optimization, the third shows steady-state productivity"
+      - "1 day"
+      - "1 year"
+    correct: 1
+    explanation: "Week one developers are learning Claude Code, not being productive with it. Month one includes the learning curve. Month two developers optimize their workflows. Month three shows steady-state productivity. A 3-month evaluation captures the full adoption curve and provides reliable data for ROI calculations."
+---
+
+## What to Measure
+
+Most teams measure the wrong things. Token usage, session counts, and lines of code generated are activity metrics — they tell you Claude is being used, not whether it is helping. Here are the metrics that actually matter.
+
+## The Five Core Metrics
+
+### 1. Cycle Time
+
+**What it is**: Time from task start to merged PR.
+
+**How to measure**: Track in your project management tool (Jira, Linear, GitHub Projects).
+
+```
+Before Claude Code:
+  Average cycle time: 3.2 days
+  Breakdown:
+    Implementation: 1.5 days
+    Code review: 0.8 days
+    Test writing: 0.5 days
+    Bug fixes from review: 0.4 days
+
+After Claude Code (month 3):
+  Average cycle time: 1.4 days
+  Breakdown:
+    Implementation: 0.6 days
+    Code review: 0.3 days (Claude pre-review catches issues)
+    Test writing: 0.2 days (Claude generates test suite)
+    Bug fixes from review: 0.3 days
+
+Improvement: 56% reduction in cycle time
+```
+
+**Why it matters**: Cycle time directly translates to delivery speed. A 56% reduction means the team ships nearly twice as fast.
+
+### 2. Escape Rate
+
+**What it is**: Percentage of bugs that reach production.
+
+**How to measure**: (Production bugs found this month) / (Total bugs found this month including in review, testing, and staging).
+
+```
+Before Claude Code:
+  Bugs found in review: 12
+  Bugs found in staging: 5
+  Bugs found in production: 4
+  Escape rate: 4/21 = 19%
+
+After Claude Code:
+  Bugs found by Claude review: 15
+  Bugs found by human review: 8
+  Bugs found in staging: 3
+  Bugs found in production: 1
+  Escape rate: 1/27 = 3.7%
+
+Improvement: 80% reduction in production bugs
+```
+
+**Why it matters**: Every production bug costs 10-100x more to fix than catching it in review. Reducing escape rate from 19% to 4% saves significant money and customer trust.
+
+### 3. Onboarding Time
+
+**What it is**: Days until a new developer submits their first meaningful PR.
+
+**How to measure**: Track the date a new developer joins versus the date their first non-trivial PR is merged.
+
+```
+Before Claude Code:
+  First PR: 5 working days average
+  First feature: 15 working days average
+
+After Claude Code:
+  First PR: 1.5 working days average
+  First feature: 5 working days average
+
+Improvement: 70% faster onboarding
+```
+
+**Why it matters**: Developer onboarding is expensive. Two weeks of an unproductive senior developer costs $5,000-10,000 in salary alone. Cutting that to one week saves real money.
+
+### 4. Code Review Turnaround
+
+**What it is**: Time from PR submission to review completion.
+
+**How to measure**: GitHub API provides PR created-at and first-review timestamps.
+
+```
+Before Claude Code:
+  Average time to first review: 8 hours
+  Average time to approval: 14 hours
+  Reviews per PR: 1.3 rounds
+
+After Claude Code:
+  Average time to first review: 2 hours (Claude pre-review is instant)
+  Average time to approval: 6 hours
+  Reviews per PR: 1.1 rounds (Claude catches issues before human review)
+
+Improvement: 57% faster review cycle
+```
+
+### 5. Developer Satisfaction
+
+**What it is**: How developers feel about their productivity and workflow.
+
+**How to measure**: Monthly survey with consistent questions.
+
+```
+Survey questions (1-5 scale):
+1. "I can focus on interesting work, not boilerplate" 
+2. "I spend less time on repetitive tasks than 3 months ago"
+3. "Code reviews are faster and more thorough"
+4. "I feel productive during my workday"
+5. "I would recommend Claude Code to other developers"
+
+Before Claude Code: Average 3.1/5
+After Claude Code (month 3): Average 4.2/5
+```
+
+**Why it matters**: Developer satisfaction correlates with retention. Happy developers stay longer and produce better work.
+
+## Metrics to Avoid
+
+### Lines of Code
+
+Lines of code is actively misleading. Claude generates verbose code that inflates line counts. A team generating 3x more lines of code might be producing 3x more technical debt.
+
+### Token Usage
+
+Token usage measures consumption, not value. A developer who uses 2M tokens per day on unfocused exploration is less productive than one who uses 500K tokens on targeted work.
+
+### Session Count
+
+More sessions does not mean more productivity. A developer with 30 short unfocused sessions is less productive than one with 10 focused sessions.
+
+### Prompt Count
+
+Counting prompts ignores quality. One well-crafted prompt that solves a problem is worth more than 20 vague prompts that go in circles.
+
+## Building the ROI Case
+
+### For Leadership
+
+Leadership cares about three things: cost, speed, and quality. Frame your metrics accordingly.
+
+```
+Monthly Claude Code cost for 10 developers:
+  Pro subscriptions: $2,000/month (10 × $200)
+
+Monthly value generated:
+  Cycle time reduction (56%):
+    Before: 10 devs × 4 features/month = 40 features
+    After: 10 devs × 7 features/month = 70 features
+    30 additional features/month at $X value each
+
+  Bug reduction (80% fewer production bugs):
+    Before: 4 production bugs/month × $5,000 avg fix cost = $20,000
+    After: 1 production bug/month × $5,000 = $5,000
+    Savings: $15,000/month
+
+  Faster onboarding (70% faster):
+    2 new hires/quarter × 10 days saved × $500/day = $10,000/quarter
+    = $3,333/month
+
+Monthly ROI:
+  Cost: $2,000
+  Value: $15,000 (bugs) + $3,333 (onboarding) + feature velocity
+  Minimum ROI: 9x return
+```
+
+### The Dashboard
+
+Track these metrics in a simple dashboard (spreadsheet is fine for most teams):
+
+| Metric | Baseline (Month 0) | Month 1 | Month 2 | Month 3 | Target |
+|---|---|---|---|---|---|
+| Cycle time (days) | 3.2 | 2.8 | 2.0 | 1.4 | < 2.0 |
+| Escape rate (%) | 19% | 15% | 8% | 4% | < 5% |
+| Time to first PR (days) | 5.0 | 3.0 | 2.0 | 1.5 | < 2.0 |
+| Review turnaround (hours) | 14 | 10 | 8 | 6 | < 8 |
+| Developer satisfaction (1-5) | 3.1 | 3.4 | 3.8 | 4.2 | > 4.0 |
+
+## Measurement Timeline
+
+### Month 1: Baseline + Adoption
+
+- Record baseline metrics before Claude Code adoption
+- Track adoption rate (% of developers using Claude Code daily)
+- Do not expect productivity improvements yet — this is the learning curve
+
+### Month 2: Optimization
+
+- Developers start optimizing their workflows
+- Shared configurations and commands are refined
+- Metrics start improving (10-20% improvement is typical)
+
+### Month 3: Steady State
+
+- Workflows are mature
+- Metrics show steady improvement
+- Compare against baseline for ROI calculation
+- Present findings to leadership
+
+### Ongoing: Monthly Check-ins
+
+- Track metrics monthly
+- Identify regression (if cycle time increases, investigate why)
+- Update shared configurations based on team feedback
+- Rotate the "review the review" role — someone verifies Claude reviews are still catching real issues
+
+## Watch Out: Goodhart's Law
+
+"When a measure becomes a target, it ceases to be a good measure."
+
+If you reward cycle time reduction, developers will ship faster but sloppier. If you reward bug reduction, developers will avoid risky features. Always track multiple metrics together. No single metric tells the whole story.
+
+The most reliable indicator of success is qualitative: ask your developers, "Is Claude Code making your work better?" If they say yes — and the quantitative metrics confirm it — you are on the right track.
+
+## Key Takeaway
+
+Measure outcomes, not activity. The five core metrics — cycle time, escape rate, onboarding time, review turnaround, and developer satisfaction — capture the real impact of Claude Code adoption. Avoid vanity metrics like lines of code, token usage, and session counts. Build the ROI case with bug cost savings ($15,000/month for a 10-person team), onboarding acceleration ($3,333/month), and cycle time reduction. Use a 3-month evaluation period: month one is adoption, month two is optimization, month three is steady-state measurement. Track monthly, compare against baseline, and present concrete numbers to leadership.

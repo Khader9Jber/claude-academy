@@ -1,0 +1,12 @@
+{
+  "title": "Claude for Teams",
+  "slug": "claude-for-teams",
+  "description": "Team workflows, shared configurations, onboarding patterns, and collaborative Claude Code usage.",
+  "arc": "power-user",
+  "order": 15,
+  "icon": "Users",
+  "color": "#a07ed6",
+  "estimatedHours": 4,
+  "prerequisites": ["agents-and-skills"],
+  "lessonCount": 5
+}

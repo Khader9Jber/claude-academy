@@ -1,0 +1,341 @@
+---
+title: "Shared Configurations"
+slug: "shared-configurations"
+order: 2
+difficulty: "advanced"
+duration: 18
+tags: ["team", "configuration", "claude-md", "settings", "commands"]
+objectives:
+  - "Design shared CLAUDE.md, settings.json, and command libraries for teams"
+  - "Implement a configuration governance process for growing teams"
+  - "Build custom slash commands that standardize team workflows"
+quiz:
+  - id: "shared-config-1"
+    question: "What is the single most important shared configuration for a team?"
+    type: "multiple-choice"
+    options:
+      - "settings.json permissions"
+      - "The project CLAUDE.md — it is the shared brain that ensures every team member's Claude session understands the codebase conventions"
+      - "Custom commands"
+      - "Hook configurations"
+    correct: 1
+    explanation: "CLAUDE.md is read by every Claude session, for every team member, on every interaction. It is the document that ensures Claude writes code the same way for everyone — same patterns, same conventions, same boundaries. Without it, five developers get five different coding styles from Claude."
+  - id: "shared-config-2"
+    question: "How should a team manage changes to the shared Claude Code configuration?"
+    type: "multiple-choice"
+    options:
+      - "Anyone can edit any time"
+      - "Treat config files like production code: require pull request review, CODEOWNERS protection, and team discussion for breaking changes"
+      - "Only the team lead can edit"
+      - "Never change the configuration"
+    correct: 1
+    explanation: "Configuration changes affect every developer's workflow. A poorly written permission rule can block legitimate work. A CLAUDE.md change can alter code patterns across the entire project. PR review catches mistakes, CODEOWNERS ensures the right people review config changes, and team discussion prevents surprises."
+  - id: "shared-config-3"
+    question: "What is a custom slash command in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "A bash alias"
+      - "A markdown file in .claude/commands/ that defines a reusable prompt template with variable placeholders"
+      - "A keyboard shortcut"
+      - "A git hook"
+    correct: 1
+    explanation: "Custom slash commands are markdown files in .claude/commands/ that define prompt templates. When you type /command-name in a Claude session, the template is loaded as a prompt. Variables like $FILE or $ARGUMENT let you pass context. These standardize how the team uses Claude for common tasks."
+  - id: "shared-config-4"
+    question: "How should custom commands be organized for a team?"
+    type: "multiple-choice"
+    options:
+      - "One file with all commands"
+      - "Categorized by purpose: .claude/commands/review.md, .claude/commands/test.md, .claude/commands/deploy.md — each focused on one workflow"
+      - "In a separate repository"
+      - "Commands should not be shared"
+    correct: 1
+    explanation: "One command per file, named by purpose, keeps the command library discoverable and maintainable. Developers type /review and get the team's standard review prompt. /test generates tests following team conventions. Each file is versioned in git, reviewed in PRs, and available to every team member automatically."
+---
+
+## The Three Configuration Layers
+
+A team's shared Claude Code configuration has three layers, each serving a different purpose:
+
+```
+CLAUDE.md           → What Claude knows about the project
+.claude/settings.json → What Claude is allowed to do
+.claude/commands/    → How the team uses Claude for common tasks
+```
+
+All three live in the repo, are committed to version control, and apply to every team member automatically.
+
+## Layer 1: The Shared CLAUDE.md
+
+### Structure for Teams
+
+A team CLAUDE.md should be organized in sections that answer three questions: What is this project? How do we write code here? What should Claude never do?
+
+```markdown
+# ProjectName
+
+## What This Is
+One-paragraph description of the project, its purpose, and its users.
+
+## Tech Stack
+- Runtime: Node.js 20
+- Framework: Express 4 + TypeScript 5
+- Database: PostgreSQL 16 via Prisma 5
+- Testing: Vitest + Supertest
+- CI/CD: GitHub Actions → Netlify
+
+## Architecture
+src/
+├── routes/     — HTTP route handlers (thin, delegate to services)
+├── services/   — Business logic (all complexity lives here)
+├── repositories/ — Database queries (Prisma wrappers)
+├── middleware/  — Auth, validation, error handling, logging
+├── schemas/    — Zod validation schemas
+├── types/      — TypeScript interfaces and types
+└── lib/        — Utilities (prisma client, jwt, logger)
+
+## How We Write Code
+- Named exports only (no default exports)
+- Error handling: throw AppError subclasses, never raw Error
+- Validation: Zod schemas in src/schemas/, used via validate middleware
+- Route handlers call services, services call repositories
+  (never skip a layer)
+- Async functions: always try/catch, always typed error handling
+- Imports: absolute paths using @/ alias
+
+## Naming Conventions
+- Files: kebab-case (user-service.ts)
+- Classes: PascalCase (UserService)
+- Functions: camelCase (createUser)
+- Constants: SCREAMING_SNAKE_CASE (MAX_RETRIES)
+- Database tables: snake_case (user_profiles)
+- API endpoints: kebab-case (/api/v2/user-profiles)
+
+## Testing Rules
+- Test file location: tests/ mirroring src/ structure
+- Test file naming: same name + .test.ts suffix
+- Every service function needs tests (happy path + error cases)
+- Mock database calls, never use the real database in unit tests
+- Integration tests use a test database with transactions
+
+## Do Not Touch
+- prisma/migrations/ — Never edit existing migrations
+- src/generated/ — Auto-generated, will be overwritten
+- .github/workflows/ — CI/CD managed by DevOps team
+- infrastructure/ — Terraform managed by Platform team
+
+## Git Rules
+- Branch: feature/JIRA-123-short-description
+- Commit: type(scope): description
+- Types: feat, fix, refactor, test, docs, chore
+- Always squash merge PRs
+- Never force push to main
+```
+
+### Pro tip: Keep It Under 80 Lines
+
+Every line of CLAUDE.md is included in every message to Claude. An 80-line file uses ~640 tokens per message. Over 50 messages, that is 32,000 tokens. A 200-line file quadruples that cost. Keep the root CLAUDE.md focused on project-wide conventions. Put package-specific details in directory-level CLAUDE.md files.
+
+## Layer 2: Shared Settings
+
+### .claude/settings.json
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Write(docs/**)",
+      "Bash(npm test*)",
+      "Bash(npm run *)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate dev*)",
+      "Bash(npx tsc*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git status*)"
+    ],
+    "deny": [
+      "Write(.env*)",
+      "Write(*.pem)",
+      "Write(*.key)",
+      "Write(infrastructure/**)",
+      "Write(.github/workflows/**)",
+      "Bash(git push --force*)",
+      "Bash(rm -rf*)",
+      "Bash(npm publish*)",
+      "Bash(docker push*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx prettier --write $file 2>/dev/null || true"
+      }
+    ]
+  }
+}
+```
+
+### What to Allow vs. Deny
+
+| Allow | Why |
+|---|---|
+| Read, Glob, Grep | Claude needs to explore the codebase |
+| Write to src/, tests/, docs/ | Where code changes happen |
+| npm test, npm run | Running project scripts |
+| git checkout, branch, add, commit | Normal git workflow |
+
+| Deny | Why |
+|---|---|
+| Write to .env, .pem, .key | Secrets must never be in Claude context |
+| Write to infrastructure/ | Terraform changes need special review |
+| git push --force | Destroys history |
+| rm -rf | Too dangerous for any automation |
+| npm publish | Accidental publishes are catastrophic |
+
+## Layer 3: Custom Slash Commands
+
+### Building a Command Library
+
+Create reusable commands that standardize team workflows:
+
+### .claude/commands/review.md
+
+```markdown
+Review the changes in the current branch compared to main.
+
+Check for:
+1. Code quality: naming, structure, complexity
+2. Error handling: missing try/catch, untyped errors
+3. Security: injection, auth bypass, data exposure
+4. Testing: are there tests for the new code?
+5. Conventions: does it follow our CLAUDE.md patterns?
+
+For each issue, state:
+- Severity (Critical/Warning/Suggestion)
+- File and approximate line
+- What the issue is
+- How to fix it
+
+End with a summary: "Ready to merge" or "Needs changes (N issues found)"
+```
+
+### .claude/commands/test.md
+
+```markdown
+Generate tests for $ARGUMENTS.
+
+Read the source file first to understand the implementation.
+Read existing tests in the tests/ directory for our testing patterns.
+
+Requirements:
+- Follow the project's testing conventions (see CLAUDE.md)
+- Test happy path, edge cases, and error handling
+- Use factory functions from tests/factories/
+- Mock external dependencies
+- Each test has a descriptive name explaining the scenario
+
+Run the tests after writing them. Fix any failures.
+```
+
+### .claude/commands/add-endpoint.md
+
+```markdown
+Add a new API endpoint: $ARGUMENTS
+
+Follow this exact workflow:
+1. Create or update the Zod validation schema in src/schemas/
+2. Create or update the service function in src/services/
+3. Create or update the route handler in src/routes/
+4. Register the route in src/index.ts (if new route file)
+5. Write tests in tests/routes/
+6. Run tests to verify
+7. Update API docs in docs/api/
+
+Follow all conventions in CLAUDE.md. Use existing endpoints as patterns.
+```
+
+### .claude/commands/migrate.md
+
+```markdown
+Create a database migration for: $ARGUMENTS
+
+Steps:
+1. Update the Prisma schema in prisma/schema.prisma
+2. Generate the migration: npx prisma migrate dev --name [descriptive-name]
+3. Show me the generated SQL before proceeding
+4. Update any affected TypeScript types
+5. Update affected service and repository files
+6. Run tests to verify nothing is broken
+
+The migration must be backward-compatible (no dropping columns
+without a deprecation period).
+```
+
+### Using Commands
+
+```bash
+# In a Claude Code session:
+/review
+/test src/services/order-service.ts
+/add-endpoint "GET /api/v2/analytics/revenue — returns monthly revenue data"
+/migrate "add status column to orders table (enum: pending, confirmed, shipped, delivered)"
+```
+
+## Configuration Governance
+
+### For Teams of 5+
+
+Add CODEOWNERS to protect configuration files:
+
+```
+# .github/CODEOWNERS
+CLAUDE.md                    @tech-leads
+.claude/settings.json        @tech-leads
+.claude/commands/*.md        @all-developers
+```
+
+CLAUDE.md and settings.json changes require tech lead review. Command files can be added by any developer (lower risk, higher iteration speed).
+
+### Configuration Change Process
+
+1. Developer proposes a change via PR
+2. PR description explains why the change is needed
+3. Tech lead reviews for safety (permissions, boundaries)
+4. Team is notified in Slack/chat
+5. Change is merged and takes effect for everyone
+
+### Watch Out: Configuration Drift
+
+If developers add personal settings to the project config, it overrides team conventions. Regular audits catch this:
+
+```bash
+# Check if any personal preferences leaked into project settings
+git log --oneline -20 -- .claude/settings.json CLAUDE.md
+```
+
+## Template for New Projects
+
+When starting a new project, copy this starter configuration:
+
+```bash
+mkdir -p .claude/commands
+# Copy your team's standard CLAUDE.md template
+# Copy your team's standard settings.json
+# Copy your team's standard command library
+```
+
+Maintain a team template repository with these starter files. Every new project starts with the same baseline.
+
+## Key Takeaway
+
+Shared configuration has three layers: CLAUDE.md (what Claude knows), settings.json (what Claude can do), and commands (how the team uses Claude). The CLAUDE.md is the most important — keep it under 80 lines, focused on architecture, conventions, and boundaries. Settings.json defines explicit allow and deny lists for permissions. Custom slash commands standardize workflows so every developer runs reviews, generates tests, and adds endpoints the same way. For teams of 5+, protect configuration with CODEOWNERS and require PR review for changes. The investment in shared configuration pays off on every interaction — consistent code, consistent processes, consistent quality.

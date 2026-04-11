@@ -1,0 +1,328 @@
+---
+title: "Standardized Claude-Assisted Code Reviews"
+slug: "code-review-standards"
+order: 3
+difficulty: "advanced"
+duration: 18
+tags: ["team", "code-review", "quality", "standards"]
+objectives:
+  - "Build a standardized code review workflow using Claude Code"
+  - "Create review checklists that catch real issues, not style nits"
+  - "Integrate Claude-assisted reviews into existing PR workflows"
+quiz:
+  - id: "code-review-1"
+    question: "What is the biggest advantage of Claude-assisted code reviews over manual-only reviews?"
+    type: "multiple-choice"
+    options:
+      - "Claude is always right"
+      - "Claude reviews are consistent — the same checklist runs every time, nothing is missed due to reviewer fatigue, and mechanical checks (types, imports, error handling) are automated"
+      - "Human reviews are no longer needed"
+      - "Claude reviews are faster"
+    correct: 1
+    explanation: "Human reviewers have variable focus. Reviewer A catches security issues but misses naming conventions. Reviewer B catches performance but misses error handling. Claude applies the same checklist consistently every time. This does not replace human review — it augments it. Humans focus on architecture and design decisions while Claude handles mechanical correctness."
+  - id: "code-review-2"
+    question: "What should a Claude-assisted review focus on versus what should be left to human reviewers?"
+    type: "multiple-choice"
+    options:
+      - "Claude should do everything"
+      - "Claude: convention compliance, error handling, type safety, security patterns, test coverage. Human: architecture decisions, business logic correctness, code organization strategy"
+      - "Humans should do everything"
+      - "Claude: architecture. Human: formatting"
+    correct: 1
+    explanation: "Claude excels at mechanical checks: does the code follow conventions? Are errors handled? Are types correct? Are there security anti-patterns? Does test coverage exist? Humans excel at judgment calls: is this the right architecture? Does the business logic make sense? Is the code organized well for future changes? The best reviews combine both."
+  - id: "code-review-3"
+    question: "How should review findings be categorized?"
+    type: "multiple-choice"
+    options:
+      - "Pass or fail only"
+      - "Critical (must fix before merge), Warning (should fix), Suggestion (nice to have) — with clear criteria for each level"
+      - "By file name"
+      - "Alphabetically"
+    correct: 1
+    explanation: "Three severity levels prevent review fatigue. Critical issues (security vulnerabilities, data loss risks, broken error handling) block the merge. Warnings (missing tests, suboptimal patterns) should be fixed but are not blockers. Suggestions (naming improvements, optional refactoring) are at the author's discretion. Without this hierarchy, every comment feels equally important."
+  - id: "code-review-4"
+    question: "When should you NOT use Claude for code review?"
+    type: "multiple-choice"
+    options:
+      - "On large PRs"
+      - "When the PR involves novel architecture decisions, highly domain-specific business logic, or sensitive data handling that requires human judgment and accountability"
+      - "On test files"
+      - "On documentation PRs"
+    correct: 1
+    explanation: "Claude cannot evaluate whether an architectural decision is right for your team's roadmap. It cannot verify business logic correctness without domain expertise. And for sensitive changes (security, compliance, data handling), a human must be accountable for the review. Use Claude for mechanical checks and human reviewers for judgment calls."
+---
+
+## Why Standard Reviews Matter
+
+Without standards, code reviews are inconsistent. Reviewer A spends 45 minutes and catches a security issue. Reviewer B spends 10 minutes and approves with "looks good." Both happen on the same team, on the same day.
+
+Claude-assisted reviews solve inconsistency by applying the same checklist, at the same depth, every time. But they only work if the checklist is good and the workflow is clear.
+
+## The Review Checklist
+
+### .claude/commands/review.md
+
+```markdown
+Review the changes in the current branch compared to main.
+
+## Review Process
+1. Run `git diff main...HEAD` to see all changes
+2. For each changed file, check the items below
+3. Categorize findings by severity
+
+## Checklist
+
+### Critical (must fix before merge)
+- [ ] **Security**: SQL injection, XSS, auth bypass, exposed secrets
+- [ ] **Data integrity**: missing transactions, race conditions, cascading deletes
+- [ ] **Error handling**: unhandled promise rejections, swallowed errors, missing try/catch on async calls
+- [ ] **Type safety**: `any` types, unsafe casts, missing null checks
+
+### Warning (should fix)
+- [ ] **Testing**: new code has corresponding tests, edge cases covered
+- [ ] **Error messages**: user-facing errors are helpful, internal errors are logged
+- [ ] **Performance**: O(n^2) loops, unnecessary re-renders, missing indexes
+- [ ] **Convention compliance**: follows patterns in CLAUDE.md
+
+### Suggestion (nice to have)
+- [ ] **Naming**: variables and functions have clear, descriptive names
+- [ ] **Readability**: complex logic has comments, functions are under 50 lines
+- [ ] **DRY**: no duplicated logic that should be extracted
+
+## Output Format
+For each finding:
+
+**[SEVERITY] — Description**
+File: path/to/file.ts:line
+Issue: What is wrong
+Fix: How to fix it (include code if applicable)
+
+## Summary
+End with one of:
+- "✅ Ready to merge — no critical or warning issues"
+- "⚠️ Needs changes — N critical issues, M warnings found"
+```
+
+### Using the Review Command
+
+```bash
+# In Claude Code session on the feature branch:
+/review
+```
+
+Claude runs `git diff`, reads every changed file, applies the checklist, and produces a structured report.
+
+## The Two-Pass Review
+
+The most effective workflow combines Claude and human review in two passes:
+
+### Pass 1: Claude (Automated)
+
+Claude checks mechanical correctness:
+- Does the code compile?
+- Are types correct?
+- Is error handling present?
+- Are there security anti-patterns?
+- Do tests exist and pass?
+- Does the code follow CLAUDE.md conventions?
+
+### Pass 2: Human (Judgment)
+
+The human reviewer focuses on what Claude cannot evaluate:
+- Is the approach correct for this feature?
+- Does the business logic handle all cases?
+- Is this the right place for this code?
+- Will this scale as usage grows?
+- Are there edge cases the spec did not mention?
+
+### How This Saves Time
+
+```
+Traditional review (one human, no Claude):
+  Mechanical checks: 20 minutes
+  Design/logic review: 15 minutes
+  Writing comments: 10 minutes
+  Total: 45 minutes
+
+Two-pass review:
+  Claude (Pass 1): 3 minutes (automated)
+  Human (Pass 2): 15 minutes (focused on judgment)
+  Total: 18 minutes
+
+Savings: 60% time reduction, higher quality (nothing missed)
+```
+
+## Review Templates by PR Type
+
+Different PR types need different review focus areas. Create specialized commands:
+
+### .claude/commands/review-security.md
+
+```markdown
+Security-focused review of the current branch changes.
+
+For each changed file, check:
+1. **Input validation**: Is all user input validated before use?
+2. **Authentication**: Are auth checks present on protected routes?
+3. **Authorization**: Does the user have permission for this action?
+4. **Data exposure**: Are sensitive fields excluded from responses?
+5. **Injection**: Are database queries parameterized?
+6. **Secrets**: Are any secrets, tokens, or keys hardcoded?
+7. **Dependencies**: Are new dependencies from trusted sources?
+
+For each finding, provide:
+- OWASP category (if applicable)
+- Severity (Critical/High/Medium/Low)
+- Exact location (file:line)
+- How to exploit (attack vector)
+- How to fix (code change)
+```
+
+### .claude/commands/review-performance.md
+
+```markdown
+Performance-focused review of the current branch changes.
+
+Check:
+1. **Database queries**: N+1 queries, missing indexes, full table scans
+2. **Algorithm complexity**: O(n^2) or worse in hot paths
+3. **Memory**: Large arrays in memory, unbounded caches, memory leaks
+4. **Network**: Unnecessary API calls, missing request batching
+5. **Rendering**: (frontend) Unnecessary re-renders, missing memoization
+6. **Bundle size**: (frontend) Large imports that should be lazy-loaded
+
+For each finding:
+- Impact: High/Medium/Low (based on data volume and frequency)
+- Current behavior: What happens now
+- Optimized approach: What should change
+- Expected improvement: Estimated percentage or big-O improvement
+```
+
+### .claude/commands/review-tests.md
+
+```markdown
+Test coverage review of the current branch changes.
+
+For each changed source file:
+1. Does a corresponding test file exist?
+2. Are happy path cases tested?
+3. Are edge cases tested (empty input, null, boundary values)?
+4. Are error cases tested (what happens when things fail)?
+5. Are mocks appropriate (not testing implementation details)?
+
+For new code without tests:
+- List each untested function
+- Suggest specific test cases needed
+
+Run: npx vitest run --coverage -- [changed files]
+Report coverage percentage for changed files.
+```
+
+## Integrating With GitHub PR Workflow
+
+### Automated Review on PR Creation
+
+Use a GitHub Action to run Claude review on every PR:
+
+```yaml
+# .github/workflows/claude-review.yml
+name: Claude Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Claude Review
+        run: |
+          # Run Claude in headless mode with the review command
+          claude --print "$(cat .claude/commands/review.md)" \
+            2>&1 | tee review-output.txt
+      
+      - name: Post Review Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review-output.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Claude Code Review\n\n${review}`
+            });
+```
+
+### Review Comment Format
+
+A consistent format helps the team scan reviews quickly:
+
+```
+## Claude Code Review
+
+### Critical Issues (2)
+
+**[CRITICAL] — Unhandled promise rejection**
+File: src/services/payment-service.ts:67
+Issue: The Stripe API call has no try/catch. If the payment gateway 
+is down, this crashes the request handler.
+Fix:
+```typescript
+try {
+  const charge = await stripe.charges.create(chargeData);
+} catch (error) {
+  logger.error('Payment failed', { error, orderId });
+  throw new PaymentFailedError('Payment processing failed');
+}
+```
+
+### Warnings (1)
+
+**[WARNING] — Missing test for error path**
+File: src/services/payment-service.ts
+Issue: The new `processRefund` function has no test for the case 
+where the refund fails.
+Fix: Add a test case that mocks a failed refund and verifies the 
+order status is not changed.
+
+### Summary
+⚠️ Needs changes — 2 critical issues, 1 warning found
+```
+
+## Calibrating Review Sensitivity
+
+### Too Noisy
+
+If Claude reports 20+ issues on every PR, reviewers stop reading the reports. Tune the checklist to focus on what matters:
+
+```
+❌ "Check for any possible improvement"
+   → 30 findings, most trivial
+
+✅ "Check for issues that would cause bugs, security vulnerabilities,
+    or break existing functionality"
+   → 3-5 findings, all actionable
+```
+
+### Too Quiet
+
+If Claude consistently says "Ready to merge" on PRs that later cause bugs, the checklist is too lenient. Add specific checks for the types of bugs that keep happening:
+
+```
+## Team-Specific Checks (based on past incidents)
+- [ ] Race condition: concurrent requests to the same resource
+- [ ] Timezone: dates compared without timezone normalization
+- [ ] Pagination: off-by-one in cursor-based pagination
+```
+
+The best teams evolve their checklist based on post-mortem findings.
+
+## Key Takeaway
+
+Standardized Claude-assisted code reviews use a three-severity checklist (Critical, Warning, Suggestion) applied consistently by Claude, followed by human review focused on architecture and business logic. This two-pass approach reduces review time by 60% while increasing coverage. Create specialized review commands for security, performance, and test coverage reviews. Integrate with GitHub Actions for automated PR reviews. Calibrate sensitivity over time — too many findings causes review fatigue, too few misses real issues. The checklist should evolve based on actual bugs that make it to production.

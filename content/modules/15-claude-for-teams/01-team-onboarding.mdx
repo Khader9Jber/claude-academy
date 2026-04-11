@@ -1,0 +1,306 @@
+---
+title: "Onboarding New Team Members with Claude Code"
+slug: "team-onboarding"
+order: 1
+difficulty: "advanced"
+duration: 18
+tags: ["team", "onboarding", "workflow", "productivity"]
+objectives:
+  - "Design a Claude Code onboarding workflow for new team members"
+  - "Create onboarding-specific CLAUDE.md configurations and starter prompts"
+  - "Reduce new developer ramp-up time from weeks to days"
+quiz:
+  - id: "onboarding-1"
+    question: "What is the most effective way to onboard a new developer with Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Give them access and let them figure it out"
+      - "Provide a CLAUDE.md-ready codebase, a starter prompt library, and a guided exploration session where Claude walks them through the architecture"
+      - "Send them documentation links"
+      - "Assign a mentor for 2 weeks"
+    correct: 1
+    explanation: "A CLAUDE.md-ready codebase means Claude already understands the project conventions. A starter prompt library gives the new developer ready-made prompts for common tasks. A guided exploration session ('explain the auth flow from login to JWT verification, trace through the code') lets them learn the codebase interactively instead of reading stale docs."
+  - id: "onboarding-2"
+    question: "What should a team's onboarding CLAUDE.md section include?"
+    type: "multiple-choice"
+    options:
+      - "Company policies"
+      - "Architecture overview, common gotchas, 'how to do X' patterns, and explicit 'do not touch' boundaries that protect new developers from risky changes"
+      - "Employee handbook"
+      - "Nothing — CLAUDE.md is for experienced developers only"
+    correct: 1
+    explanation: "New developers are most likely to make mistakes in areas they do not understand yet. The onboarding section of CLAUDE.md should cover: architecture overview (what lives where), common gotchas (known quirks and workarounds), 'how to do X' patterns (the right way to add a route, service, or test), and explicit boundaries (files and operations that are off-limits)."
+  - id: "onboarding-3"
+    question: "How should a new developer use Claude Code to explore an unfamiliar codebase?"
+    type: "multiple-choice"
+    options:
+      - "Read every file from top to bottom"
+      - "Ask Claude targeted exploration questions: 'Trace the request flow for POST /api/orders from route handler to database write' or 'What happens when a user logs in? Walk through every file involved.'"
+      - "Only look at files assigned to them"
+      - "Read the README and stop there"
+    correct: 1
+    explanation: "Targeted exploration questions make Claude trace through the actual code, showing the new developer how systems connect. Instead of reading files in isolation, they see the flow: route handler calls service, service calls repository, repository calls database. This builds mental models much faster than reading files individually."
+  - id: "onboarding-4"
+    question: "What is the recommended first task for a new developer using Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "A large feature"
+      - "A small, well-defined task with clear boundaries — like adding a field to an existing API endpoint — that touches every layer of the codebase"
+      - "Bug fixes only"
+      - "Documentation"
+    correct: 1
+    explanation: "A small task that touches every layer (add a field: update the database schema, update the service, update the route, update the validation, update the tests) gives the new developer a complete tour of the codebase with training wheels. Claude Code guides them through each step, and the task is small enough that mistakes are easily caught in review."
+---
+
+## The Onboarding Problem
+
+The typical new developer experience: clone the repo, read a stale README, spend two days getting the dev environment working, spend a week reading code, and start being productive in week three. With Claude Code, you can compress this to two days.
+
+Here is the onboarding workflow I have used across three teams.
+
+## The Onboarding Kit
+
+Every team using Claude Code should prepare these four things for new developers:
+
+### 1. A CLAUDE.md With an Onboarding Section
+
+Add this to the bottom of your project CLAUDE.md:
+
+```markdown
+## Onboarding Guide (New Developers)
+
+### First Hour: Setup
+1. Clone the repo and run `pnpm install`
+2. Copy `.env.example` to `.env.local` and fill in values (ask #team-backend for secrets)
+3. Run `npx prisma migrate dev` to set up the local database
+4. Run `pnpm dev` and verify http://localhost:3000/health returns 200
+5. Run `pnpm test` and verify all tests pass
+
+### First Day: Explore
+Ask Claude these questions to understand the codebase:
+- "Explain the project architecture. What does each directory in src/ do?"
+- "Trace a request through POST /api/v1/orders from the route handler to the database write. Show me every file involved."
+- "What is the authentication flow? How does a user go from login to making authenticated API calls?"
+- "Show me the error handling pattern. What happens when a service throws a NotFoundError?"
+- "What testing patterns does this project use? Show me a typical test file."
+
+### First Week: Contribute
+Your first task should be small and touch every layer:
+- Add a new field to an existing model
+- Add a new endpoint to an existing route file
+- Write tests for an untested function
+- Fix a bug from the backlog labeled "good first issue"
+
+### Common Gotchas
+- The test database resets between runs — don't store test data you need
+- Prisma migrations must be backward-compatible (see docs/database.md)
+- Always create a feature branch — main is protected
+- The CI pipeline takes ~4 minutes — don't wait for it, start the next task
+```
+
+### 2. Starter Prompt Library
+
+Create a file at `.claude/prompts/onboarding.md` with ready-made prompts:
+
+```markdown
+# Onboarding Prompts
+
+## Architecture Exploration
+"Give me a high-level overview of this project's architecture. 
+What are the main components, how do they interact, and what 
+technology does each use?"
+
+## Trace a Feature
+"Trace the complete flow when a user creates a new order:
+1. Which route handles the request?
+2. What validation happens?
+3. What service method is called?
+4. What database queries run?
+5. What is the response format?
+Show me the relevant code in each file."
+
+## Understand a Module
+"Explain everything in src/services/. What does each service do? 
+What are the key public methods? What dependencies does each have?"
+
+## Find Patterns
+"What patterns does this codebase use for:
+- Error handling
+- Input validation
+- Authentication/authorization
+- Database queries
+- Testing
+Show me an example of each from the actual code."
+
+## Before Your First PR
+"Review my changes and tell me:
+1. Do they follow the project's coding conventions?
+2. Are there any missing tests?
+3. Does the error handling match the project's pattern?
+4. Are there any imports from wrong packages?"
+```
+
+### 3. A Guided Exploration Session
+
+On day one, the new developer runs this multi-step exploration:
+
+```
+Step 1: "I'm new to this project. Read the CLAUDE.md and give me 
+a 2-minute summary of what this project does, what tech it uses, 
+and how the code is organized."
+
+Step 2: "Now trace the most important user flow — whatever the 
+core business logic is. Show me every file involved, in order."
+
+Step 3: "What are the 5 most important files in this project? 
+For each one, explain what it does and why it matters."
+
+Step 4: "Show me the testing setup. How do I run tests? 
+Where do test files live? Walk me through one complete test file 
+and explain the patterns."
+
+Step 5: "What are the potential pitfalls in this codebase? 
+Things that might surprise me or cause bugs if I'm not careful?"
+```
+
+### 4. A First Task Template
+
+The ideal first task for a new developer using Claude Code:
+
+```
+"I need to add a 'priority' field (enum: low, medium, high, critical) 
+to the Task model.
+
+This involves:
+1. Update the Prisma schema (prisma/schema.prisma)
+2. Create a migration (npx prisma migrate dev --name add_task_priority)
+3. Update the Zod validation schema (src/schemas/task.ts)
+4. Update the service to handle the new field (src/services/task-service.ts)
+5. Update the route handler (src/routes/tasks.ts)
+6. Add tests for the new field (tests/routes/tasks.test.ts)
+7. Update API documentation (docs/api/tasks.md)
+
+Guide me through each step. Let me review each change before 
+moving to the next step."
+```
+
+This single task teaches the new developer every layer of the stack with Claude as their guide.
+
+## Measuring Onboarding Success
+
+Track these metrics before and after implementing Claude Code onboarding:
+
+### Time to First PR
+
+```
+Without Claude Code:
+  Average: 5 working days
+  Range: 3-10 days
+
+With Claude Code:
+  Average: 1.5 working days
+  Range: 1-3 days
+```
+
+### Time to First Solo Feature
+
+```
+Without Claude Code:
+  Average: 15 working days
+  Range: 10-25 days
+
+With Claude Code:
+  Average: 5 working days
+  Range: 3-8 days
+```
+
+### Questions Asked in Team Chat
+
+```
+Without Claude Code:
+  Average: 12 questions/week (first 2 weeks)
+  Common: "Where does X live?", "How do I do Y?"
+
+With Claude Code:
+  Average: 4 questions/week (first 2 weeks)
+  Common: Architecture decisions, business context
+  Claude handles: code location, patterns, conventions
+```
+
+## Setting Up Permissions for New Developers
+
+New developers should start with tighter permissions. Create a conservative settings profile:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(npm test*)",
+      "Bash(npm run dev*)",
+      "Bash(npm run lint*)",
+      "Bash(npx prisma generate)",
+      "Bash(git checkout -b*)",
+      "Bash(git add*)",
+      "Bash(git commit*)"
+    ],
+    "deny": [
+      "Write(.env*)",
+      "Write(prisma/migrations/**)",
+      "Write(infrastructure/**)",
+      "Write(.github/**)",
+      "Bash(git push*)",
+      "Bash(npm publish*)",
+      "Bash(npx prisma migrate*)",
+      "Bash(rm -rf*)"
+    ]
+  }
+}
+```
+
+Note the extra restrictions: no pushing (they should make PRs that get reviewed), no migration editing (dangerous for production), no infrastructure changes. These guard rails relax as the developer gains experience.
+
+## The 5-Day Onboarding Plan
+
+```
+Day 1: Setup + Explore
+  Morning: Dev environment setup (with Claude helping)
+  Afternoon: Guided exploration session (5 prompts above)
+  
+Day 2: First Task
+  Full day: The "add a field" task with Claude guiding each step
+  Submit first PR
+  
+Day 3: Deeper Exploration
+  Morning: Explore the area they'll own (with Claude)
+  Afternoon: Pick a "good first issue" and solve it
+  
+Day 4: Solo Work
+  Work on a small feature independently
+  Use Claude for questions instead of asking teammates
+  
+Day 5: Review and Adjust
+  Review their Claude Code usage (what prompts worked, what didn't)
+  Adjust CLAUDE.md based on questions they had
+  Add any missing patterns to the onboarding section
+```
+
+## Watch Out: Over-Reliance
+
+New developers who rely too heavily on Claude Code may not build deep understanding. Balance Claude-guided exploration with independent code reading. A good rule: use Claude to find the right files and understand the flow, then read the actual code carefully yourself.
+
+Encourage new developers to ask Claude "why" questions, not just "how" questions:
+
+```
+❌ "Write the code to add a priority field"
+✅ "Why does this project use the service pattern instead of 
+    putting business logic in route handlers?"
+```
+
+## Key Takeaway
+
+Claude Code transforms onboarding from a passive documentation-reading exercise into an interactive codebase exploration. The onboarding kit has four components: a CLAUDE.md with onboarding section (setup steps, exploration prompts, common gotchas), a starter prompt library (ready-made questions for codebase exploration), a guided exploration session (5-step deep dive), and a first task template (touches every layer with Claude guiding each step). This approach reduces time-to-first-PR from 5 days to 1.5 days and cuts team chat questions by 67%. The key: use Claude for "where" and "how," but encourage new developers to ask "why" to build deep understanding.

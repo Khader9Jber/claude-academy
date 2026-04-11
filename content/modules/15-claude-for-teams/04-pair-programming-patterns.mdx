@@ -1,0 +1,278 @@
+---
+title: "Pair Programming Patterns with Claude"
+slug: "pair-programming-patterns"
+order: 4
+difficulty: "advanced"
+duration: 18
+tags: ["team", "pair-programming", "workflow", "collaboration"]
+objectives:
+  - "Apply four distinct pair programming patterns with Claude Code"
+  - "Choose the right pattern based on task complexity and developer experience"
+  - "Avoid common anti-patterns that reduce pair programming effectiveness"
+quiz:
+  - id: "pair-prog-1"
+    question: "What is the 'Navigator-Driver' pattern with Claude?"
+    type: "multiple-choice"
+    options:
+      - "Claude writes code while you watch"
+      - "You describe the strategy and high-level approach (navigator), Claude implements the code (driver) — you review each change before moving forward"
+      - "Two developers share one Claude session"
+      - "Claude navigates the file system"
+    correct: 1
+    explanation: "In Navigator-Driver, you are the navigator: you decide what to build, in what order, and review each step. Claude is the driver: it writes the actual code based on your direction. You maintain strategic control while Claude handles tactical implementation. This pattern is ideal for experienced developers working on well-understood features."
+  - id: "pair-prog-2"
+    question: "When should you use the 'Rubber Duck' pattern instead of the 'Navigator-Driver' pattern?"
+    type: "multiple-choice"
+    options:
+      - "When you need faster code output"
+      - "When you are stuck on a design problem — explaining the problem to Claude forces you to articulate your thinking and often reveals the solution before Claude even responds"
+      - "For simple tasks"
+      - "When Claude is unavailable"
+    correct: 1
+    explanation: "The Rubber Duck pattern is not about Claude's answer — it is about the process of explaining. When you describe a problem clearly enough for Claude to understand it, you often spot the issue yourself. Claude's response then either confirms your insight or offers an alternative you hadn't considered. Use this when stuck on design decisions or debugging."
+  - id: "pair-prog-3"
+    question: "What is the main risk of the 'Full Delegation' pattern?"
+    type: "multiple-choice"
+    options:
+      - "It is too slow"
+      - "The developer loses understanding of the code — they cannot debug, extend, or explain changes they did not actively participate in creating"
+      - "Claude refuses to work"
+      - "It uses too many tokens"
+    correct: 1
+    explanation: "Full Delegation ('just build it') is the fastest pattern but the most dangerous. If Claude writes the entire feature, the developer may not understand edge cases, error handling logic, or architectural decisions embedded in the code. When something breaks in production, they cannot debug it. Always review and understand delegated code before merging."
+  - id: "pair-prog-4"
+    question: "How should a senior developer and a junior developer share a Claude Code session?"
+    type: "multiple-choice"
+    options:
+      - "The senior should type all prompts"
+      - "The junior drives (writes prompts and makes decisions) while the senior observes, asks guiding questions, and intervenes only for critical issues"
+      - "They should use separate sessions"
+      - "Claude replaces the need for mentoring"
+    correct: 1
+    explanation: "Letting the junior drive builds their prompting skills and decision-making ability. The senior observes their approach, asks questions ('Why did you ask for it this way?', 'What would happen if the input is null?'), and only intervenes for critical errors. This mentoring model is more effective than the senior doing everything while the junior watches."
+---
+
+## Four Patterns
+
+Every Claude Code pair programming session falls into one of four patterns. Each has its place. Using the wrong pattern wastes time or produces code nobody understands.
+
+## Pattern 1: Navigator-Driver
+
+**You decide. Claude implements.**
+
+This is the workhorse pattern for experienced developers working on features with clear requirements.
+
+### How It Works
+
+```
+You (Navigator): "We need to add rate limiting to the auth endpoints.
+Use express-rate-limit. 100 requests per 15-minute window per IP.
+Apply it only to POST /auth/login and POST /auth/register.
+Return 429 with a JSON error response including retryAfter."
+
+Claude (Driver): [reads existing middleware, writes the rate limiter,
+applies it to the correct routes, adds error response formatting]
+
+You: "Good, but the error response should match our AppError format.
+Read src/middleware/error.ts for the pattern."
+
+Claude: [reads the error handler, updates the rate limit response
+to match the existing error format]
+
+You: "Now add a test for the rate limit behavior."
+
+Claude: [writes tests that verify 429 after 100 requests]
+```
+
+### When to Use
+
+- Feature implementation with clear requirements
+- Tasks where you know the architecture but want fast implementation
+- Refactoring where you define the target and Claude makes the changes
+
+### The Key Rule
+
+Review every change before asking for the next one. If you skip review, you lose the "navigator" advantage — you are no longer steering, just accepting.
+
+### Pro tip
+
+State your intent before each step:
+
+```
+❌ "Add rate limiting"
+✅ "Add rate limiting to auth endpoints. The goal is to prevent 
+    brute force login attempts. We want per-IP limiting, not per-user."
+```
+
+The intent ("prevent brute force") helps Claude make better implementation decisions (per-IP, not per-user).
+
+## Pattern 2: Rubber Duck
+
+**You explain. Claude listens (and occasionally helps).**
+
+The most underrated pattern. Use it when you are stuck.
+
+### How It Works
+
+```
+You: "I'm trying to figure out why the order service sometimes 
+creates duplicate orders. Here's what I know:
+
+- It happens under high load (10+ orders per second)
+- The duplicate orders have different IDs but identical content
+- Both orders are charged to the customer
+- The database has a unique constraint on (userId, productId, createdAt)
+  but duplicates still get through
+
+My theory is that two requests arrive within the same millisecond, 
+so createdAt is identical and the unique constraint should catch it...
+wait. The constraint is on the timestamp, which is millisecond precision.
+Two requests in the same millisecond would violate the constraint and 
+one would fail.
+
+But we ARE getting duplicates. So the timestamps must be different.
+That means there is a window where two requests pass the 'check if 
+order exists' query before either writes.
+
+This is a TOCTOU race condition. The fix is to either use a database 
+advisory lock or a unique idempotency key."
+
+Claude: "Your analysis is correct — this is a classic 
+time-of-check-time-of-use race condition. For an e-commerce 
+system, an idempotency key is the standard solution. Here's 
+how to implement it..."
+```
+
+Notice: you solved the problem while explaining it. Claude just confirmed and offered implementation help.
+
+### When to Use
+
+- Debugging complex issues where the cause is unclear
+- Design decisions where you need to think through tradeoffs
+- Architectural questions where articulating the problem reveals the answer
+
+### The Process
+
+1. Explain the problem as if teaching it to someone
+2. State what you know and what you have tried
+3. Form a hypothesis out loud
+4. Let Claude validate or challenge your hypothesis
+5. Implement the solution together
+
+## Pattern 3: Ping-Pong
+
+**Alternating turns. You write some code, Claude writes some code.**
+
+This pattern works well for tasks that require both human judgment and Claude's implementation speed.
+
+### How It Works
+
+```
+You: [write the database schema for a new feature]
+Claude: [generate the service layer based on the schema]
+You: [review the service, adjust the business logic]
+Claude: [generate the route handlers based on the service]
+You: [review the routes, add auth requirements]
+Claude: [generate the test suite]
+You: [review tests, add edge cases Claude missed]
+```
+
+### When to Use
+
+- Features where some parts need human creativity (schema design, business logic) and others need implementation speed (route handlers, tests)
+- Learning new technologies — you write the tricky parts, Claude handles the boilerplate
+- Refactoring where you make the structural decisions and Claude propagates changes
+
+### The Rhythm
+
+1. You handle the decisions (what to build, how to structure it)
+2. Claude handles the implementation (writing the code that follows the structure)
+3. You refine (catch edge cases Claude missed, adjust business logic)
+4. Claude propagates (apply your refinements consistently)
+
+## Pattern 4: Full Delegation
+
+**Claude builds. You review.**
+
+The fastest pattern, but use it carefully.
+
+### How It Works
+
+```
+You: "Add complete CRUD operations for a 'categories' resource.
+Follow the same patterns as the 'products' resource.
+Include: Prisma schema, service, routes, validation, tests, 
+and API documentation."
+
+Claude: [reads the products resource, replicates the pattern
+for categories, creates all files]
+
+You: [review every file, test the endpoints, verify the behavior]
+```
+
+### When to Use
+
+- Well-established patterns being replicated (CRUD for a new resource)
+- Boilerplate generation (test suites for existing code)
+- Tasks where the pattern is more important than the specifics
+
+### The Danger
+
+Full Delegation is seductive. "Claude can do it faster" leads to code that nobody understands. The developer cannot explain why certain error handling exists, what edge cases are covered, or how the code interacts with other systems.
+
+### The Rule
+
+After full delegation, you MUST read every line as if you wrote it. Ask yourself: "Can I explain this to a teammate? Can I debug this at 2 AM when it breaks?"
+
+If the answer is no, switch to Navigator-Driver and redo the parts you do not understand.
+
+## Choosing the Right Pattern
+
+| Situation | Pattern | Why |
+|---|---|---|
+| Feature with clear requirements | Navigator-Driver | You direct, Claude implements |
+| Stuck on a design decision | Rubber Duck | Explaining reveals the answer |
+| Mixed creativity + implementation | Ping-Pong | Each does what they are best at |
+| Repeating an established pattern | Full Delegation | Speed matters, pattern is proven |
+| Junior developer learning | Navigator (junior)-Driver (Claude) | Builds junior's decision-making |
+| Debugging production issue | Rubber Duck → Navigator | Analyze first, fix second |
+| Large refactoring | Navigator-Driver | You steer the refactor, Claude makes changes |
+| Writing tests for existing code | Full Delegation | Pattern is well-defined |
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: The Clipboard Developer
+
+```
+❌ Copy Claude's code without reading it
+❌ Ask Claude to "fix it" when something breaks without understanding why
+❌ Treat Claude's output as infallible
+```
+
+### Anti-Pattern 2: Over-Directing
+
+```
+❌ "Write a function called processOrder that takes order as an 
+    OrderInput type and returns a Promise<Order> using async/await 
+    with a try-catch that catches AppError..."
+
+This is just typing code through Claude. Write it yourself.
+```
+
+### Anti-Pattern 3: No Context Switching
+
+Using Navigator-Driver for everything — including problems where you are stuck and should be rubber ducking, or repetitive tasks where full delegation is appropriate.
+
+### Anti-Pattern 4: Never Reviewing
+
+```
+❌ /review → "Looks good" → merge
+
+If you are not going to read Claude's review carefully and think 
+about whether you agree, skip the automated review. A rubber-stamped 
+review is worse than no review — it creates false confidence.
+```
+
+## Key Takeaway
+
+Effective Claude pair programming requires choosing the right pattern for the situation. Navigator-Driver gives you strategic control while Claude handles implementation speed. Rubber Duck uses Claude as a sounding board that helps you solve problems through articulation. Ping-Pong alternates between human creativity and Claude implementation. Full Delegation maximizes speed but requires thorough post-review. The anti-pattern to watch for: treating Claude as a code vending machine instead of a thinking partner. The best results come from staying engaged — reviewing every change, understanding every decision, and switching patterns when the current one is not working.

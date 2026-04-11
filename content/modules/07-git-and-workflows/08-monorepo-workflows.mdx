@@ -1,0 +1,345 @@
+---
+title: "Monorepo Workflows with Claude"
+slug: "monorepo-workflows"
+order: 8
+difficulty: "intermediate"
+duration: 18
+tags: ["git", "monorepo", "turborepo", "nx"]
+objectives:
+  - "Configure Claude Code for Turborepo, Nx, and pnpm workspace monorepos"
+  - "Scope Claude's context to specific packages to avoid token waste"
+  - "Perform cross-package refactoring with Claude without breaking dependencies"
+quiz:
+  - id: "monorepo-1"
+    question: "What is the biggest challenge when using Claude Code in a monorepo?"
+    type: "multiple-choice"
+    options:
+      - "Claude cannot read multiple directories"
+      - "The context window fills up fast — monorepos have hundreds of files and Claude needs to be scoped to the relevant package"
+      - "Monorepos are not supported"
+      - "Claude cannot run build commands"
+    correct: 1
+    explanation: "Monorepos can have thousands of files across dozens of packages. If Claude tries to understand the entire repo, the context window fills up with irrelevant code. The solution is scoping — using CLAUDE.md, directory-level configs, and targeted prompts to keep Claude focused on the package you are working in."
+  - id: "monorepo-2"
+    question: "How should CLAUDE.md be structured in a monorepo?"
+    type: "multiple-choice"
+    options:
+      - "One giant CLAUDE.md at the root with all package details"
+      - "A root CLAUDE.md with the dependency graph and overall architecture, plus per-package CLAUDE.md files with package-specific conventions"
+      - "No CLAUDE.md — use settings.json only"
+      - "One CLAUDE.md per developer"
+    correct: 1
+    explanation: "The root CLAUDE.md maps out the package dependency graph and shared conventions. Each package gets its own CLAUDE.md with local patterns, test commands, and build steps. Claude reads from root to current directory, so working in packages/api/ loads both the root and api-specific context."
+  - id: "monorepo-3"
+    question: "How do you safely refactor a shared package used by 5 other packages?"
+    type: "multiple-choice"
+    options:
+      - "Refactor and hope nothing breaks"
+      - "Ask Claude to refactor the shared package, then run the full monorepo build/test to catch breakages across all consumers"
+      - "Never refactor shared packages"
+      - "Delete the shared package and start over"
+    correct: 1
+    explanation: "Cross-package refactoring needs a two-phase approach: first refactor the shared package, then run the monorepo-wide build and test commands (turbo build, turbo test, or nx run-many) to identify all breakages in consumer packages. Claude can then fix each consumer package one at a time."
+  - id: "monorepo-4"
+    question: "What command scopes Turborepo operations to a single package and its dependencies?"
+    type: "multiple-choice"
+    options:
+      - "turbo run build"
+      - "turbo run build --filter=@myorg/api"
+      - "npm run build --workspace=api"
+      - "turbo build --all"
+    correct: 1
+    explanation: "The --filter flag in Turborepo scopes operations to a specific package and its dependency chain. turbo run build --filter=@myorg/api builds only the api package and any shared packages it depends on. This is much faster than building the entire monorepo and uses fewer tokens when Claude reads the output."
+---
+
+## Monorepos Are Different
+
+A monorepo with 15 packages, 50,000 lines of code, and shared dependencies is a different beast than a single-package project. Claude Code works in both, but without proper setup in a monorepo, you waste tokens reading irrelevant packages, break shared dependencies you did not know existed, and fight context window limits constantly.
+
+This lesson covers the three patterns that make Claude Code effective in monorepos: scoped context, hierarchical configuration, and cross-package refactoring.
+
+## Setting Up the CLAUDE.md Hierarchy
+
+### Root CLAUDE.md
+
+The root file is the map. It tells Claude what exists and how packages relate to each other.
+
+```markdown
+# Commerce Platform Monorepo
+
+## Package Manager: pnpm
+## Build System: Turborepo
+
+## Package Map
+packages/
+├── api/          — REST API (Express + TypeScript)
+├── web/          — Customer site (Next.js)
+├── admin/        — Admin dashboard (React + Vite)
+├── shared/       — Shared types and utilities
+├── ui/           — Shared component library
+├── config/       — Shared ESLint, TypeScript, and Prettier configs
+└── database/     — Prisma schema and migrations
+
+## Dependency Graph
+api      → shared, database
+web      → shared, ui
+admin    → shared, ui
+ui       → shared
+shared   → (no internal dependencies)
+database → shared
+
+## Monorepo Commands
+- `pnpm install` — install all dependencies
+- `turbo run build` — build all packages in dependency order
+- `turbo run test` — run all tests
+- `turbo run build --filter=@commerce/api` — build only api + its deps
+- `turbo run test --filter=@commerce/web` — test only web + its deps
+
+## Cross-Package Rules
+- Changes to `shared/` must pass ALL package tests: `turbo run test`
+- Changes to `ui/` must pass web and admin tests
+- Changes to `database/` must pass api tests
+- Never import from a package not listed in that package's package.json
+```
+
+### Package-Level CLAUDE.md (packages/api/CLAUDE.md)
+
+```markdown
+# API Package
+
+## Stack: Express + TypeScript + Prisma
+## Test: Vitest + Supertest
+
+## Directory Layout
+src/
+├── routes/        — One file per resource (users.ts, orders.ts)
+├── services/      — Business logic, one per domain
+├── middleware/     — Auth, validation, rate-limiting
+├── repositories/  — Prisma query wrappers
+└── types/         — Local types (shared types come from @commerce/shared)
+
+## Import Rules
+- Import shared types: `import { User } from '@commerce/shared'`
+- Import Prisma client: `import { prisma } from '@commerce/database'`
+- NEVER import from @commerce/web or @commerce/admin
+
+## Dev Commands
+- `pnpm --filter @commerce/api dev` — start dev server
+- `pnpm --filter @commerce/api test` — run tests
+- `turbo run build --filter=@commerce/api` — build with deps
+```
+
+## Scoping Context to One Package
+
+The most important optimization in a monorepo: tell Claude exactly which package you are working in.
+
+### The Wrong Way
+
+```
+"Add a new endpoint to the API"
+```
+
+Claude might read files from `packages/web/`, `packages/admin/`, and `packages/api/` trying to understand the codebase. That is three packages worth of code in context — most of it irrelevant.
+
+### The Right Way
+
+```
+"I'm working in packages/api/. Add a GET /api/v2/products endpoint 
+that returns paginated products. Follow the pattern in 
+packages/api/src/routes/orders.ts."
+```
+
+Now Claude reads one route file for the pattern, writes the new route, and stays within the api package. Token usage drops by 60-80%.
+
+### Pro tip
+
+Start every monorepo session by stating the package you are working in. This single habit saves more tokens than any other optimization.
+
+## Turborepo Workflows
+
+### Running Scoped Builds
+
+When Claude makes changes, validate with scoped builds instead of full monorepo builds:
+
+```
+"Run the build for just the api package and its dependencies"
+```
+
+Claude runs:
+
+```bash
+turbo run build --filter=@commerce/api
+```
+
+This builds `shared` and `database` (dependencies), then `api` — skipping `web`, `admin`, and `ui` entirely. Build time drops from 45 seconds to 12 seconds, and the output is 80% smaller (fewer tokens consumed by reading build logs).
+
+### Scoped Testing
+
+```bash
+# Test only the package you changed
+turbo run test --filter=@commerce/api
+
+# Test a package and everything that depends on it
+turbo run test --filter=...@commerce/shared
+
+# The ... prefix means "this package and its dependents"
+```
+
+The `...` prefix is critical. When you change `shared/`, you need to test everything that imports from it — not just `shared/` itself.
+
+## Nx Workflows
+
+For Nx monorepos, the commands differ but the patterns are identical:
+
+```bash
+# Build one project
+nx build api
+
+# Test one project
+nx test api
+
+# Test affected projects (based on git changes)
+nx affected:test
+
+# Dependency graph
+nx graph
+```
+
+### Nx-Specific CLAUDE.md Addition
+
+```markdown
+## Nx Commands
+- `nx build [project]` — build a single project
+- `nx test [project]` — test a single project
+- `nx affected:test` — test only projects affected by current changes
+- `nx graph` — open the dependency graph visualization
+- `nx run-many --target=test --projects=api,shared` — test specific projects
+```
+
+The `nx affected` commands are particularly useful with Claude. After Claude makes changes, running `nx affected:test` automatically finds and tests only the impacted projects.
+
+## Cross-Package Refactoring
+
+This is where monorepos get tricky. Renaming a type in `shared/` that is used by five packages requires coordinating changes across all of them.
+
+### Step-by-Step Cross-Package Refactor
+
+Here is a real workflow for renaming a shared type:
+
+```
+Step 1: "I need to rename the User type to UserProfile in @commerce/shared. 
+         This type is used across multiple packages. Let's do this safely.
+         
+         First, show me everywhere User is imported from @commerce/shared."
+```
+
+Claude runs Grep across the entire monorepo:
+
+```bash
+grep -r "from '@commerce/shared'" --include='*.ts' --include='*.tsx' | grep 'User'
+```
+
+Output:
+
+```
+packages/api/src/services/auth.ts:    import { User } from '@commerce/shared'
+packages/api/src/routes/users.ts:     import { User, UserCreate } from '@commerce/shared'
+packages/web/src/hooks/useUser.ts:    import { User } from '@commerce/shared'
+packages/admin/src/pages/Users.tsx:   import { User } from '@commerce/shared'
+packages/ui/src/components/Avatar.tsx: import { User } from '@commerce/shared'
+```
+
+Five files across four packages.
+
+```
+Step 2: "Rename User to UserProfile in @commerce/shared/src/types/user.ts. 
+         Add a deprecated type alias: export type User = UserProfile"
+```
+
+The deprecated alias prevents immediate breakage while you update consumers.
+
+```
+Step 3: "Now update each consumer package one at a time. 
+         Start with packages/api/. After each package, run its tests."
+```
+
+Claude updates `packages/api/`, runs `turbo run test --filter=@commerce/api`, confirms tests pass, then moves to the next package.
+
+```
+Step 4: "All consumers updated. Remove the deprecated User alias 
+         from @commerce/shared and run the full test suite."
+```
+
+```bash
+turbo run test
+```
+
+All 147 tests pass. The refactor is complete.
+
+### Common Mistake: Refactoring Everything at Once
+
+Do not ask Claude to "rename User to UserProfile everywhere." In a monorepo, this can touch dozens of files across packages with different test suites, different CI pipelines, and different owners. The step-by-step approach — change shared, update consumers one by one, test at each step — is slower but catches issues early.
+
+## pnpm Workspace Patterns
+
+### Workspace Protocol
+
+In monorepos using pnpm workspaces, internal dependencies use the `workspace:` protocol:
+
+```json
+{
+  "dependencies": {
+    "@commerce/shared": "workspace:*",
+    "@commerce/database": "workspace:*"
+  }
+}
+```
+
+Add this to your CLAUDE.md so Claude does not try to install internal packages from npm:
+
+```markdown
+## Internal Dependencies
+Internal packages use `workspace:*` protocol in package.json.
+Do NOT run `pnpm add @commerce/shared` — it's already linked.
+To add a new internal dependency: add `"@commerce/[pkg]": "workspace:*"` 
+to package.json and run `pnpm install`.
+```
+
+### Adding a New Package
+
+```
+"Create a new package @commerce/email in packages/email/ 
+for email template rendering. It should depend on @commerce/shared."
+```
+
+Claude creates the directory structure, package.json with workspace dependencies, tsconfig.json extending the shared config, and updates the Turborepo pipeline configuration.
+
+## Watch Out: Import Boundaries
+
+The most common monorepo bug Claude introduces is circular or invalid imports:
+
+```typescript
+// packages/shared/src/utils.ts
+import { db } from '@commerce/database'; // BAD — shared should not depend on database
+```
+
+Your root CLAUDE.md dependency graph prevents this. If Claude tries to import from a package not in the dependency chain, the rule catches it.
+
+### Enforce Import Boundaries
+
+Add this to your root CLAUDE.md:
+
+```markdown
+## Import Boundary Rules (CRITICAL)
+- shared/ MUST NOT import from any other package
+- ui/ may only import from shared/
+- api/ may import from shared/ and database/
+- web/ may import from shared/ and ui/
+- admin/ may import from shared/ and ui/
+
+Violating these rules creates circular dependencies that break the build.
+```
+
+## Key Takeaway
+
+Monorepo success with Claude Code comes down to three practices: scope every session to a specific package ("I'm working in packages/api/"), use hierarchical CLAUDE.md files with the dependency graph at the root, and run scoped builds and tests with `--filter` instead of full monorepo operations. For cross-package refactoring, work one package at a time with tests between each step. The dependency graph in your root CLAUDE.md is the single most important piece of context — it prevents import boundary violations and tells Claude exactly which packages are affected by a change.

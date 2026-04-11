@@ -8,5 +8,5 @@
   "color": "#5e9ed6",
   "estimatedHours": 3,
   "prerequisites": ["claude-code-basics"],
-  "lessonCount": 6
+  "lessonCount": 7
 }

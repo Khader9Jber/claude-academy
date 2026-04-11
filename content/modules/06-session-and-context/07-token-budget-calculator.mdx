@@ -1,0 +1,274 @@
+---
+title: "Token Budget Mastery"
+slug: "token-budget-calculator"
+order: 7
+difficulty: "intermediate"
+duration: 18
+tags: ["tokens", "context", "optimization"]
+objectives:
+  - "Calculate token costs for different Claude Code operations"
+  - "Read and interpret token usage from session transcripts"
+  - "Budget tokens for complex multi-step workflows"
+quiz:
+  - id: "token-budget-1"
+    question: "Approximately how many tokens does a typical CLAUDE.md file (80 lines) consume per message?"
+    type: "multiple-choice"
+    options:
+      - "50 tokens"
+      - "500-800 tokens, and it is included in EVERY message sent to the model"
+      - "5,000 tokens, but only on the first message"
+      - "Zero — CLAUDE.md is free"
+    correct: 1
+    explanation: "CLAUDE.md is included as a system prompt in every message to Claude. An 80-line file typically uses 500-800 tokens. Over a 50-message session, that is 25,000-40,000 tokens just for CLAUDE.md. This is why keeping CLAUDE.md concise matters — every extra line multiplies across every message."
+  - id: "token-budget-2"
+    question: "What is the biggest token consumer in a typical Claude Code session?"
+    type: "multiple-choice"
+    options:
+      - "Your prompts"
+      - "Claude's responses"
+      - "File contents read into context — a single large file can consume 10,000+ tokens"
+      - "The system prompt"
+    correct: 2
+    explanation: "File reads are the biggest token consumer. A 500-line TypeScript file easily uses 5,000-10,000 tokens. Reading five such files puts 25,000-50,000 tokens into context. Your prompts are typically 100-500 tokens each. Claude's responses are 500-2,000 tokens. File contents dominate the budget."
+  - id: "token-budget-3"
+    question: "How can you reduce token usage when working with large files?"
+    type: "multiple-choice"
+    options:
+      - "Use a smaller model"
+      - "Read specific line ranges instead of entire files, and use Grep to find relevant sections first"
+      - "Delete the files"
+      - "Tokens cannot be reduced"
+    correct: 1
+    explanation: "Instead of reading an entire 1,000-line file (8,000+ tokens), use Grep to find the relevant function, then read just those 50 lines (400 tokens). This is a 20x reduction. The pattern: search first, read targeted sections, avoid pulling entire files into context."
+  - id: "token-budget-4"
+    question: "What happens when a Claude Code session exceeds the context window limit?"
+    type: "multiple-choice"
+    options:
+      - "The session crashes"
+      - "Claude automatically summarizes older messages to free up context space"
+      - "Tokens become more expensive"
+      - "Nothing — there is no limit"
+    correct: 1
+    explanation: "When the context window fills up, Claude Code compresses older parts of the conversation into summaries. This preserves the session but loses detail from earlier messages. If you asked Claude to follow specific formatting 30 messages ago, that instruction may have been summarized away. Re-state important instructions periodically."
+---
+
+## Tokens Are Your Budget
+
+Every Claude Code operation costs tokens. Input tokens (what you send) and output tokens (what Claude generates) have different prices, and different operations consume vastly different amounts. Understanding this lets you work faster, stay within context limits, and avoid paying for wasted computation.
+
+## What Consumes Tokens
+
+Here is a breakdown of token costs for common operations, measured from real sessions:
+
+### Per-Message Overhead
+
+Every message you send includes overhead that most people do not think about:
+
+| Component | Approximate Tokens | Frequency |
+|---|---|---|
+| System prompt (base) | 1,500-2,500 | Every message |
+| CLAUDE.md (80 lines) | 500-800 | Every message |
+| Tool definitions | 2,000-4,000 | Every message |
+| MCP tool definitions | 500-2,000 per server | Every message |
+| Conversation history | Grows with each message | Cumulative |
+
+That means before you even type your prompt, each message already carries 4,000-9,000 tokens of overhead. In a 50-message session, the overhead alone is 200,000-450,000 tokens.
+
+### File Operations
+
+File reads are the most expensive common operation:
+
+| Operation | Approximate Tokens |
+|---|---|
+| Read a 100-line file | 800-1,200 |
+| Read a 500-line file | 4,000-6,000 |
+| Read a 1,000-line file | 8,000-12,000 |
+| Grep search (results) | 200-1,000 |
+| Glob file listing | 100-500 |
+| Write a 50-line file | 400-600 (output tokens) |
+| Write a 200-line file | 1,500-2,500 (output tokens) |
+
+Output tokens cost roughly 5x more than input tokens at API pricing. So a 200-line file write costs more than reading a 500-line file.
+
+### Tool Calls
+
+Each tool call adds tokens for the request and response:
+
+| Tool | Input Tokens | Output Tokens |
+|---|---|---|
+| Read (small file) | 50-100 | 800-1,200 |
+| Read (large file) | 50-100 | 4,000-12,000 |
+| Grep | 50-100 | 200-2,000 |
+| Glob | 50-100 | 100-500 |
+| Write | 50-100 | 400-2,500 |
+| Bash (simple command) | 50-100 | 100-500 |
+| Bash (test suite output) | 50-100 | 2,000-10,000 |
+
+## Real Session Token Audit
+
+Let me walk through a real session and annotate the token costs. This session asked Claude to add a new API endpoint to an Express application.
+
+```
+Message 1: "Add a GET /api/v2/analytics endpoint that returns 
+            daily active users for the last 30 days"
+├── Your prompt:                    45 tokens
+├── System overhead:              5,000 tokens
+├── CLAUDE.md:                      600 tokens
+├── Claude reads src/routes/index.ts:  2,400 tokens (Grep + Read)
+├── Claude reads src/routes/users.ts:  3,800 tokens (pattern reference)
+├── Claude reads src/services/analytics.ts: 1,200 tokens
+├── Claude's planning response:     800 tokens (output)
+├── SUBTOTAL:                    13,845 tokens
+
+Message 2: [Claude writes the route file]
+├── Conversation history so far: 13,845 tokens
+├── System overhead:              5,000 tokens
+├── Claude writes src/routes/analytics.ts: 1,800 tokens (output)
+├── Claude writes src/services/analytics.ts updates: 600 tokens (output)
+├── PostToolUse hook output (prettier): 200 tokens
+├── Claude's explanation:           400 tokens (output)
+├── SUBTOTAL:                    21,845 tokens
+
+Message 3: "Add tests for this endpoint"
+├── Conversation history so far: 21,845 tokens
+├── Your prompt:                    10 tokens
+├── System overhead:              5,000 tokens
+├── Claude reads tests/routes/users.test.ts: 5,200 tokens (pattern)
+├── Claude writes tests/routes/analytics.test.ts: 2,400 tokens (output)
+├── Test execution output:        1,500 tokens
+├── Claude's summary:               300 tokens (output)
+├── SUBTOTAL:                    36,255 tokens
+
+TOTAL SESSION: ~36,000 tokens for 3 messages
+```
+
+Notice how the conversation history grows with each message. By message 3, Claude is carrying all of messages 1 and 2 in context. This is why long sessions get expensive — and why context summarization eventually kicks in.
+
+## Budget Planning for Common Workflows
+
+### Quick Fix (5 messages)
+
+```
+Estimated budget: 30,000-50,000 tokens
+Cost at Pro tier: Included in subscription
+Typical duration: 2-5 minutes
+```
+
+### Feature Implementation (20 messages)
+
+```
+Estimated budget: 150,000-300,000 tokens
+Reading files:     40,000-80,000  (reading existing code for context)
+Writing files:     30,000-60,000  (output tokens — 5x more expensive)
+Conversation:      80,000-160,000 (accumulated history)
+```
+
+### Large Refactor (50+ messages)
+
+```
+Estimated budget: 500,000-1,000,000+ tokens
+⚠️ Context summarization will trigger around message 30-40
+Re-state critical instructions after summarization
+Consider splitting into multiple sessions
+```
+
+### Agent Team Session
+
+```
+Estimated budget: 500,000-2,000,000 tokens
+Lead agent planning:     200,000
+Per teammate (4):        100,000 each = 400,000
+Lead integration:        100,000
+Total:                   700,000+ tokens
+```
+
+## Token Optimization Strategies
+
+### Strategy 1: Search Before Reading
+
+Instead of reading entire files, narrow down first:
+
+```
+❌ Expensive: "Read src/services/user-service.ts" (800 lines = 6,400 tokens)
+✅ Cheap: "Find the createUser function in the user service" 
+   → Grep finds it at line 145-180 → Read 35 lines = 280 tokens
+```
+
+Savings: **95% fewer tokens** for the same information.
+
+### Strategy 2: Keep CLAUDE.md Lean
+
+Every line of CLAUDE.md is included in every message. A 200-line CLAUDE.md costs 1,600 tokens per message. Over 50 messages, that is 80,000 tokens just for instructions.
+
+```
+❌ 200-line CLAUDE.md = 80,000 tokens over 50 messages
+✅  60-line CLAUDE.md = 24,000 tokens over 50 messages
+Savings: 56,000 tokens (70% reduction)
+```
+
+Move detailed conventions into directory-level CLAUDE.md files that only load when working in those directories.
+
+### Strategy 3: Start New Sessions for New Tasks
+
+Do not reuse a 40-message session for a new task. The old conversation history eats context for no benefit.
+
+```
+❌ Continue existing session (40 messages of irrelevant history)
+   Next message carries ~200,000 tokens of old context
+✅ Start fresh session
+   Next message carries ~5,000 tokens of overhead
+Savings: ~195,000 tokens immediately
+```
+
+### Strategy 4: Be Specific About What You Need
+
+```
+❌ "Look at the codebase and suggest improvements"
+   → Claude reads 20 files, generates a 2,000-word response
+   → ~80,000 tokens
+
+✅ "In src/routes/auth.ts, the login handler on line 45 has no rate 
+    limiting. Add express-rate-limit middleware."
+   → Claude reads one section, writes one change
+   → ~8,000 tokens
+```
+
+### Strategy 5: Use Compact Mode for Routine Tasks
+
+When you do not need detailed explanations, use the `--output-format stream-json` flag or tell Claude to be concise:
+
+```
+"Fix the TypeScript errors in src/utils/date.ts. 
+Just fix them, no explanations needed."
+```
+
+This reduces output tokens significantly — Claude skips the "Here's what I did and why" paragraphs.
+
+## Reading Your Token Usage
+
+In Claude Code, check your session usage at any time:
+
+```
+/cost
+```
+
+This shows tokens consumed in the current session. Watch for sudden spikes — they usually mean Claude read a large file or generated a lengthy response.
+
+### Pro tip
+
+If `/cost` shows a jump of 10,000+ tokens between messages, check what files Claude read. You might be able to guide it toward smaller, more targeted reads next time.
+
+## The Token Budget Cheat Sheet
+
+| Workflow | Messages | Estimated Tokens | Optimization |
+|---|---|---|---|
+| Quick fix | 3-5 | 20,000-50,000 | None needed |
+| New feature | 10-20 | 100,000-300,000 | Search before read |
+| Refactor | 30-50 | 300,000-800,000 | Split sessions, lean CLAUDE.md |
+| Test generation | 15-25 | 150,000-400,000 | Provide test patterns upfront |
+| Code review | 5-10 | 50,000-150,000 | Read specific files, not entire dirs |
+| Agent teams | Varies | 500,000-2,000,000 | Use only for parallelizable work |
+
+## Key Takeaway
+
+Tokens are the currency of Claude Code. File reads dominate your budget — a single 1,000-line file costs more tokens than 20 of your prompts. The overhead of CLAUDE.md, system prompts, and tool definitions adds 4,000-9,000 tokens to every message. Optimize by searching before reading, keeping CLAUDE.md under 80 lines, starting new sessions for new tasks, and being specific about what you need. The difference between a sloppy session and an optimized one is 3-5x in token cost — which directly translates to staying within your context window longer and getting better results.

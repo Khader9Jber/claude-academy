@@ -1,0 +1,351 @@
+---
+title: "Documentation Generation at Scale"
+slug: "documentation-generation"
+order: 9
+difficulty: "advanced"
+duration: 20
+tags: ["documentation", "batch", "automation", "scale"]
+objectives:
+  - "Use Claude Code to generate documentation for an entire API"
+  - "Automate README, JSDoc, API reference, and changelog generation"
+  - "Build a documentation pipeline that stays in sync with code changes"
+quiz:
+  - id: "doc-gen-1"
+    question: "What is the most effective way to generate API documentation for 50+ endpoints?"
+    type: "multiple-choice"
+    options:
+      - "Ask Claude to document all endpoints in one prompt"
+      - "Use a batch approach — process one route file at a time, providing the output format and an example of a documented endpoint"
+      - "Manually write the docs"
+      - "Use a separate documentation tool"
+    correct: 1
+    explanation: "One prompt for 50 endpoints will exceed context limits and produce inconsistent output. The batch approach processes one file at a time with a consistent template and example. Each file gets Claude's full attention, and the output format stays uniform across all endpoints."
+  - id: "doc-gen-2"
+    question: "Why should you provide a 'golden example' when generating documentation?"
+    type: "multiple-choice"
+    options:
+      - "Claude cannot generate documentation without an example"
+      - "The golden example establishes the exact format, level of detail, and style — ensuring all generated docs are consistent"
+      - "It reduces token usage"
+      - "It is a Claude Code requirement"
+    correct: 1
+    explanation: "Without an example, Claude makes its own format decisions — and those decisions may change between files. A golden example locks in the structure: section order, heading levels, table format, code example style, and level of detail. Every generated doc matches your example exactly."
+  - id: "doc-gen-3"
+    question: "How do you keep generated documentation in sync with code changes?"
+    type: "multiple-choice"
+    options:
+      - "Regenerate all docs manually every week"
+      - "Use a PostToolUse hook on route files to remind Claude to update docs, plus a CI check that verifies docs are current"
+      - "Documentation always stays in sync automatically"
+      - "It is not possible to keep docs in sync"
+    correct: 1
+    explanation: "A PostToolUse hook on route/API files reminds Claude to update the corresponding docs when code changes. A CI check (comparing code timestamps to doc timestamps, or running a validation script) catches cases where docs fall behind. This two-layer approach — reminder at write time, enforcement at CI — keeps docs current."
+  - id: "doc-gen-4"
+    question: "What is the approximate token cost of generating full API docs for a 200-endpoint Express API?"
+    type: "multiple-choice"
+    options:
+      - "10,000 tokens"
+      - "50,000 tokens"
+      - "500,000-800,000 tokens — reading each route file plus generating structured documentation"
+      - "5,000,000 tokens"
+    correct: 2
+    explanation: "Each endpoint requires reading the route file (~2,000-4,000 tokens), generating the documentation (~1,000-2,000 output tokens), and carrying the template/example in context (~1,000 tokens). For 200 endpoints across multiple sessions: approximately 500,000-800,000 tokens total. This is a significant but one-time cost."
+---
+
+## The Documentation Problem
+
+Every team I have worked with has the same issue: documentation exists for about 30% of the codebase, it was written six months ago, and half of it is wrong. Writing docs manually is slow, boring, and falls behind within weeks. Claude Code changes this equation — you can generate accurate documentation from source code in minutes instead of days.
+
+This lesson covers four documentation workflows: API reference generation, JSDoc annotation, README generation, and changelog automation. Each workflow includes the exact prompts, the batch strategy for large codebases, and the output you can expect.
+
+## Workflow 1: API Reference Generation
+
+### The Setup
+
+Suppose you have an Express API with 45 route files in `src/routes/`. You want OpenAPI-style documentation for every endpoint.
+
+### Step 1: Create the Golden Example
+
+First, manually document one endpoint perfectly. This becomes the template:
+
+```markdown
+## POST /api/v2/users
+
+Create a new user account.
+
+### Authentication
+Bearer token required. Scope: `users:write`
+
+### Request
+
+**Headers**
+| Header | Required | Description |
+|--------|----------|-------------|
+| Authorization | Yes | Bearer token |
+| Content-Type | Yes | application/json |
+
+**Body**
+```json
+{
+  "email": "user@example.com",
+  "name": "Jane Smith",
+  "role": "member"
+}
+```
+
+| Field | Type | Required | Constraints |
+|-------|------|----------|-------------|
+| email | string | Yes | Valid email format |
+| name | string | Yes | 2-100 characters |
+| role | string | No | "admin", "member", "viewer". Default: "member" |
+
+### Response
+
+**201 Created**
+```json
+{
+  "id": "usr_abc123",
+  "email": "user@example.com",
+  "name": "Jane Smith",
+  "role": "member",
+  "createdAt": "2025-01-15T10:30:00Z"
+}
+```
+
+**400 Bad Request** — Invalid input
+**409 Conflict** — Email already registered
+**401 Unauthorized** — Missing or invalid token
+
+### Example
+
+```bash
+curl -X POST https://api.example.com/api/v2/users \
+  -H "Authorization: Bearer tok_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "name": "Jane Smith"}'
+```
+```
+
+### Step 2: Batch Process Route Files
+
+Do not dump all 45 route files into one prompt. Process them in batches:
+
+```
+"I'm generating API documentation for our Express API.
+
+Here is the documentation format I need — follow this exactly:
+[paste golden example]
+
+Now document all endpoints in src/routes/users.ts. 
+Read the file, then generate documentation for each endpoint 
+following the format above. Include the actual validation rules 
+from the zod schemas, not placeholder values."
+```
+
+Claude reads the route file, identifies each endpoint (GET, POST, PUT, DELETE), reads the associated validation schemas, and generates documentation matching your template.
+
+### Step 3: Repeat for Each Route File
+
+```
+"Now document all endpoints in src/routes/orders.ts using 
+the same format."
+```
+
+For 45 route files, this takes about 15-20 separate prompts across 3-4 sessions. Each session handles 10-12 files before context gets heavy enough to warrant a fresh start.
+
+### Real Numbers
+
+When I ran this on a 200-endpoint Express API:
+
+- **Time**: 3 hours (vs. estimated 2 weeks manually)
+- **Token cost**: ~650,000 tokens across 8 sessions
+- **Accuracy**: ~90% correct on first pass — needed minor fixes for 20 endpoints where the route handler had unusual patterns
+- **Output**: 4,200 lines of structured Markdown documentation
+
+### Pro tip
+
+Start a new session every 10-12 route files. Carrying the documentation golden example plus conversation history for 12 files fills the context window. Fresh sessions keep quality high.
+
+## Workflow 2: JSDoc Annotation
+
+### Adding JSDoc to an Entire Module
+
+```
+"Add JSDoc comments to every exported function and class in 
+src/services/. Read each file, understand the function's purpose 
+from the implementation, and add:
+
+- @description — one sentence explaining what the function does
+- @param — for each parameter, with type and description
+- @returns — return type and what it represents
+- @throws — any errors the function can throw
+- @example — one realistic usage example
+
+Do NOT change any code — only add JSDoc comments.
+Start with src/services/auth-service.ts."
+```
+
+### Example Output
+
+Before:
+
+```typescript
+export async function createUser(email: string, name: string, role?: UserRole) {
+  const existing = await userRepo.findByEmail(email);
+  if (existing) throw new ConflictError('Email already registered');
+  
+  const hashedPassword = await hashPassword(generateTempPassword());
+  return userRepo.create({ email, name, role: role ?? 'member', hashedPassword });
+}
+```
+
+After:
+
+```typescript
+/**
+ * Creates a new user account with a temporary password.
+ * 
+ * @param email - The user's email address (must be unique)
+ * @param name - The user's display name
+ * @param role - The user's role. Defaults to 'member'
+ * @returns The newly created user object (without password)
+ * @throws {ConflictError} If a user with this email already exists
+ * @example
+ * const user = await createUser('jane@example.com', 'Jane Smith', 'admin');
+ * // => { id: 'usr_abc', email: 'jane@example.com', name: 'Jane Smith', role: 'admin' }
+ */
+export async function createUser(email: string, name: string, role?: UserRole) {
+```
+
+Claude reads the implementation to understand what the function actually does, not just what the parameter names suggest. This produces accurate documentation, not guesses.
+
+## Workflow 3: README Generation
+
+### The Prompt
+
+```
+"Generate a README.md for this project. Read these files first:
+- package.json (for project name, scripts, dependencies)
+- src/ directory structure (for project layout)
+- .env.example (for required environment variables)
+- Any existing docs/ files
+
+Follow this structure:
+1. Project name + one-line description
+2. Prerequisites (Node version, required tools)
+3. Quick Start (clone → install → configure → run in < 5 commands)
+4. Environment Variables (table with name, required/optional, description)
+5. Project Structure (directory tree with one-line descriptions)
+6. Available Scripts (from package.json scripts)
+7. API Overview (brief — link to full API docs)
+8. Testing (how to run tests, coverage)
+9. Deployment (how to deploy)
+10. Contributing (branch naming, commit format, PR process)
+
+Be concise. Each section should be 5-15 lines maximum.
+Use the actual values from the codebase, not placeholders."
+```
+
+### Why This Works
+
+Claude reads `package.json` for the real scripts, `.env.example` for the real variables, and the actual directory structure. The README reflects the actual project, not a template with TODO markers.
+
+### Watch out
+
+Claude sometimes adds scripts or environment variables it "thinks" should exist but do not. Always verify the generated README against the actual codebase. Cross-reference the "Available Scripts" section with `package.json` and the "Environment Variables" section with `.env.example`.
+
+## Workflow 4: Changelog Generation
+
+### From Git History
+
+```
+"Generate a CHANGELOG.md entry for the changes since the last release tag.
+
+Run: git log v2.3.0..HEAD --oneline --no-merges
+
+Group changes into these categories:
+- **Added** — new features
+- **Changed** — changes to existing features  
+- **Fixed** — bug fixes
+- **Security** — security-related changes
+- **Deprecated** — features marked for removal
+
+Format: Keep a Changelog (https://keepachangelog.com)
+Date: today's date
+Version: 2.4.0
+
+Only include changes visible to users. Skip internal refactoring,
+CI changes, and dependency bumps unless they fix a security issue."
+```
+
+### Example Output
+
+```markdown
+## [2.4.0] - 2025-06-15
+
+### Added
+- User profile photo uploads (PNG, JPG, max 5MB)
+- Bulk export of order data as CSV
+- Rate limiting on authentication endpoints (100 req/min)
+
+### Changed
+- Pagination now uses cursor-based approach instead of offset
+- Error responses include request ID for debugging
+
+### Fixed
+- Fixed race condition in concurrent order creation
+- Fixed incorrect tax calculation for EU customers
+- Fixed session expiry not respecting "remember me" setting
+
+### Security
+- Updated jsonwebtoken to 9.0.2 (CVE-2024-XXXX)
+- Added CSRF protection to all state-changing endpoints
+```
+
+## Building a Documentation Pipeline
+
+### Automated Doc Checks in CI
+
+Add a script that verifies documentation freshness:
+
+```bash
+#!/bin/bash
+# scripts/check-docs.sh
+
+# Find route files newer than their docs
+for route in src/routes/*.ts; do
+  doc="docs/api/$(basename $route .ts).md"
+  if [ -f "$doc" ]; then
+    if [ "$route" -nt "$doc" ]; then
+      echo "STALE: $doc is older than $route"
+      exit 1
+    fi
+  else
+    echo "MISSING: No docs for $route"
+    exit 1
+  fi
+done
+
+echo "All documentation is up to date."
+```
+
+### Hook Integration
+
+Add a PostToolUse hook that reminds Claude to update docs:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(src/routes/**/*.ts)",
+        "command": "echo 'REMINDER: Route file changed. Update corresponding docs in docs/api/ if endpoints were added or modified.'"
+      }
+    ]
+  }
+}
+```
+
+## Key Takeaway
+
+Documentation generation at scale requires a batch approach: create one golden example, then process files one at a time using that template. For API docs, budget 3-4 hours and 500,000-800,000 tokens for a 200-endpoint API — versus two weeks of manual writing. JSDoc generation is faster since Claude only adds comments without changing code. README generation works best when you point Claude at the actual project files (package.json, .env.example). Changelog generation from git history produces clean, user-facing release notes in seconds. The key to maintaining generated docs: combine PostToolUse hooks (reminders at write time) with CI checks (enforcement at merge time).

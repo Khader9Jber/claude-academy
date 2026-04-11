@@ -1,0 +1,378 @@
+---
+title: "Team Hook Library: 10 Production Hooks"
+slug: "team-hook-library"
+order: 7
+difficulty: "advanced"
+duration: 20
+tags: ["hooks", "automation", "team", "production"]
+objectives:
+  - "Implement 10 complete, production-ready hook configurations"
+  - "Combine PreToolUse, PostToolUse, and Notification hooks into team workflows"
+  - "Customize hooks for your team's specific tech stack and conventions"
+quiz:
+  - id: "hook-lib-1"
+    question: "Why should a team use a shared hook library instead of individual developer hooks?"
+    type: "multiple-choice"
+    options:
+      - "Individual hooks are not supported"
+      - "Shared hooks enforce consistent quality gates — every developer gets the same formatting, safety checks, and notifications regardless of their personal setup"
+      - "Shared hooks are faster"
+      - "Individual hooks cost more tokens"
+    correct: 1
+    explanation: "Without shared hooks, one developer's Claude formats with Prettier while another's does not. One has safety guards, another does not. A shared hook library in .claude/settings.json ensures every team member gets the same quality gates, formatting, and safety checks — consistency that manual processes cannot guarantee."
+  - id: "hook-lib-2"
+    question: "What exit code should a PreToolUse hook return to block an operation?"
+    type: "multiple-choice"
+    options:
+      - "Exit code 0"
+      - "Exit code 1"
+      - "Exit code 2 — this tells Claude the action was explicitly blocked"
+      - "Any non-zero exit code"
+    correct: 2
+    explanation: "Exit code 2 is the specific signal for 'blocked.' Exit code 0 means success (allow the operation). Exit code 1 means the hook itself had an error (which Claude may interpret differently). Exit code 2 clearly communicates: this action is not allowed, and Claude should find an alternative approach."
+  - id: "hook-lib-3"
+    question: "What is the difference between a PreToolUse guard and a PostToolUse check?"
+    type: "multiple-choice"
+    options:
+      - "They are the same"
+      - "PreToolUse runs before and can PREVENT the action; PostToolUse runs after and can only REPORT issues"
+      - "PostToolUse is faster"
+      - "PreToolUse only works with Write tools"
+    correct: 1
+    explanation: "PreToolUse guards run before the tool executes and can block it entirely (exit code 2). PostToolUse checks run after the tool has already executed — they cannot undo the action, but they can run linters, tests, or type checkers and feed the results back to Claude so it can fix issues in the next turn."
+  - id: "hook-lib-4"
+    question: "How do you make a hook run only for specific file patterns?"
+    type: "multiple-choice"
+    options:
+      - "Use an if statement in the command"
+      - "Use the matcher field with glob patterns, e.g., Write(src/**/*.ts)"
+      - "Create separate settings files"
+      - "Hooks always run for all files"
+    correct: 1
+    explanation: "The matcher field uses glob patterns to scope hooks to specific tools and file paths. Write(src/**/*.ts) matches TypeScript files in the src directory. Write(*.py) matches Python files. Bash(npm test*) matches test commands. Without a matcher, the hook runs for every invocation of that tool type."
+---
+
+## The Library
+
+Here are 10 production hooks that I have used across real teams. Each hook includes the settings.json configuration, any external scripts it needs, and usage notes. Copy what you need, modify for your stack.
+
+## Hook 1: Auto-Format on Write
+
+The foundation hook. Formats every file Claude writes according to your project's style.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx,js,jsx})",
+        "command": "npx prettier --write $file 2>/dev/null || true"
+      },
+      {
+        "matcher": "Write(*.py)",
+        "command": "python -m black $file 2>/dev/null && python -m isort $file 2>/dev/null || true"
+      },
+      {
+        "matcher": "Write(*.go)",
+        "command": "gofmt -w $file 2>/dev/null || true"
+      },
+      {
+        "matcher": "Write(*.rs)",
+        "command": "rustfmt $file 2>/dev/null || true"
+      }
+    ]
+  }
+}
+```
+
+**Why it works**: Claude writes clean code, but not always in your exact style. Auto-formatting eliminates all style discussions. The `|| true` ensures the hook never crashes Claude's workflow if the formatter is missing.
+
+## Hook 2: Type Check After TypeScript Changes
+
+Catches type errors immediately, before they stack up.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx tsc --noEmit --pretty 2>&1 | head -30 || true"
+      }
+    ]
+  }
+}
+```
+
+**Usage note**: The `head -30` limits output so Claude does not get overwhelmed by a cascade of type errors. Claude sees the first few errors, fixes them, and the next write triggers another check. This creates a self-correcting loop.
+
+**Watch out**: On large projects, `tsc --noEmit` can take 5-10 seconds. If speed matters, consider using a project reference setup or `tsc -b` for incremental checking.
+
+## Hook 3: Lint on Write
+
+Runs ESLint after file writes to catch issues beyond formatting.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx,js,jsx})",
+        "command": "npx eslint --fix $file --max-warnings 0 2>&1 | tail -20 || true"
+      }
+    ]
+  }
+}
+```
+
+**Why `--fix`**: Let ESLint auto-fix what it can (unused imports, sort order, etc.). Only the unfixable issues get reported to Claude, which reduces noise.
+
+**Why `--max-warnings 0`**: Treats warnings as errors. Claude fixes them immediately instead of accumulating technical debt.
+
+## Hook 4: Production File Guard
+
+Blocks writes to files that should never be modified by Claude.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(*.env*)",
+        "command": "echo 'BLOCKED: Environment files must be edited manually. Never put secrets in Claude context.' && exit 2"
+      },
+      {
+        "matcher": "Write(*.pem)",
+        "command": "echo 'BLOCKED: Certificate files must not be modified by Claude.' && exit 2"
+      },
+      {
+        "matcher": "Write(*.generated.*)",
+        "command": "echo 'BLOCKED: This is a generated file. Modify the generator source instead.' && exit 2"
+      },
+      {
+        "matcher": "Write(migrations/*.sql)",
+        "command": "echo 'BLOCKED: Never edit existing migration files. Create a new migration instead.' && exit 2"
+      }
+    ]
+  }
+}
+```
+
+**Why this matters**: Claude does not inherently know which files are sacred. It will happily edit your `.env.production` if you ask it to fix a connection string. This guard makes that impossible.
+
+## Hook 5: Branch Protection
+
+Prevents file writes when on main/master branch.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(*)",
+        "command": "branch=$(git branch --show-current 2>/dev/null); if [ \"$branch\" = 'main' ] || [ \"$branch\" = 'master' ]; then echo 'BLOCKED: Create a feature branch first. Direct commits to main/master are not allowed.' && exit 2; fi"
+      }
+    ]
+  }
+}
+```
+
+**Usage note**: This fires on every write, so it should be fast. The `git branch --show-current` command is nearly instant. If you are not in a git repo, the command silently succeeds (exit 0), allowing writes in non-git directories.
+
+## Hook 6: Test Runner After Service Changes
+
+Runs the relevant test file when a service file is modified.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(src/services/**/*.ts)",
+        "command": "test_file=$(echo $file | sed 's|src/|tests/|' | sed 's/.ts$/.test.ts/'); if [ -f \"$test_file\" ]; then npx vitest run \"$test_file\" --reporter=verbose 2>&1 | tail -20; else echo 'No test file found at '$test_file'. Consider creating one.'; fi"
+      }
+    ]
+  }
+}
+```
+
+**How it works**: When Claude writes `src/services/auth.ts`, the hook looks for `tests/services/auth.test.ts` and runs it. If the test file exists, Claude immediately sees if its changes broke anything. If not, Claude gets a reminder to create one.
+
+**Pro tip**: Adjust the `sed` command to match your project's test file naming convention (`*.spec.ts`, `__tests__/*.ts`, etc.).
+
+## Hook 7: Commit Message Linter
+
+Validates commit message format before Claude commits.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit*)",
+        "command": "msg=$(echo \"$@\" | grep -oP '(?<=-m \").*(?=\")' || echo ''); if [ -n \"$msg\" ] && ! echo \"$msg\" | grep -qP '^(feat|fix|refactor|test|docs|ci|chore|style|perf)(\\(.+\\))?: .{5,}'; then echo 'BLOCKED: Commit message must follow format: type(scope): description (min 5 chars)' && echo 'Types: feat, fix, refactor, test, docs, ci, chore, style, perf' && exit 2; fi"
+      }
+    ]
+  }
+}
+```
+
+**What it enforces**: `feat(auth): add OAuth2 support` is valid. `fix stuff` is blocked.
+
+**Watch out**: This hook uses regex to parse the commit command, which can be fragile with complex commit messages. For production use, consider a dedicated commitlint script.
+
+## Hook 8: Security Scan on Dependency Changes
+
+Runs a security audit when package.json changes.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(package.json)",
+        "command": "echo '--- Security Audit ---' && npm audit --audit-level=high 2>&1 | tail -15 || true"
+      },
+      {
+        "matcher": "Write(package.json)",
+        "command": "echo '--- License Check ---' && npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC' --summary 2>&1 | tail -10 || true"
+      }
+    ]
+  }
+}
+```
+
+**What it does**: When Claude adds a dependency, two checks run automatically: `npm audit` flags known vulnerabilities, and `license-checker` ensures the new package uses an approved license. Both results appear in Claude's context.
+
+## Hook 9: Documentation Reminder
+
+Reminds Claude to update docs when it changes public APIs.
+
+### settings.json
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(src/routes/**/*.ts)",
+        "command": "if grep -q 'router\\.' $file; then echo 'REMINDER: This file contains route definitions. If you added or changed an endpoint, update the API documentation in docs/api/'; fi || true"
+      }
+    ]
+  }
+}
+```
+
+**Why it matters**: Claude fixes the code but forgets the docs. This hook creates a gentle reminder (not a block) when route files change. Claude will often proactively update the docs in response.
+
+## Hook 10: Desktop Notifications with Context
+
+Rich notifications when Claude needs attention or finishes a task.
+
+### settings.json (macOS)
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs your input\" with title \"Claude Code\" subtitle \"Check your terminal\" sound name \"Glass\"'"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "command": "osascript -e 'display notification \"Task complete — review the changes\" with title \"Claude Code\" subtitle \"Ready for review\" sound name \"Hero\"'"
+      }
+    ]
+  }
+}
+```
+
+### settings.json (Linux)
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "command": "notify-send 'Claude Code' 'Claude needs your input' --urgency=normal"
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "command": "notify-send 'Claude Code' 'Task complete — review the changes' --urgency=normal"
+      }
+    ]
+  }
+}
+```
+
+**Usage note**: These fire when Claude finishes a long-running task or needs user input. Essential when you are working on something else while Claude implements a feature.
+
+## Combining Hooks: The Full Team Config
+
+Here is what a complete team settings.json looks like with hooks from this library:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(**)", "Glob(**)", "Grep(**)",
+      "Write(src/**)", "Write(tests/**)", "Write(docs/**)",
+      "Bash(npm test*)", "Bash(npm run *)", "Bash(git *)"
+    ],
+    "deny": [
+      "Write(.env*)", "Bash(git push --force*)", "Bash(rm -rf*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(.env*)",
+        "command": "echo 'BLOCKED: Environment files must be edited manually.' && exit 2"
+      },
+      {
+        "matcher": "Write(*)",
+        "command": "branch=$(git branch --show-current 2>/dev/null); if [ \"$branch\" = 'main' ]; then echo 'BLOCKED: Create a feature branch.' && exit 2; fi"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx prettier --write $file 2>/dev/null || true"
+      },
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx tsc --noEmit --pretty 2>&1 | head -20 || true"
+      }
+    ],
+    "Notification": [
+      {
+        "command": "osascript -e 'display notification \"Claude needs input\" with title \"Claude Code\"' 2>/dev/null || true"
+      }
+    ]
+  }
+}
+```
+
+Pick the hooks your team needs. Start with Hook 1 (formatting) and Hook 4 (file guards), then add others as your workflow matures.
+
+## Key Takeaway
+
+A shared hook library gives your team automated quality gates that run on every Claude Code interaction. Start with two essentials: auto-formatting (PostToolUse) and file guards (PreToolUse with exit 2). Add type checking, test running, and security scanning as needed. The key design principle: PreToolUse hooks prevent damage, PostToolUse hooks catch issues, and Notification hooks keep you informed. Every hook should be fast (under 5 seconds), fault-tolerant (`|| true`), and output clear messages that help Claude self-correct.

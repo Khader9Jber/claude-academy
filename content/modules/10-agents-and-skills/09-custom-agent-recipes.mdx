@@ -1,0 +1,361 @@
+---
+title: "Custom Agent Recipes"
+slug: "custom-agent-recipes"
+order: 9
+difficulty: "advanced"
+duration: 20
+tags: ["agents", "recipes", "automation", "patterns"]
+objectives:
+  - "Build three complete custom agents: security reviewer, test writer, and documentation generator"
+  - "Write effective agent frontmatter with model, isolation, and permission settings"
+  - "Design agent prompts that produce consistent, high-quality results"
+quiz:
+  - id: "agent-recipe-1"
+    question: "What is the most important part of a custom agent definition?"
+    type: "multiple-choice"
+    options:
+      - "The model choice"
+      - "The system prompt — it defines the agent's expertise, output format, and behavioral boundaries"
+      - "The file name"
+      - "The permission mode"
+    correct: 1
+    explanation: "The system prompt is where you define what the agent knows, how it should respond, what format to use, and what it should never do. A well-written system prompt turns a generic Claude session into a focused specialist that produces consistent results every time."
+  - id: "agent-recipe-2"
+    question: "When should you use 'isolation: worktree' for a custom agent?"
+    type: "multiple-choice"
+    options:
+      - "Always"
+      - "When the agent modifies files and you want changes isolated until you review them"
+      - "Never — worktrees are only for agent teams"
+      - "Only for read-only agents"
+    correct: 1
+    explanation: "Worktree isolation creates a separate git worktree for the agent's changes. This is essential when the agent writes or modifies files and you want to review changes before merging them into your working branch. Without isolation, the agent modifies your files directly, which can disrupt your work."
+  - id: "agent-recipe-3"
+    question: "How do you invoke a custom agent defined in .claude/agents/security-reviewer.md?"
+    type: "multiple-choice"
+    options:
+      - "Import it in your code"
+      - "Use /agent security-reviewer or reference it by name in a prompt"
+      - "Restart Claude Code"
+      - "Copy the file contents into your prompt"
+    correct: 1
+    explanation: "Custom agents in .claude/agents/ are automatically discovered by Claude Code. Invoke them with /agent followed by the agent name (without the .md extension). You can also reference the agent by name in prompts when using agent teams."
+  - id: "agent-recipe-4"
+    question: "What model should you typically assign to a custom agent that does implementation work (writing code, tests, docs)?"
+    type: "multiple-choice"
+    options:
+      - "Always Opus"
+      - "Sonnet — it's fast, capable enough for implementation, and significantly cheaper than Opus"
+      - "The cheapest model available"
+      - "Model choice doesn't matter"
+    correct: 1
+    explanation: "Sonnet is the sweet spot for implementation agents. It writes code, tests, and documentation well, runs 3-4x faster than Opus, and costs significantly less. Reserve Opus for planning agents that need to decompose complex problems, coordinate teams, or make architectural decisions."
+---
+
+## What Makes a Good Agent
+
+A custom agent is a markdown file in `.claude/agents/` that turns Claude into a specialist. The difference between a mediocre agent and a great one comes down to three things: a focused system prompt, appropriate model selection, and clear output constraints.
+
+Every recipe in this lesson follows the same structure: the complete agent file, a usage example showing the exact invocation and output, and notes on when to use it.
+
+## Recipe 1: Security Reviewer
+
+This agent audits code for security vulnerabilities, referencing OWASP categories and providing severity ratings.
+
+### .claude/agents/security-reviewer.md
+
+```markdown
+---
+name: Security Reviewer
+description: Audits code for security vulnerabilities with OWASP references
+model: sonnet
+isolation: none
+permissionMode: default
+---
+
+You are a senior application security engineer performing a code review.
+
+## Your Task
+Audit the provided code or files for security vulnerabilities.
+
+## Review Methodology
+For each file, check for:
+1. **Injection** (SQL, NoSQL, command, LDAP) — A03:2021
+2. **Broken Authentication** (weak sessions, token mishandling) — A07:2021
+3. **Sensitive Data Exposure** (logging secrets, unencrypted storage) — A02:2021
+4. **Broken Access Control** (missing authz checks, IDOR) — A01:2021
+5. **Security Misconfiguration** (debug mode, default creds, CORS) — A05:2021
+6. **XSS** (reflected, stored, DOM-based) — A03:2021
+7. **Insecure Deserialization** (untrusted input parsing) — A08:2021
+8. **Dependency Vulnerabilities** (known CVEs in packages)
+
+## Output Format
+For each finding, use this exact format:
+
+### [SEVERITY: Critical/High/Medium/Low] — Finding Title
+- **OWASP**: A0X:2021 Category Name
+- **Location**: file:line
+- **Description**: What the vulnerability is
+- **Attack Vector**: How an attacker would exploit this
+- **Proof of Concept**: Example malicious input (if applicable)
+- **Fix**: Exact code change to remediate
+
+## Rules
+- Report ONLY real vulnerabilities, not style issues
+- If no vulnerabilities are found, say so explicitly
+- Prioritize by severity: Critical → High → Medium → Low
+- For each finding, the Fix must be implementable — not just "validate input"
+- Do NOT modify any files. This is a read-only review.
+```
+
+### Usage
+
+```bash
+# Review a specific file
+/agent security-reviewer
+"Review src/routes/auth.ts for security vulnerabilities"
+
+# Review a directory
+/agent security-reviewer
+"Audit all files in src/middleware/ for security issues"
+
+# Review with specific focus
+/agent security-reviewer
+"Check the payment processing flow in src/services/payment.ts 
+for PCI-DSS compliance issues"
+```
+
+### Example Output
+
+```
+### [CRITICAL] — SQL Injection in User Lookup
+- **OWASP**: A03:2021 Injection
+- **Location**: src/routes/users.ts:47
+- **Description**: User ID from request params is interpolated directly 
+  into SQL query without parameterization.
+- **Attack Vector**: Attacker sends `1; DROP TABLE users--` as userId
+- **Proof of Concept**: 
+  `GET /api/users/1%3B%20DROP%20TABLE%20users--`
+- **Fix**:
+  ```typescript
+  // Before (vulnerable):
+  const user = await db.query(`SELECT * FROM users WHERE id = ${req.params.id}`);
+  
+  // After (safe):
+  const user = await db.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
+  ```
+
+### [HIGH] — Missing Rate Limiting on Login
+- **OWASP**: A07:2021 Identification and Authentication Failures
+- **Location**: src/routes/auth.ts:23
+- **Description**: Login endpoint has no rate limiting, enabling 
+  brute-force attacks.
+- **Fix**: Add express-rate-limit middleware...
+```
+
+## Recipe 2: Test Writer
+
+This agent generates comprehensive test suites for existing code.
+
+### .claude/agents/test-writer.md
+
+```markdown
+---
+name: Test Writer
+description: Generates comprehensive test suites for existing code
+model: sonnet
+isolation: worktree
+permissionMode: acceptEdits
+maxTurns: 30
+---
+
+You are a senior QA engineer who writes thorough, maintainable tests.
+
+## Your Task
+Generate a complete test suite for the provided code.
+
+## Test Writing Rules
+1. **Read the source file first** — understand every function, class, and export
+2. **Read existing test files** in the same project for style conventions
+3. **Test the public API** — focus on exported functions and class methods
+4. **Cover these categories**:
+   - Happy path (expected inputs → expected outputs)
+   - Edge cases (empty inputs, null, undefined, boundary values)
+   - Error cases (invalid inputs, network failures, timeout)
+   - Integration points (database calls, API calls — mock these)
+
+## Test Structure
+```typescript
+describe('FunctionName', () => {
+  describe('happy path', () => {
+    it('should [expected behavior] when [condition]', () => {});
+  });
+  
+  describe('edge cases', () => {
+    it('should handle empty input', () => {});
+    it('should handle null values', () => {});
+  });
+  
+  describe('error handling', () => {
+    it('should throw [ErrorType] when [condition]', () => {});
+  });
+});
+```
+
+## Rules
+- Use the project's existing test framework (Vitest, Jest, Mocha — check package.json)
+- Use the project's existing mocking patterns — do not introduce new mock libraries
+- Every test must have a descriptive name that explains the scenario
+- No test should depend on another test's state
+- Aim for 80%+ line coverage
+- Include a brief comment at the top of the test file explaining what is being tested
+- Create the test file at the conventional location for this project
+```
+
+### Usage
+
+```bash
+/agent test-writer
+"Write tests for src/services/order-service.ts"
+
+/agent test-writer
+"Generate a test suite for the auth middleware in src/middleware/auth.ts. 
+Mock the JWT verification and database calls."
+
+/agent test-writer
+"Write integration tests for the /api/v2/products endpoints. 
+Use Supertest with the test database."
+```
+
+**Why worktree isolation**: The test writer creates new files. With worktree isolation, you can review the generated tests in a separate branch before merging them. If the tests are not right, discard the worktree — your working branch is untouched.
+
+## Recipe 3: Documentation Generator
+
+This agent generates and updates project documentation.
+
+### .claude/agents/doc-writer.md
+
+```markdown
+---
+name: Documentation Generator
+description: Generates technical documentation from source code
+model: sonnet
+isolation: worktree
+permissionMode: acceptEdits
+maxTurns: 25
+---
+
+You are a senior technical writer who creates clear, accurate documentation.
+
+## Your Task
+Generate or update documentation based on the source code.
+
+## Documentation Types
+When asked, generate one of these documentation types:
+
+### API Reference
+For each endpoint:
+- Method + Path
+- Description (one sentence)
+- Request: headers, params, query, body (with TypeScript types)
+- Response: status codes, body schemas
+- Example: curl command + response JSON
+- Errors: specific error codes and messages
+
+### README
+- Project name and one-line description
+- Prerequisites and installation
+- Quick start (get running in < 2 minutes)
+- Configuration (environment variables table)
+- Project structure (tree with descriptions)
+- Contributing guidelines
+
+### JSDoc / TSDoc
+- Every exported function, class, method, and type
+- @param with type and description
+- @returns with type and description
+- @throws with error type and condition
+- @example with realistic usage
+
+### Changelog
+- Read git log for recent changes
+- Group by: Added, Changed, Deprecated, Removed, Fixed, Security
+- Follow Keep a Changelog format
+
+## Rules
+- Read the actual source code — never guess at behavior
+- Use the project's existing documentation style if docs already exist
+- Include realistic examples, not placeholder data
+- Keep descriptions concise — one sentence per item when possible
+- If code behavior is ambiguous, note it as "Behavior Note:" rather than guessing
+```
+
+### Usage
+
+```bash
+/agent doc-writer
+"Generate API reference documentation for all endpoints in src/routes/"
+
+/agent doc-writer
+"Add JSDoc comments to every exported function in src/utils/"
+
+/agent doc-writer
+"Write a README.md for this project based on the codebase structure"
+
+/agent doc-writer
+"Generate a CHANGELOG.md from the last 20 commits"
+```
+
+## Building Your Own Agents
+
+### The Frontmatter Template
+
+```yaml
+---
+name: Agent Name
+description: One sentence describing what this agent does
+model: sonnet          # sonnet for implementation, opus for planning
+isolation: worktree    # worktree for file changes, none for read-only
+permissionMode: default  # default, acceptEdits, or full
+maxTurns: 25          # prevent runaway agents
+---
+```
+
+### Model Selection Guide
+
+| Agent Type | Model | Why |
+|---|---|---|
+| Code review (read-only) | sonnet | Fast, reads and analyzes well |
+| Test writer | sonnet | Implementation work, good balance |
+| Doc writer | sonnet | Writes well, fast enough for iteration |
+| Architecture planner | opus | Needs deep reasoning about tradeoffs |
+| Team lead | opus | Coordinates other agents, decomposes tasks |
+| Quick fixer | haiku | Simple changes, maximum speed |
+
+### Isolation Guide
+
+| Agent Behavior | Isolation | Why |
+|---|---|---|
+| Read-only review | none | Does not modify files |
+| Writes new files | worktree | Review before merging |
+| Modifies existing files | worktree | Protect your working state |
+| One-shot quick fix | none | Fast, low risk |
+
+### Common Mistake: Over-Specified Prompts
+
+Do not try to anticipate every scenario in the agent prompt. Keep the system prompt focused on the agent's core expertise and output format. Let the user's invocation prompt provide the specific context:
+
+```markdown
+# Too specific — agent cannot adapt:
+"You review Express.js APIs for SQL injection and XSS only."
+
+# Right level — agent is flexible:
+"You are a security engineer. Review code for vulnerabilities 
+referencing OWASP Top 10."
+```
+
+The user adds specificity at invocation time: "Focus on the payment flow and PCI-DSS compliance."
+
+## Key Takeaway
+
+Custom agents are markdown files with a focused system prompt, model choice, and isolation setting. The security reviewer agent uses `isolation: none` because it only reads. The test writer uses `isolation: worktree` because it creates files you want to review. The documentation generator uses `worktree` for the same reason. Match model to task: Sonnet for implementation, Opus for planning. Keep agent prompts focused on expertise and output format — let the invocation prompt provide specific context. Three well-designed agents (security, testing, documentation) cover the most common automation needs for any development team.

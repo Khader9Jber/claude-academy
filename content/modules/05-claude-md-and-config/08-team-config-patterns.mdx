@@ -1,0 +1,402 @@
+---
+title: "Team Configuration Patterns"
+slug: "team-config-patterns"
+order: 8
+difficulty: "intermediate"
+duration: 18
+tags: ["configuration", "teams", "collaboration"]
+objectives:
+  - "Design shared settings.json patterns for teams of different sizes"
+  - "Write CLAUDE.md conventions that scale from 2 to 20+ developers"
+  - "Set up a configuration hierarchy that prevents team conflicts"
+quiz:
+  - id: "team-config-1"
+    question: "Where should team-wide Claude Code settings live in a project?"
+    type: "multiple-choice"
+    options:
+      - "Each developer's ~/.claude/settings.json"
+      - "In .claude/settings.json at the project root, committed to the repo"
+      - "In a shared Google Doc"
+      - "In the CI/CD pipeline only"
+    correct: 1
+    explanation: "Project-level .claude/settings.json lives in the repo and applies to everyone who clones it. This is the single source of truth for team settings — model preferences, permission rules, hooks, and allowed tools. Personal overrides go in ~/.claude/settings.json but team conventions belong in the project."
+  - id: "team-config-2"
+    question: "How should a team handle developer-specific Claude preferences that differ from the team standard?"
+    type: "multiple-choice"
+    options:
+      - "Edit the project settings.json"
+      - "Use ~/.claude/settings.json for personal overrides — it layers on top of project settings"
+      - "Ask the team lead to change the standard"
+      - "Disable Claude Code settings entirely"
+    correct: 1
+    explanation: "Claude Code merges settings from multiple layers: global (~/.claude/settings.json) → project (.claude/settings.json) → session flags. Personal preferences like model choice or notification sounds go in the global config. Team conventions stay in the project config. Both apply simultaneously."
+  - id: "team-config-3"
+    question: "What should a team CLAUDE.md always include?"
+    type: "multiple-choice"
+    options:
+      - "Personal developer preferences"
+      - "Project architecture, coding standards, file conventions, and 'do not touch' rules"
+      - "Meeting notes"
+      - "Performance reviews"
+    correct: 1
+    explanation: "A team CLAUDE.md is the briefing document Claude reads before every session. It should include project architecture (what lives where), coding standards (naming, patterns, frameworks), file conventions (where to put new code), and explicit boundaries (files Claude should never modify, patterns to avoid)."
+  - id: "team-config-4"
+    question: "For a 20+ developer team, what is the recommended CLAUDE.md structure?"
+    type: "multiple-choice"
+    options:
+      - "One massive file with everything"
+      - "A root CLAUDE.md with architecture overview, plus per-directory CLAUDE.md files for package-specific conventions"
+      - "No CLAUDE.md — use settings.json only"
+      - "One CLAUDE.md per developer"
+    correct: 1
+    explanation: "Large teams benefit from hierarchical CLAUDE.md files. The root file covers project-wide architecture and standards. Directory-level files (e.g., packages/api/CLAUDE.md) cover package-specific patterns, dependencies, and testing conventions. Claude reads all CLAUDE.md files from root to the current directory, so conventions cascade naturally."
+---
+
+## Why Team Configuration Matters
+
+When one developer uses Claude Code solo, configuration is optional. When five developers use it on the same codebase, configuration becomes essential. Without shared settings, you get inconsistency: one developer's Claude writes arrow functions while another's writes function declarations. One uses Prettier, another does not. One commits directly to main, another creates branches.
+
+Team configuration solves this by establishing a single source of truth that every developer's Claude session inherits.
+
+## The Configuration Hierarchy
+
+Claude Code reads settings from multiple layers, merged in order:
+
+```
+~/.claude/settings.json          ← Personal (not committed)
+.claude/settings.json             ← Project-wide (committed)
+packages/api/.claude/settings.json ← Package-level (committed)
+Session flags (--model, etc.)     ← One-off overrides
+```
+
+The rule: **team conventions go in the project, personal preferences stay personal**.
+
+## Pattern 1: Small Team (2-5 Developers)
+
+A small team needs consistency without bureaucracy. One settings file, one CLAUDE.md.
+
+### .claude/settings.json
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Bash(npm test*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run build*)",
+      "Bash(git checkout*)",
+      "Bash(git branch*)",
+      "Bash(git add*)",
+      "Bash(git commit*)"
+    ],
+    "deny": [
+      "Write(.env*)",
+      "Write(*.pem)",
+      "Write(*.key)",
+      "Bash(git push --force*)",
+      "Bash(rm -rf*)",
+      "Bash(npm publish*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx prettier --write $file 2>/dev/null || true"
+      }
+    ]
+  }
+}
+```
+
+### CLAUDE.md
+
+```markdown
+# Project: TaskFlow API
+
+## Architecture
+- Express.js REST API with TypeScript
+- PostgreSQL via Prisma ORM
+- Redis for caching and job queues
+- Tests: Vitest + Supertest
+
+## Directory Structure
+- src/routes/ — Express route handlers (one file per resource)
+- src/services/ — Business logic (one service per domain)
+- src/models/ — Prisma schema and generated types
+- src/middleware/ — Auth, validation, error handling
+- tests/ — Mirror of src/ structure with .test.ts suffix
+
+## Coding Standards
+- Use named exports, not default exports
+- Error handling: throw AppError subclasses, never raw Error
+- All route handlers must call the corresponding service — no business logic in routes
+- Use zod for request validation in middleware
+
+## Do Not Touch
+- prisma/migrations/ — Never modify migration files directly. Use `npx prisma migrate dev`
+- src/generated/ — Auto-generated files. Modify the generator config instead
+- .github/workflows/ — CI/CD is managed by DevOps
+
+## Testing Convention
+- Every service file needs a corresponding test file
+- Test file location: tests/services/[name].test.ts
+- Use factory functions from tests/factories/ for test data
+- Never mock the database — use the test database with transactions
+
+## Git Convention
+- Branch naming: feature/TASK-123-short-description
+- Commit format: type(scope): description
+- Always create a branch — never commit to main
+```
+
+This is enough for a small team. Everyone reads the same CLAUDE.md, gets the same Prettier formatting, and the same permission guardrails. When someone new joins, they clone the repo and Claude immediately knows the conventions.
+
+## Pattern 2: Medium Team (5-15 Developers)
+
+Medium teams need role-based conventions and more granular hooks. Different parts of the codebase have different owners.
+
+### .claude/settings.json
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Write(src/**)",
+      "Write(tests/**)",
+      "Write(docs/**)",
+      "Bash(npm test*)",
+      "Bash(npm run lint*)",
+      "Bash(npm run build*)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate dev*)",
+      "Bash(git *)"
+    ],
+    "deny": [
+      "Write(.env*)",
+      "Write(*.pem)",
+      "Write(infrastructure/**)",
+      "Bash(git push --force*)",
+      "Bash(rm -rf*)",
+      "Bash(npm publish*)",
+      "Bash(docker push*)",
+      "Bash(terraform *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(src/shared/**)",
+        "command": "echo 'WARNING: You are modifying shared code used by multiple teams. Run full test suite after changes.' || true"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.{ts,tsx})",
+        "command": "npx prettier --write $file && npx eslint --fix $file 2>/dev/null || true"
+      },
+      {
+        "matcher": "Write(src/**/*.ts)",
+        "command": "npx tsc --noEmit 2>&1 | head -20 || true"
+      }
+    ]
+  }
+}
+```
+
+### Root CLAUDE.md
+
+```markdown
+# Project: Commerce Platform
+
+## High-Level Architecture
+Monorepo with three main packages:
+- packages/api — REST API (Express + TypeScript)
+- packages/web — Customer-facing React app
+- packages/admin — Internal admin dashboard (React)
+- packages/shared — Shared types, utilities, validation schemas
+
+## Team Ownership
+- API Team: packages/api/, packages/shared/src/api-types/
+- Frontend Team: packages/web/, packages/admin/
+- Platform Team: infrastructure/, .github/, packages/shared/src/utils/
+
+## Cross-Team Rules
+- Changes to packages/shared/ require review from both API and Frontend teams
+- Database migrations must be backward-compatible (no column drops without deprecation)
+- All API changes need corresponding OpenAPI spec updates in docs/api/
+
+## See Also
+Each package has its own CLAUDE.md with package-specific conventions.
+Read the relevant package CLAUDE.md before working in that directory.
+```
+
+### packages/api/CLAUDE.md
+
+```markdown
+# API Package Conventions
+
+## Request/Response Pattern
+Every endpoint follows this pattern:
+1. Route handler (src/routes/) — validates request with zod, calls service
+2. Service (src/services/) — business logic, calls repository
+3. Repository (src/repositories/) — database queries via Prisma
+
+Never skip a layer. Routes do not call repositories directly.
+
+## Error Handling
+Use the AppError class hierarchy:
+- ValidationError (400) — invalid input
+- AuthenticationError (401) — missing or invalid token
+- ForbiddenError (403) — valid token but no permission
+- NotFoundError (404) — resource does not exist
+- ConflictError (409) — duplicate or state conflict
+
+## Database Queries
+- Always use Prisma typed queries — never raw SQL unless for performance-critical aggregations
+- Include `select` or `include` to avoid fetching unnecessary fields
+- Pagination: cursor-based using `cursor` + `take` pattern
+```
+
+### Pro tip
+
+The root CLAUDE.md stays under 80 lines. It covers architecture and cross-team rules only. Package-specific details go in package-level CLAUDE.md files. This way, when a developer works in `packages/api/`, Claude reads both the root and the api-specific conventions without being overwhelmed by frontend rules it does not need.
+
+## Pattern 3: Large Team (20+ Developers)
+
+Large teams need governance. The configuration itself needs a review process.
+
+### Configuration Governance
+
+```
+.claude/
+├── settings.json                    ← Team-wide settings (CODEOWNERS protected)
+├── settings.local.json.example      ← Template for personal overrides
+CLAUDE.md                            ← Root architecture doc
+packages/
+├── api/CLAUDE.md                    ← API team conventions
+├── web/CLAUDE.md                    ← Frontend team conventions
+├── mobile/CLAUDE.md                 ← Mobile team conventions
+├── shared/CLAUDE.md                 ← Shared code rules
+```
+
+### CODEOWNERS for Config
+
+```
+# .github/CODEOWNERS
+.claude/settings.json    @platform-team
+CLAUDE.md                @tech-leads
+packages/*/CLAUDE.md     @package-owners
+```
+
+This means changes to the shared Claude configuration require platform team review. No one accidentally weakens the permission model.
+
+### settings.local.json.example
+
+Provide a template for personal settings so developers know what they can customize:
+
+```json
+{
+  "_comment": "Copy this to ~/.claude/settings.json and customize",
+  "preferences": {
+    "model": "sonnet",
+    "theme": "dark"
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "_comment": "Customize your notification sound/method",
+        "command": "echo 'Claude needs attention' | your-notification-tool"
+      }
+    ]
+  }
+}
+```
+
+### Large Team CLAUDE.md Structure
+
+```markdown
+# Commerce Platform v3
+
+## Architecture Overview
+Microservices architecture with 12 services, React micro-frontends, 
+shared component library, and infrastructure-as-code.
+
+## Service Map
+| Service | Directory | Owner | Language |
+|---------|-----------|-------|----------|
+| auth-service | services/auth/ | Identity Team | TypeScript |
+| order-service | services/orders/ | Commerce Team | TypeScript |
+| payment-service | services/payments/ | Payments Team | Go |
+| notification-service | services/notifications/ | Platform Team | Python |
+
+## Universal Rules (ALL teams)
+1. Never hardcode secrets — use environment variables
+2. Every service must have a health check endpoint at /health
+3. All inter-service communication uses the shared event bus
+4. Logging format: structured JSON via the shared logger
+5. Database migrations must be backward-compatible
+
+## Getting Started
+1. Read this file (you are here)
+2. Read the CLAUDE.md in your service directory
+3. Check .claude/settings.json for permission boundaries
+4. Copy .claude/settings.local.json.example to ~/.claude/settings.json
+
+## Escalation
+If Claude suggests changes outside your team's ownership area,
+do NOT proceed. File a cross-team ticket instead.
+```
+
+## Common Mistakes
+
+### Mistake 1: Overly Permissive Settings
+
+```json
+{
+  "permissions": {
+    "allow": ["**"]
+  }
+}
+```
+
+This allows Claude to do anything — write to production configs, delete files, run destructive commands. Always explicitly list what is allowed.
+
+### Mistake 2: No "Do Not Touch" Rules
+
+Without explicit boundaries, Claude will refactor code it should not touch. Generated files, migration files, and vendor code all need protection:
+
+```markdown
+## Do Not Touch
+- **/*.generated.ts — auto-generated, will be overwritten
+- prisma/migrations/ — managed by Prisma CLI
+- vendor/ — third-party code, patch upstream instead
+```
+
+### Mistake 3: Putting Personal Preferences in Project Config
+
+```json
+{
+  "preferences": {
+    "model": "opus"
+  }
+}
+```
+
+Not everyone on the team should be forced to use Opus (expensive). Model preference is personal. Keep it in `~/.claude/settings.json`.
+
+## Watch Out: Settings Merge Behavior
+
+When project and personal settings both define `permissions.deny`, they are **merged**, not replaced. If the project denies `Write(.env*)` and your personal settings deny `Write(*.log)`, both rules apply. But if both define the same hook event, the behavior depends on the hook configuration — test your merged config with `/settings` in a Claude session.
+
+## Key Takeaway
+
+Team configuration scales through hierarchy: project-level `.claude/settings.json` for shared permissions and hooks, root `CLAUDE.md` for architecture and cross-team rules, and directory-level `CLAUDE.md` files for package-specific conventions. Small teams need one file of each. Medium teams add package-level configs and PreToolUse guards for shared code. Large teams add CODEOWNERS governance over the configuration itself. The pattern is always the same: team standards go in the repo, personal preferences stay in `~/.claude/settings.json`.

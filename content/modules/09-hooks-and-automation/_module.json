@@ -8,5 +8,5 @@
   "color": "#a07ed6",
   "estimatedHours": 3,
   "prerequisites": ["claude-md-and-config", "mcp-fundamentals"],
-  "lessonCount": 6
+  "lessonCount": 7
 }

@@ -1,0 +1,301 @@
+---
+title: "Domain-Specific Prompting"
+slug: "domain-specific-prompting"
+order: 10
+difficulty: "beginner"
+duration: 18
+tags: ["prompt-engineering", "domains", "specialized"]
+objectives:
+  - "Craft domain-tailored prompts for code review, security, data analysis, and technical writing"
+  - "Apply the persona + constraint + format pattern across five professional domains"
+  - "Recognize why generic prompts fail and how domain context fixes them"
+quiz:
+  - id: "domain-prompt-1"
+    question: "Why does adding a domain persona (e.g., 'You are a senior security engineer') improve prompt results?"
+    type: "multiple-choice"
+    options:
+      - "It makes Claude respond faster"
+      - "It activates domain-specific vocabulary, priorities, and evaluation criteria in the response"
+      - "It unlocks hidden features"
+      - "It reduces token usage"
+    correct: 1
+    explanation: "A domain persona primes Claude to use the right terminology, focus on the right concerns, and apply the right evaluation criteria. A security engineer persona prioritizes vulnerabilities; a data analyst persona prioritizes statistical rigor."
+  - id: "domain-prompt-2"
+    question: "What is the most effective way to prompt Claude for a code review?"
+    type: "multiple-choice"
+    options:
+      - "Review this code"
+      - "Provide the file, specify what to focus on (security, performance, readability), and define the output format"
+      - "Find all the bugs"
+      - "Make this code better"
+    correct: 1
+    explanation: "Effective code review prompts include the code, a focus area (security flaws, performance bottlenecks, readability issues), and a structured output format (severity, location, fix suggestion). This prevents Claude from giving vague feedback."
+  - id: "domain-prompt-3"
+    question: "When prompting for API design review, what context is most critical to include?"
+    type: "multiple-choice"
+    options:
+      - "The programming language"
+      - "Existing endpoint patterns, naming conventions, and the target API style guide (REST, GraphQL, etc.)"
+      - "The database schema"
+      - "The deployment target"
+    correct: 1
+    explanation: "API design review needs consistency context. If your existing endpoints use /api/v2/users/:id, Claude needs to know that pattern to evaluate new endpoints against it. Include your naming convention, versioning strategy, and style guide."
+  - id: "domain-prompt-4"
+    question: "What's the key difference between prompting for technical writing vs. code generation?"
+    type: "multiple-choice"
+    options:
+      - "Technical writing prompts are shorter"
+      - "Technical writing prompts need audience level, document type, and tone — not just the topic"
+      - "There's no difference"
+      - "Technical writing doesn't need examples"
+    correct: 1
+    explanation: "Code generation prompts focus on specs and constraints. Technical writing prompts need audience context (junior dev? CTO? end user?), document type (README, RFC, API docs, tutorial), and tone (formal, conversational, reference). The same topic produces wildly different output depending on these parameters."
+---
+
+## Why Generic Prompts Fail
+
+Here is a prompt most people write:
+
+```
+Review this code for issues.
+```
+
+And here is what they get back: a surface-level list of style nits and obvious observations. No real insight. The problem is not Claude — it is the prompt. Without domain context, Claude does not know whether to focus on SQL injection vulnerabilities, O(n^2) loops, or missing error handling.
+
+Domain-specific prompting solves this by giving Claude three things: a **persona** (who to think as), **constraints** (what to focus on), and a **format** (how to structure the output). Let me walk through five domains where this pattern transforms results.
+
+## Domain 1: Code Review
+
+### The Generic Prompt (Weak)
+
+```
+Review this TypeScript function for issues.
+```
+
+### The Domain-Specific Prompt (Strong)
+
+```
+You are a senior TypeScript engineer reviewing a pull request.
+
+Review this function for:
+1. Type safety — any `any` types, missing generics, or unsafe casts
+2. Error handling — unhandled promise rejections, missing try/catch
+3. Edge cases — null/undefined inputs, empty arrays, boundary conditions
+4. Performance — unnecessary re-renders, O(n^2) operations, memory leaks
+
+For each issue found, provide:
+- **Severity**: Critical / Warning / Suggestion
+- **Line**: approximate location
+- **Issue**: one-sentence description
+- **Fix**: the corrected code
+
+Here is the function:
+[paste code]
+```
+
+### What Changes
+
+The generic prompt returns something like "Consider adding error handling." The domain prompt returns:
+
+```
+**Critical | Line 12 | Unhandled promise rejection**
+The `fetch()` call has no try/catch. If the network fails, this crashes the process.
+
+Fix:
+try {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+} catch (error) {
+  logger.error('Fetch failed', { url, error });
+  throw new ServiceUnavailableError('Upstream API unreachable');
+}
+```
+
+The difference is actionable, specific, and prioritized — exactly what a real code review should be.
+
+## Domain 2: Security Auditing
+
+Security prompts need threat-model context. Tell Claude what attack surface you care about.
+
+### Security Audit Prompt Template
+
+```
+You are a penetration tester reviewing a Node.js Express application.
+
+Audit this code for the OWASP Top 10, focusing on:
+1. Injection (SQL, NoSQL, command injection)
+2. Broken authentication (session handling, token validation)
+3. Sensitive data exposure (logging secrets, unencrypted storage)
+4. Broken access control (missing authorization checks)
+
+For each finding:
+- **OWASP Category**: e.g., A03:2021 Injection
+- **Severity**: Critical / High / Medium / Low
+- **Attack vector**: how an attacker would exploit this
+- **Proof of concept**: example malicious input
+- **Remediation**: exact code fix
+
+Code to audit:
+[paste code]
+```
+
+### Real Output Comparison
+
+**Generic prompt** ("Check this for security issues"):
+> "You should validate user input and use parameterized queries."
+
+**Domain prompt**:
+> **A03:2021 Injection | Critical**
+> Line 23: `db.query(\`SELECT * FROM users WHERE id = ${req.params.id}\`)`
+> **Attack vector**: Attacker sends `1; DROP TABLE users--` as the id parameter
+> **PoC**: `curl https://api.example.com/users/1;DROP%20TABLE%20users--`
+> **Fix**: `db.query('SELECT * FROM users WHERE id = $1', [req.params.id])`
+
+The difference between "validate input" and a proof-of-concept exploit with the exact fix is the difference between a useless review and one that actually secures your application.
+
+## Domain 3: Data Analysis
+
+Data analysis prompts need the dataset shape, the question, and the expected output format.
+
+### Data Analysis Prompt Template
+
+```
+You are a data analyst working with a PostgreSQL database.
+
+Dataset: `orders` table with columns:
+- order_id (int), customer_id (int), product_id (int)
+- amount (decimal), currency (varchar)
+- created_at (timestamp), status (enum: pending, completed, refunded)
+- region (varchar: NA, EU, APAC)
+
+Question: What is the month-over-month revenue growth rate for each region 
+in Q4 2025, and which region showed the strongest acceleration?
+
+Requirements:
+- Use window functions, not subqueries
+- Handle currency conversion (assume all amounts are in USD)
+- Exclude refunded orders
+- Format output as a markdown table with growth percentages
+- Add a brief interpretation paragraph after the table
+```
+
+Without the column names, data types, and specific requirements, Claude writes placeholder queries with fake column names. With them, you get a working query on the first try.
+
+### Pro tip
+
+Always include 2-3 sample rows when your schema has non-obvious conventions. If your `status` column uses `1/2/3` instead of string enums, Claude needs to know that.
+
+## Domain 4: Technical Writing
+
+Technical writing is where audience context matters most. The same topic — say, "how authentication works in our app" — produces completely different documents depending on who reads it.
+
+### Technical Writing Prompt Template
+
+```
+You are a senior technical writer creating documentation for [audience].
+
+Document type: [README / API reference / tutorial / RFC / runbook]
+Audience: [junior developers / senior engineers / non-technical stakeholders]
+Tone: [formal reference / conversational tutorial / concise runbook]
+Product: [brief description]
+
+Write a [document type] that covers:
+1. [Topic 1]
+2. [Topic 2]
+3. [Topic 3]
+
+Constraints:
+- Maximum [N] words per section
+- Include code examples for every concept
+- Use [language/framework] for all examples
+- Follow [style guide] conventions (e.g., Google developer docs style)
+
+Context: [paste relevant code, architecture notes, or existing docs]
+```
+
+### Before/After: API Endpoint Documentation
+
+**Generic**: "Document this API endpoint."
+
+Output: A paragraph vaguely describing what the endpoint does.
+
+**Domain-specific**:
+
+```
+You are a technical writer creating API reference documentation.
+
+Audience: Frontend developers integrating with our API.
+Style: Follow Stripe's API docs format — endpoint, parameters table, 
+request example, response example, error codes.
+
+Document this endpoint:
+POST /api/v2/orders
+[paste the route handler code]
+```
+
+Output: A complete reference page with curl examples, parameter tables with types and constraints, response schemas, and specific error codes — formatted exactly like Stripe's docs, which your frontend team already knows how to read.
+
+## Domain 5: API Design Review
+
+API design review requires consistency context. Claude needs to know your existing patterns to evaluate new ones.
+
+### API Design Review Template
+
+```
+You are a senior API architect reviewing a new endpoint design.
+
+Existing API conventions:
+- Base URL: /api/v2/
+- Naming: plural nouns, kebab-case (e.g., /api/v2/user-profiles)
+- Pagination: cursor-based with ?cursor=xxx&limit=N
+- Auth: Bearer token in Authorization header
+- Errors: { "error": { "code": "NOT_FOUND", "message": "..." } }
+- Versioning: URL path versioning
+
+Review this proposed endpoint for:
+1. Consistency with existing conventions
+2. RESTful design principles
+3. Pagination and filtering design
+4. Error handling completeness
+5. Breaking change risk
+
+Proposed endpoint:
+[paste the endpoint spec]
+```
+
+Without the existing conventions, Claude reviews against generic REST best practices. With them, it catches things like "Your new endpoint uses `snake_case` but existing endpoints use `kebab-case`" — the kind of inconsistency that haunts an API for years.
+
+## The Universal Pattern
+
+Every domain-specific prompt follows this structure:
+
+```
+[Persona]: Who Claude should think as
+[Context]: Domain-specific background information
+[Focus areas]: What specifically to evaluate or produce
+[Output format]: How to structure the response
+[Input]: The actual content to work with
+```
+
+The persona sets the lens. The context provides the knowledge base. The focus areas prevent generic responses. The output format ensures actionable results.
+
+### Common Mistake
+
+Do not stack multiple domains in one prompt. "Review this code for security, performance, readability, and accessibility" gets you shallow coverage of everything. Instead, run separate passes:
+
+```
+Pass 1: Security audit prompt → security findings
+Pass 2: Performance review prompt → performance findings
+Pass 3: Readability review prompt → style findings
+```
+
+Each pass goes deeper because Claude is not trying to do everything at once.
+
+## Watch Out: Domain Hallucination
+
+When prompting for specialized domains (medicine, law, compliance), Claude may generate plausible-sounding but incorrect domain-specific advice. Always verify domain claims against authoritative sources. Claude is strongest in software engineering domains where it can show its work through code.
+
+## Key Takeaway
+
+Generic prompts get generic answers. Domain-specific prompts use the persona + context + focus + format pattern to get expert-level output. For code review, specify severity levels and exact fix format. For security, reference OWASP categories and request proof-of-concept exploits. For data analysis, include the full schema and sample data. For technical writing, specify audience, tone, and style guide. For API design, provide your existing conventions. The five minutes you spend crafting a domain-specific prompt saves hours of back-and-forth rework.

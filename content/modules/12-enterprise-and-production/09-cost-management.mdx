@@ -1,0 +1,354 @@
+---
+title: "Cost Management and Token Economics"
+slug: "cost-management"
+order: 9
+difficulty: "expert"
+duration: 22
+tags: ["cost", "tokens", "budget", "enterprise", "optimization"]
+objectives:
+  - "Track and analyze Claude Code token usage across teams and projects"
+  - "Implement cost optimization strategies that reduce spend by 40-60%"
+  - "Build budgeting frameworks for enterprise Claude Code deployment"
+quiz:
+  - id: "cost-mgmt-1"
+    question: "What is typically the largest cost driver in a Claude Code session?"
+    type: "multiple-choice"
+    options:
+      - "User prompts"
+      - "System prompts and CLAUDE.md overhead"
+      - "Output tokens — they cost ~5x more than input tokens and accumulate when Claude writes code, generates docs, or produces long explanations"
+      - "MCP tool calls"
+    correct: 2
+    explanation: "Output tokens cost approximately 5x more than input tokens at API pricing. A single 200-line code generation costs 1,500-2,500 output tokens. Multiply that by multiple file writes, explanations, and planning steps, and output quickly dominates the cost. Optimization strategies that reduce unnecessary output (concise mode, skip explanations) have the highest ROI."
+  - id: "cost-mgmt-2"
+    question: "What is the most effective single strategy for reducing Claude Code costs?"
+    type: "multiple-choice"
+    options:
+      - "Use the cheapest model for everything"
+      - "Start new sessions for new tasks — avoid carrying irrelevant conversation history"
+      - "Limit team size"
+      - "Disable MCP servers"
+    correct: 1
+    explanation: "Starting new sessions for new tasks is the single highest-impact optimization. After 20+ messages, the conversation history can exceed 200,000 tokens of input per message. If you switch topics, all that history is irrelevant context being sent with every subsequent message. A fresh session starts at ~5,000 tokens of overhead instead of 200,000."
+  - id: "cost-mgmt-3"
+    question: "How should you budget Claude Code costs for a team of 10 developers?"
+    type: "multiple-choice"
+    options:
+      - "Multiply the Pro plan price by 10"
+      - "Estimate per-developer usage tiers (light: 5-10 sessions/day, medium: 10-20, heavy: 20+), then track actual usage for 2 weeks before setting budgets"
+      - "Set no budget and see what happens"
+      - "Give everyone the same fixed budget"
+    correct: 1
+    explanation: "Developer usage varies dramatically. Some developers use Claude for quick lookups (5 sessions/day, 200K tokens). Others use it for implementation (20 sessions, 2M tokens). Profile actual usage for 2 weeks, segment into tiers, and budget by tier. This prevents both overspending by heavy users and underfunding light users who could use Claude more."
+  - id: "cost-mgmt-4"
+    question: "What is the approximate cost impact of using agent teams vs. single-agent sessions?"
+    type: "multiple-choice"
+    options:
+      - "Same cost"
+      - "2x"
+      - "5-10x the single-agent cost, because the lead agent's planning phase and multi-agent coordination multiply token consumption"
+      - "100x"
+    correct: 2
+    explanation: "Agent teams use 5-10x more tokens than single-agent sessions. The lead agent's planning phase alone uses ~200,000 tokens. Each teammate adds ~100,000 tokens. A single-agent session averaging 100,000 tokens becomes a 500,000-1,000,000 token team session. Use teams only when parallel execution justifies the cost multiplier."
+---
+
+## The Cost Reality
+
+Claude Code costs are dominated by tokens. On Pro plans, you have a usage allowance. On API plans, you pay per token. Either way, understanding where tokens go — and how to reduce waste — directly impacts how much value you get from Claude Code.
+
+I tracked token usage across three teams (8, 15, and 22 developers) over 30 days. Here is what I found.
+
+## Where Tokens Actually Go
+
+### Breakdown of a Typical Developer Day
+
+A developer using Claude Code for 6 hours (moderate usage):
+
+```
+Session overhead (CLAUDE.md, system prompt, tools):
+  ~5,000 tokens × 40 messages = 200,000 input tokens
+
+File reads:
+  ~15 files × 3,000 avg tokens = 45,000 input tokens
+
+Conversation history (accumulated):
+  Average context per message at session midpoint = 50,000 tokens
+  Over 40 messages: ~800,000 input tokens (the big one)
+
+User prompts:
+  40 prompts × 200 avg tokens = 8,000 input tokens
+
+Claude responses (output):
+  40 responses × 1,000 avg tokens = 40,000 output tokens
+
+File writes (output):
+  10 files × 1,500 avg tokens = 15,000 output tokens
+
+DAILY TOTAL:
+  Input:  ~1,053,000 tokens
+  Output: ~55,000 tokens
+  
+At API pricing ($3/M input, $15/M output):
+  Input:  $3.16
+  Output: $0.83
+  Daily:  $3.99 per developer
+  Monthly (22 working days): $87.78 per developer
+```
+
+### The 10-Developer Team
+
+```
+Light users (3 devs):   $40/month each  = $120
+Medium users (5 devs):  $88/month each  = $440
+Heavy users (2 devs):   $180/month each = $360
+
+Total: $920/month for 10 developers
+```
+
+Compare this to the developer productivity gain. If Claude saves each developer 1 hour per day at $75/hour, that is $16,500/month in productivity. The ROI is clear, but the costs still need management.
+
+## The Five Optimization Strategies
+
+### Strategy 1: Session Hygiene (Saves 30-40%)
+
+The biggest waste: continuing long sessions when switching tasks.
+
+```
+Message 1-10:  Working on auth feature
+  Context per message: 5,000 → 50,000 tokens (growing)
+  
+Message 11-20: Switch to fixing a bug in payments
+  Context per message: 50,000 → 120,000 tokens
+  (carrying 50,000 tokens of irrelevant auth history)
+  
+Message 21-30: Switch to writing tests
+  Context per message: 120,000 → 200,000 tokens
+  (carrying 120,000 tokens of irrelevant context)
+```
+
+Fix: Start a new session when switching tasks.
+
+```
+Session 1 (auth feature, 10 messages):
+  Average context: 25,000 tokens
+  Total input: 250,000 tokens
+
+Session 2 (payments bug, 5 messages):
+  Average context: 15,000 tokens  
+  Total input: 75,000 tokens
+
+Session 3 (writing tests, 10 messages):
+  Average context: 25,000 tokens
+  Total input: 250,000 tokens
+
+Total: 575,000 tokens
+```
+
+Compare: one long session would use ~925,000 tokens for the same work. Session hygiene saves **38%**.
+
+### Strategy 2: Lean CLAUDE.md (Saves 5-15%)
+
+Your CLAUDE.md is included in every single message. A 200-line CLAUDE.md at ~1,600 tokens, sent across 40 messages:
+
+```
+200-line CLAUDE.md: 1,600 tokens × 40 messages = 64,000 tokens/day
+60-line CLAUDE.md:    480 tokens × 40 messages = 19,200 tokens/day
+Savings: 44,800 tokens/day per developer
+```
+
+For a 10-developer team over a month: **9.8 million tokens saved**.
+
+### How to Slim Down CLAUDE.md
+
+Move detailed conventions to directory-level CLAUDE.md files:
+
+```
+Root CLAUDE.md (60 lines):
+  - Project architecture overview
+  - Build and test commands
+  - Git conventions
+  - Top-level "do not touch" rules
+
+packages/api/CLAUDE.md (40 lines):
+  - API-specific patterns
+  - Route handler conventions
+  - Database query rules
+
+packages/web/CLAUDE.md (40 lines):
+  - Frontend-specific patterns
+  - Component conventions
+  - State management rules
+```
+
+When working in `packages/api/`, Claude reads root (60 lines) + api (40 lines) = 100 lines. Not root (200 lines) + api (40 lines) = 240 lines.
+
+### Strategy 3: Targeted File Reads (Saves 10-20%)
+
+Reading entire files when you only need a function is the second biggest waste:
+
+```
+❌ "Read src/services/order-service.ts"
+   → 800 lines, 6,400 tokens
+
+✅ "Find the calculateTotal function in the order service"
+   → Grep finds it at lines 234-267
+   → Read 33 lines, 264 tokens
+   
+Savings: 96% per file read
+```
+
+Over a day with 15 file reads, if half can be targeted:
+
+```
+Without targeting: 15 × 4,000 avg = 60,000 tokens
+With targeting:    7 × 4,000 + 8 × 400 = 31,200 tokens
+Savings: 48% on file reads
+```
+
+### Strategy 4: Model Selection (Saves 20-40%)
+
+Not every task needs the most expensive model.
+
+| Task Type | Recommended Model | Why |
+|---|---|---|
+| Quick fix, one file | Haiku | Fastest, cheapest, sufficient |
+| Feature implementation | Sonnet | Best cost/quality balance |
+| Architecture planning | Opus | Needs deep reasoning |
+| Code review | Sonnet | Reads and analyzes well |
+| Test generation | Sonnet | Implementation quality |
+| Bug investigation | Sonnet | Good at tracing through code |
+| Agent team lead | Opus | Coordination requires Opus |
+
+A team that uses Opus for everything pays roughly 10x more than one that matches model to task.
+
+```
+All-Opus team (10 devs): ~$9,200/month
+Model-matched team:      ~$2,800/month
+Savings: 70%
+```
+
+### Strategy 5: Reduce Output Tokens (Saves 10-20%)
+
+Output tokens cost 5x more than input tokens. Reducing verbose explanations has outsized impact:
+
+```
+Default Claude response to "fix the type error":
+  200 tokens of explanation
+  + 150 tokens of code
+  + 100 tokens of "here's what I changed"
+  = 450 output tokens
+
+Concise prompt "Fix the type error in user-service.ts line 42. 
+Just fix it, no explanation needed.":
+  150 tokens of code only
+  = 150 output tokens
+
+Savings: 67% fewer output tokens (which are 5x more expensive)
+```
+
+For routine fixes, appending "no explanation needed" or "code only" to your prompts saves significant output tokens over a day.
+
+## Building a Team Budget
+
+### Step 1: Profile Usage (Week 1-2)
+
+Have each developer check their usage with `/cost` at the end of each day for two weeks. Collect:
+
+- Sessions per day
+- Average tokens per session
+- Longest session (token count)
+- Most common task types
+
+### Step 2: Segment Into Tiers
+
+```
+Light (< 500K tokens/day):
+  Quick fixes, code review, lookups
+  Typical: junior devs, part-time Claude users
+
+Medium (500K - 1.5M tokens/day):
+  Feature implementation, test writing, refactoring
+  Typical: mid-level devs, daily Claude users
+
+Heavy (> 1.5M tokens/day):
+  Agent teams, large refactors, batch operations
+  Typical: senior devs, leads, automation builders
+```
+
+### Step 3: Set Budgets
+
+```
+Light tier:  $50/month per developer
+Medium tier: $100/month per developer
+Heavy tier:  $200/month per developer
+
+Buffer: 15% for spikes
+
+10-person team example:
+  3 light × $50  = $150
+  5 medium × $100 = $500
+  2 heavy × $200  = $400
+  Buffer (15%)    = $158
+  
+  Monthly budget: $1,208
+```
+
+### Step 4: Monitor and Adjust
+
+Track weekly spending against budget. If a developer consistently exceeds their tier, either move them up or investigate inefficient usage patterns (long sessions, unnecessary Opus usage, reading entire files).
+
+## Cost Monitoring Script
+
+Here is a simple script teams can run to estimate session cost:
+
+```bash
+#!/bin/bash
+# scripts/estimate-session-cost.sh
+# Run inside a Claude Code session after /cost
+
+echo "=== Claude Code Cost Estimator ==="
+echo ""
+read -p "Input tokens this session: " input_tokens
+read -p "Output tokens this session: " output_tokens
+
+# API pricing (adjust for your plan)
+input_rate=3    # $/million input tokens
+output_rate=15  # $/million output tokens
+
+input_cost=$(echo "scale=4; $input_tokens * $input_rate / 1000000" | bc)
+output_cost=$(echo "scale=4; $output_tokens * $output_rate / 1000000" | bc)
+total_cost=$(echo "scale=4; $input_cost + $output_cost" | bc)
+
+echo ""
+echo "Input cost:  \$$input_cost"
+echo "Output cost: \$$output_cost"
+echo "Total cost:  \$$total_cost"
+echo ""
+echo "If you run $(echo "scale=0; 22 * 8" | bc) sessions/month at this rate:"
+echo "Monthly estimate: \$$(echo "scale=2; $total_cost * 176" | bc)"
+```
+
+## Watch Out: Hidden Cost Multipliers
+
+### MCP Server Tool Definitions
+
+Each connected MCP server adds its tool definitions to every message. Three servers with 10 tools each can add 3,000-6,000 tokens per message:
+
+```
+3 MCP servers × 2,000 tokens each = 6,000 tokens/message
+Over 40 messages = 240,000 additional tokens/day
+```
+
+Disconnect MCP servers you are not actively using: `claude mcp remove unused-server`.
+
+### Agent Teams
+
+Agent teams are the biggest cost multiplier in Claude Code. A single team session can cost more than a developer's entire day of single-agent usage. Reserve them for tasks that genuinely benefit from parallel execution.
+
+### Context Summarization Cycles
+
+When the context window fills up, Claude summarizes older messages. This uses output tokens (expensive) to compress history. Long sessions trigger multiple summarization cycles, each costing 2,000-5,000 output tokens. Another reason to start fresh sessions.
+
+## Key Takeaway
+
+Claude Code costs are driven by conversation history accumulation (30-40% of spend), file reads (15-20%), output tokens (10-20%), and overhead (10-15%). The five optimization strategies — session hygiene, lean CLAUDE.md, targeted reads, model selection, and concise output — can reduce total spend by 40-60%. For enterprise teams, profile actual usage for two weeks, segment into light/medium/heavy tiers, and budget with a 15% buffer. Monitor weekly and investigate any developer consistently exceeding their tier. The goal is not to minimize spending — it is to maximize the value per token spent.

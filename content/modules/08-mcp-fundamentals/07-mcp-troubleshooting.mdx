@@ -1,0 +1,377 @@
+---
+title: "MCP Troubleshooting"
+slug: "mcp-troubleshooting"
+order: 7
+difficulty: "intermediate"
+duration: 18
+tags: ["mcp", "debugging", "troubleshooting"]
+objectives:
+  - "Diagnose and fix common MCP connection failures"
+  - "Debug tool timeouts, auth errors, and protocol mismatches"
+  - "Use MCP diagnostic commands to identify issues quickly"
+quiz:
+  - id: "mcp-trouble-1"
+    question: "What is the first command to run when an MCP server is not showing up in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Restart your computer"
+      - "Run /mcp in the Claude Code session to check server status and connection state"
+      - "Delete and reinstall Claude Code"
+      - "Check your internet connection"
+    correct: 1
+    explanation: "The /mcp command shows all configured MCP servers, their connection status, and available tools. If a server shows as 'disconnected' or 'error', the output usually includes the error message. This is always your first diagnostic step."
+  - id: "mcp-trouble-2"
+    question: "What does the error 'spawn ENOENT' mean when connecting an MCP server?"
+    type: "multiple-choice"
+    options:
+      - "The server crashed"
+      - "The command to start the server was not found — the binary (node, python, npx) is not in PATH"
+      - "The network is down"
+      - "The MCP protocol version is wrong"
+    correct: 1
+    explanation: "ENOENT (Error NO ENTry) means the operating system could not find the executable. Common causes: node is not installed, the path to the server script is wrong, or the binary is not in the shell's PATH when launched from Claude Code. Fix by using the full path to the binary."
+  - id: "mcp-trouble-3"
+    question: "How do you debug what an MCP server is sending/receiving?"
+    type: "multiple-choice"
+    options:
+      - "Read the MCP source code"
+      - "Use claude mcp serve with stderr logging — MCP servers should log diagnostic info to stderr (not stdout, which is reserved for the protocol)"
+      - "Check the browser console"
+      - "MCP traffic cannot be inspected"
+    correct: 1
+    explanation: "MCP uses stdout for protocol communication, so servers must log diagnostic output to stderr. Add console.error() statements in your server code to debug. You can also run the server manually outside of Claude Code and pipe test JSON-RPC requests to it via stdin to see the raw responses."
+  - id: "mcp-trouble-4"
+    question: "What causes 'tool not found' errors even when the MCP server is connected?"
+    type: "multiple-choice"
+    options:
+      - "Claude is ignoring the tool"
+      - "The tool name in the server's ListTools response does not match what Claude is trying to call, or the server's ListTools handler has a bug"
+      - "The tool requires a license"
+      - "Too many tools are registered"
+    correct: 1
+    explanation: "When the server is connected but tools are not found, the issue is in the ListTools handler. Either the tool name has a typo, the handler throws an error before returning the tool list, or the tool was defined but not added to the tools array. Run /mcp to see the exact tools registered by each server."
+---
+
+## When MCP Breaks
+
+MCP servers will break. They will refuse to connect, time out mid-operation, throw cryptic errors, and silently fail. This is normal — MCP servers are external processes with their own dependencies, authentication, and failure modes.
+
+This lesson covers the most common MCP failures I have encountered, with exact error messages and step-by-step fixes.
+
+## Diagnostic Toolkit
+
+Before diving into specific errors, here are the three commands you will use constantly:
+
+### 1. Check Server Status
+
+```
+/mcp
+```
+
+Shows all configured servers, their status (connected/disconnected/error), and the tools they provide. Always start here.
+
+### 2. List Server Configuration
+
+```bash
+claude mcp list
+```
+
+Shows how each server is configured — the command, arguments, environment variables, and transport type. Use this to verify the configuration is correct.
+
+### 3. Test a Server Manually
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node path/to/server.js
+```
+
+Runs the server outside of Claude Code and sends a raw MCP request. If this fails, the problem is the server itself, not Claude Code.
+
+## Problem 1: Server Won't Connect
+
+### Error: spawn ENOENT
+
+```
+Error: spawn node ENOENT
+```
+
+**Cause**: The executable (`node`, `python`, `npx`) cannot be found.
+
+**Fix**: Use the full path to the binary:
+
+```bash
+# Find the full path
+which node
+# /usr/local/bin/node
+
+# Re-add the server with full path
+claude mcp remove my-server
+claude mcp add my-server --transport stdio /usr/local/bin/node path/to/server.js
+```
+
+**Why this happens**: Claude Code may not inherit your shell's PATH, especially on macOS where GUI applications have a different PATH than the terminal.
+
+### Error: MODULE_NOT_FOUND
+
+```
+Error: Cannot find module '/path/to/server.js'
+```
+
+**Cause**: The server script path is wrong, or `npm install` was not run.
+
+**Fix**:
+
+```bash
+# Verify the file exists
+ls -la /path/to/server.js
+
+# If using a compiled TypeScript server, make sure it's built
+cd /path/to/my-mcp-server
+npm install
+npx tsc
+
+# Re-add with correct path
+claude mcp add my-server --transport stdio node /absolute/path/to/dist/index.js
+```
+
+**Pro tip**: Always use absolute paths when adding MCP servers. Relative paths break when Claude Code starts from a different directory.
+
+### Error: Connection refused (SSE transport)
+
+```
+Error: connect ECONNREFUSED 127.0.0.1:3001
+```
+
+**Cause**: The SSE server is not running, or it is on a different port.
+
+**Fix**:
+
+```bash
+# Check if the server is actually running
+lsof -i :3001
+
+# Start the server
+node path/to/sse-server.js &
+
+# Verify it's accepting connections
+curl http://localhost:3001/sse
+```
+
+## Problem 2: Server Connects But Tools Don't Appear
+
+### Symptom: /mcp shows server connected, zero tools
+
+**Cause 1**: The ListTools handler is throwing an error.
+
+Test manually:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node path/to/server.js
+```
+
+If you get an error response or no response, the handler has a bug.
+
+**Cause 2**: The tools array is empty.
+
+Check the server code — the `ListToolsRequestSchema` handler must return a non-empty `tools` array:
+
+```typescript
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return {
+    tools: [
+      // If this array is empty, no tools appear
+      {
+        name: "my_tool",
+        description: "Does something",
+        inputSchema: { type: "object", properties: {} }
+      }
+    ]
+  };
+});
+```
+
+**Cause 3**: Tool names have invalid characters.
+
+Tool names must be alphanumeric with underscores. No spaces, no hyphens, no dots:
+
+```typescript
+// Bad
+{ name: "my-tool" }       // Hyphens not allowed
+{ name: "my.tool" }       // Dots not allowed
+{ name: "my tool" }       // Spaces not allowed
+
+// Good
+{ name: "my_tool" }
+{ name: "getDeployStatus" }
+```
+
+## Problem 3: Tool Calls Timeout
+
+### Error: Tool execution timed out
+
+```
+Error: MCP tool call timed out after 60000ms
+```
+
+**Cause**: The tool handler takes too long. Common with database queries, API calls to slow services, or file operations on large datasets.
+
+**Fix 1**: Add timeout handling in the server:
+
+```typescript
+case "slow_query": {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  
+  try {
+    const result = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    return { content: [{ type: "text", text: JSON.stringify(result) }] };
+  } catch (error) {
+    clearTimeout(timeout);
+    return { 
+      content: [{ type: "text", text: "Query timed out. Try a more specific filter." }] 
+    };
+  }
+}
+```
+
+**Fix 2**: Break large operations into smaller tools:
+
+```typescript
+// Instead of one tool that queries everything:
+{ name: "get_all_users" }  // Times out with 100K users
+
+// Provide filtered tools:
+{ name: "search_users", inputSchema: { properties: { query: { type: "string" } } } }
+{ name: "get_user_by_id", inputSchema: { properties: { id: { type: "string" } } } }
+```
+
+## Problem 4: Authentication Failures
+
+### Error: 401 Unauthorized
+
+```json
+{ "error": "Unauthorized", "message": "Invalid or expired token" }
+```
+
+**Cause**: The environment variable with the API token is missing or expired.
+
+**Fix**:
+
+```bash
+# Check if the env var is set
+claude mcp list
+# Look for the -e flags
+
+# Re-add with the correct token
+claude mcp remove my-server
+claude mcp add my-server \
+  -e API_TOKEN=$API_TOKEN \
+  --transport stdio \
+  node path/to/server.js
+
+# Verify the env var is set in your shell
+echo $API_TOKEN
+```
+
+**Watch out**: If you set the token in `.env` but your shell does not source it, Claude Code will not see it. The `-e` flag passes variables from your current shell environment.
+
+### Error: 403 Forbidden
+
+```json
+{ "error": "Forbidden", "message": "Insufficient permissions" }
+```
+
+**Cause**: The token is valid but does not have the required scopes.
+
+**Fix**: Check what permissions the MCP server's API calls need. For GitHub MCP, you need `repo`, `read:org`, and `read:user` scopes. For database servers, the credentials need read/write access to the target tables.
+
+## Problem 5: Server Crashes Mid-Session
+
+### Symptom: Tools work for a while, then suddenly stop
+
+**Cause 1**: Unhandled exceptions in the server code.
+
+Add a global error handler:
+
+```typescript
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error);
+  // Don't exit — try to keep the server alive
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+```
+
+**Cause 2**: Memory leak. The server accumulates data over a long session.
+
+Check for growing arrays, unclosed connections, or cached responses that are never freed. Node.js servers often leak when they store request/response data in module-level variables.
+
+**Cause 3**: The underlying service restarted.
+
+If your MCP server connects to an API that restarted (database, internal service), the connection might be stale. Add reconnection logic:
+
+```typescript
+async function getDbConnection() {
+  if (!connection || !connection.isAlive()) {
+    connection = await createConnection(config);
+  }
+  return connection;
+}
+```
+
+## Problem 6: Protocol Errors
+
+### Error: Invalid JSON-RPC response
+
+```
+Error: Expected JSON-RPC response, got: [raw text]
+```
+
+**Cause**: The server is writing to stdout instead of using the MCP protocol. Any `console.log()` in the server breaks the protocol because stdout is reserved for JSON-RPC messages.
+
+**Fix**: Change all `console.log()` to `console.error()` in the server code:
+
+```typescript
+// Bad — breaks protocol
+console.log("Server started");
+console.log("Processing request:", request);
+
+// Good — goes to stderr, not stdout
+console.error("Server started");
+console.error("Processing request:", request);
+```
+
+This is the most common MCP debugging mistake. It causes the most confusing errors because the server "works" when tested manually (you see the log output) but fails in Claude Code (the log output corrupts the protocol stream).
+
+## The Troubleshooting Flowchart
+
+```
+Server not working?
+│
+├── /mcp shows "disconnected"
+│   ├── spawn ENOENT → Use full path to binary
+│   ├── MODULE_NOT_FOUND → Fix script path, run npm install
+│   └── ECONNREFUSED → Start the SSE server
+│
+├── /mcp shows "connected", 0 tools
+│   ├── ListTools handler error → Test manually with JSON-RPC
+│   ├── Empty tools array → Add tools to the handler
+│   └── Invalid tool names → Use alphanumeric + underscores only
+│
+├── Tools appear but fail when called
+│   ├── Timeout → Add timeout handling, break into smaller tools
+│   ├── 401 → Check environment variables and token expiry
+│   ├── 403 → Check token scopes and permissions
+│   └── Invalid response → Fix console.log → console.error
+│
+└── Tools work then stop
+    ├── Crash → Add uncaughtException handler
+    ├── Memory → Check for leaks in module-level variables
+    └── Stale connection → Add reconnection logic
+```
+
+## Key Takeaway
+
+MCP troubleshooting follows a predictable pattern. Start with `/mcp` to check server status. If disconnected, the issue is usually PATH (`spawn ENOENT`) or file paths (`MODULE_NOT_FOUND`). If connected but no tools, test the `ListTools` handler manually. If tools fail, check authentication, timeouts, and stdout pollution. The single most common mistake is using `console.log()` instead of `console.error()` in server code — stdout is reserved for the MCP protocol. Keep this flowchart handy and you will solve 90% of MCP issues in under five minutes.

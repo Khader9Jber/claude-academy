@@ -44,7 +44,7 @@ export const ARC_DEFINITIONS: ArcDefinition[] = [
     color: "#d4a053",
     description:
       "Go to production. Deploy Claude in enterprise environments, handle security and compliance, and complete a capstone project.",
-    range: "Modules 12-13",
+    range: "Modules 12-13, 16-17",
   },
 ];
 
@@ -64,6 +64,8 @@ export const MODULE_ORDER: string[] = [
   "capstone",
   "real-world-projects",
   "claude-for-teams",
+  "claude-api-sdk",
+  "claude-security",
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [

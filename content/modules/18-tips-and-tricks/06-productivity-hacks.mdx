@@ -1,0 +1,412 @@
+---
+title: "Productivity Hacks: 20 Things Nobody Tells You"
+slug: "productivity-hacks"
+order: 6
+difficulty: "intermediate"
+duration: 20
+tags: ["tips", "productivity", "workflow", "efficiency"]
+objectives:
+  - "Learn 20 specific productivity hacks for Claude Code"
+  - "Set up keyboard shortcuts and aliases for common operations"
+  - "Use lesser-known CLI flags to speed up your workflow"
+  - "Build a personal efficiency system around Claude"
+quiz:
+  - id: "productivity-hacks-1"
+    question: "What does /init do in Claude Code?"
+    type: "multiple-choice"
+    options:
+      - "Initializes a git repository"
+      - "Analyzes your project and generates a CLAUDE.md file with project-specific context and conventions"
+      - "Creates a new project from a template"
+      - "Installs dependencies"
+    correct: 1
+    explanation: "/init scans your project structure, reads key configuration files, and generates a CLAUDE.md file tailored to your project. It captures your tech stack, file structure, conventions, and key commands. This gives Claude persistent context about your project without you having to explain it every session."
+  - id: "productivity-hacks-2"
+    question: "How can you quickly give Claude visual context about a UI bug?"
+    type: "multiple-choice"
+    options:
+      - "Describe the bug in text"
+      - "Paste a screenshot directly into the Claude Code prompt — Claude can see and analyze images"
+      - "Record a video"
+      - "Write a detailed CSS description"
+    correct: 1
+    explanation: "Claude Code supports image input. You can paste a screenshot directly into your prompt, and Claude will see exactly what you see — layout issues, wrong colors, misaligned elements, broken responsive design. This is dramatically faster than describing visual bugs in text and far more accurate."
+  - id: "productivity-hacks-3"
+    question: "What is the benefit of using /review before creating a PR?"
+    type: "multiple-choice"
+    options:
+      - "It automatically creates the PR"
+      - "Claude reviews your changes like a senior developer — catching bugs, suggesting improvements, and identifying issues before your teammates see them"
+      - "It runs the test suite"
+      - "It formats your code"
+    correct: 1
+    explanation: "/review has Claude examine your git diff and staged changes as a code reviewer would. It catches bugs, identifies edge cases you missed, suggests improvements, and flags potential issues — all before you create the PR. This reduces review cycles with your team and catches embarrassing mistakes."
+  - id: "productivity-hacks-4"
+    question: "Why should you put your most-used prompt patterns in CLAUDE.md?"
+    type: "multiple-choice"
+    options:
+      - "To make CLAUDE.md longer"
+      - "So Claude automatically follows your preferred patterns without you having to specify them every time"
+      - "To track your prompt history"
+      - "To share them with your team"
+    correct: 1
+    explanation: "CLAUDE.md is loaded at the start of every session. By putting your preferred patterns there — coding conventions, test approaches, error handling styles, review criteria — Claude automatically follows them without you repeating instructions. It turns one-time prompt engineering into persistent preferences."
+---
+
+## The Hacks Nobody Reads the Docs For
+
+I have been using Claude Code daily for months. These are the tricks I wish someone had told me on day one. Each one saves a small amount of time, but compounded across hundreds of daily interactions, they transform your workflow.
+
+## Hack 1: /init for Instant Project Context
+
+Starting a new project or joining an existing one? Do not spend 20 minutes writing a CLAUDE.md from scratch.
+
+```bash
+claude
+> /init
+```
+
+Claude scans your project — `package.json`, directory structure, config files, existing docs — and generates a tailored CLAUDE.md. In 30 seconds you get what would take 20 minutes to write manually.
+
+Then edit the generated file to add anything project-specific that Claude could not infer.
+
+## Hack 2: Screenshot Paste for UI Bugs
+
+Stop describing visual bugs in text. Paste a screenshot.
+
+```bash
+claude
+> "This button should be aligned to the right side of the card, 
+   but look at what's happening:"
+> [paste screenshot]
+> "Fix the alignment in @src/components/Card.tsx"
+```
+
+Claude sees the screenshot, understands the layout problem, and fixes the CSS. This works for:
+- Layout bugs
+- Responsive design issues
+- Color/typography mismatches
+- Component spacing problems
+- Visual regressions
+
+## Hack 3: /review Before Every PR
+
+Make it a habit — before creating a PR, run:
+
+```bash
+/review
+```
+
+Claude reviews your staged changes and catches:
+- Bugs you missed
+- Missing error handling
+- Security issues
+- Leftover debug code (console.logs, TODOs)
+- Inconsistencies with project patterns
+
+I caught a SQL injection vulnerability this way that would have been embarrassing in a team code review.
+
+## Hack 4: Shell Aliases for Common Workflows
+
+Add these to your `.zshrc` or `.bashrc`:
+
+```bash
+# Quick fix mode
+alias cfix='claude -p "Fix the failing tests in this project. Run the tests, identify failures, and fix them."'
+
+# Code review
+alias creview='claude -p "Review the git diff for issues: bugs, security, performance. Be concise."'
+
+# Quick documentation
+alias cdoc='claude -p "Add JSDoc comments to all exported functions in"'
+
+# Explain a file
+alias cexplain='claude -p "Explain what this file does, its key functions, and how it fits in the project:"'
+
+# Generate tests
+alias ctest='claude -p "Generate comprehensive unit tests for"'
+```
+
+Usage:
+
+```bash
+cfix                           # Fix all failing tests
+cdoc src/lib/auth.ts          # Document a file
+ctest src/lib/utils.ts        # Generate tests
+cexplain src/middleware.ts    # Understand a file
+```
+
+## Hack 5: Pipe Everything
+
+Claude Code accepts piped input. This opens up powerful compositions:
+
+```bash
+# Analyze test failures
+npm test 2>&1 | claude -p "Analyze these test failures and suggest fixes"
+
+# Explain a git diff
+git diff | claude -p "Summarize these changes for a PR description"
+
+# Analyze logs
+tail -100 /var/log/app.log | claude -p "Find error patterns in these logs"
+
+# Review a specific commit
+git show HEAD | claude -p "Review this commit for issues"
+
+# Explain a complex command
+history | tail -20 | claude -p "Explain what each of these commands does"
+```
+
+## Hack 6: The CLAUDE.md Bookmark System
+
+Save your best prompts in CLAUDE.md so you never have to re-craft them:
+
+```markdown
+# CLAUDE.md
+
+## My Prompt Templates
+
+### Code Review Checklist
+When I say "review this", check for:
+1. Null/undefined handling
+2. Error boundaries
+3. Input validation
+4. SQL injection / XSS
+5. Missing loading/error states
+6. Console.logs left in
+7. Hardcoded values that should be env vars
+
+### Test Generation Rules
+When I say "test this", generate:
+- Happy path tests
+- Error cases (invalid input, network failure, timeout)
+- Edge cases (empty arrays, null values, max values)
+- Use describe/it blocks with clear names
+- Mock external dependencies
+```
+
+Now every time you say "review this" or "test this," Claude follows your personal checklist automatically.
+
+## Hack 7: Multi-Cursor Editing + Claude
+
+Use Claude to generate repetitive code, then multi-cursor to adapt it:
+
+```bash
+claude -p "Generate 10 similar API route handlers for these entities:
+users, projects, tasks, comments, tags, categories, 
+attachments, notifications, settings, audit-logs
+
+Each should follow the pattern in @src/app/api/users/route.ts"
+```
+
+Then use your editor's multi-cursor to make entity-specific tweaks. Faster than writing each one manually or having Claude handle all the edge cases.
+
+## Hack 8: The "Show Me Don't Tell Me" Command
+
+```bash
+# Instead of asking Claude to explain:
+"Show me an example of using the Supabase client with RLS"
+
+# Be specific about what "show" means:
+"Write a working example file at src/examples/rls-demo.ts that 
+demonstrates: creating a row with RLS, querying with RLS, 
+and what happens when RLS blocks access. Include the SQL 
+policy definitions as comments."
+```
+
+Working examples teach faster than explanations.
+
+## Hack 9: Git Integration Shortcuts
+
+```bash
+# Smart commit messages
+claude -p "Look at the git diff and write a conventional commit 
+message. Format: type(scope): description"
+
+# PR descriptions
+claude -p "Generate a PR description from the git log since main. 
+Include: summary, changes, testing notes, breaking changes."
+
+# Changelog entries
+claude -p "Generate changelog entries from commits since the last tag. 
+Group by: Features, Fixes, Breaking Changes."
+```
+
+## Hack 10: The "Fix It For Me" Pattern
+
+When you have an error, do not ask Claude to explain — ask it to fix:
+
+```bash
+# Instead of:
+"Why am I getting 'TypeError: Cannot read property of undefined'?"
+
+# Do this:
+claude -p "Fix this error in @src/components/Dashboard.tsx:
+TypeError: Cannot read properties of undefined (reading 'map')
+at Dashboard (Dashboard.tsx:42:18)
+
+Add proper null checks and loading states."
+```
+
+Direct fix requests are faster and use fewer tokens than explain-then-fix.
+
+## Hack 11: Use --output for File Generation
+
+```bash
+# Generate a file directly
+claude -p "Generate a comprehensive .gitignore for a 
+Next.js + Supabase project" --output .gitignore
+
+# Generate config files
+claude -p "Generate a Playwright config for testing 
+a Next.js app on localhost:3000" --output playwright.config.ts
+```
+
+## Hack 12: Context Windows as Scratchpads
+
+Use a Claude session as a temporary workspace for complex thinking:
+
+```bash
+claude
+> "I need to design the data flow for our checkout process.
+   Let me think out loud and you help me refine:
+   
+   Cart → Validate Stock → Calculate Total → Apply Discount → 
+   Create Order → Process Payment → Send Confirmation
+   
+   What am I missing?"
+
+# Claude identifies gaps: tax calculation, inventory reservation,
+# payment failure handling, idempotency keys
+```
+
+This is faster than writing it out in a doc because Claude actively fills in gaps.
+
+## Hack 13: The Pre-Flight Check
+
+Before deploying or merging, run a quick sanity check:
+
+```bash
+claude -p "Pre-flight check for @src/app/api/:
+1. Are there any console.logs that should be removed?
+2. Are there any TODO comments that should be addressed?
+3. Are there any hardcoded secrets or API keys?
+4. Are there any functions without error handling?
+5. Are there any unused imports?
+List only actual issues found."
+```
+
+## Hack 14: Learning New Codebases Fast
+
+When joining a project or reviewing unfamiliar code:
+
+```bash
+claude
+> "I just joined this project. Give me a 2-minute overview:
+   1. What does this project do?
+   2. What's the tech stack?
+   3. What's the file structure pattern?
+   4. Where are the main entry points?
+   5. What are the key abstractions I should understand?"
+```
+
+Claude reads your entire project structure and gives you a guided tour.
+
+## Hack 15: The Rubber Duck with Superpowers
+
+```bash
+claude
+> "I'm stuck on how to handle concurrent writes to the 
+   same document. Here's my current approach: [describe].
+   
+   Poke holes in it. What will break? What am I not thinking about?"
+```
+
+Claude is a rubber duck that talks back with genuinely useful criticism.
+
+## Hack 16: Workspace-Specific CLAUDE.md
+
+Keep different CLAUDE.md files for different contexts:
+
+```
+~/work/frontend/CLAUDE.md    → React patterns, component library
+~/work/backend/CLAUDE.md     → API conventions, database patterns
+~/personal/blog/CLAUDE.md    → Content style, MDX format
+~/freelance/client/CLAUDE.md → Client-specific requirements
+```
+
+Each workspace gets its own context automatically.
+
+## Hack 17: Quick Prototyping
+
+```bash
+claude -p "Create a minimal working prototype of a real-time 
+chat app using Next.js and Supabase Realtime.
+
+Files needed:
+1. src/app/chat/page.tsx — chat UI
+2. src/hooks/useChat.ts — real-time message hook
+3. supabase/migrations/chat.sql — messages table
+
+Make it actually work, not just scaffolding."
+```
+
+From idea to working prototype in one prompt.
+
+## Hack 18: The "Diff Only" Output
+
+When you want to see exactly what Claude would change:
+
+```bash
+claude -p "Show me a diff (unified format) of the changes needed 
+to add input validation to @src/app/api/users/route.ts. 
+Don't modify the file — just show the diff."
+```
+
+Review the diff first, then decide whether to apply it.
+
+## Hack 19: Session Checkpoints
+
+Before risky operations, create a mental checkpoint:
+
+```bash
+# Before a big refactor
+git stash  # or commit WIP
+claude "Refactor the entire auth module..."
+
+# If it goes wrong
+git stash pop  # or reset to your commit
+# Start fresh with a better prompt
+```
+
+Always have a way to go back.
+
+## Hack 20: The Productivity Stack
+
+My daily Claude workflow, in order:
+
+```
+Morning:
+1. /init (if new project) or review CLAUDE.md
+2. Check failing tests: cfix alias
+3. Plan the day's work: /plan "Today I need to..."
+
+During development:
+4. Headless mode for known tasks
+5. Interactive mode for exploration
+6. /compact every 10-15 messages
+7. Screenshot paste for UI work
+
+Before committing:
+8. /review to catch issues
+9. Generate commit message from diff
+10. /simplify for final cleanup
+
+End of day:
+11. Generate PR descriptions
+12. Update CLAUDE.md with new learnings
+```
+
+## Key Takeaway
+
+Productivity with Claude is not about one big trick — it is about twenty small ones that compound. Set up your aliases, learn the CLI flags, build your CLAUDE.md into a personal knowledge base, and develop mode-switching habits. The developers who are 10x more productive with Claude are not writing better prompts — they have built systems around Claude that eliminate friction from their entire workflow. Start with hacks 1, 4, and 6 today, and add one new hack each week.

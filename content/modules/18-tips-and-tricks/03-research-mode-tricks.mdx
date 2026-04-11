@@ -1,0 +1,334 @@
+---
+title: "Research Mode: Deep Dive Mastery"
+slug: "research-mode-tricks"
+order: 3
+difficulty: "intermediate"
+duration: 18
+tags: ["tips", "research", "web-search", "analysis"]
+objectives:
+  - "Understand what research mode does under the hood"
+  - "Know when to use research mode vs regular Claude vs Claude Code"
+  - "Apply multi-source verification and comparison techniques"
+  - "Build structured research reports using research mode"
+quiz:
+  - id: "research-mode-1"
+    question: "What does Claude's research mode actually do?"
+    type: "multiple-choice"
+    options:
+      - "Opens a browser for you to use"
+      - "Searches the web for current information, reads multiple sources, and synthesizes findings into a coherent response"
+      - "Searches only your local files"
+      - "Connects to a private database"
+    correct: 1
+    explanation: "Research mode enables Claude to search the web for current information, visit and read multiple sources, and synthesize what it finds into a structured response. This is different from Claude's training data — research mode fetches live, current information from the internet."
+  - id: "research-mode-2"
+    question: "When should you prefer research mode over regular Claude?"
+    type: "multiple-choice"
+    options:
+      - "For all tasks"
+      - "When you need current information that may have changed after Claude's training data cutoff"
+      - "For writing code"
+      - "For editing files"
+    correct: 1
+    explanation: "Research mode shines when you need up-to-date information: latest library versions, recent API changes, current best practices, news, pricing, or anything that might have changed since Claude's training data was collected. For tasks using only your codebase or established knowledge, regular Claude or Claude Code is more efficient."
+  - id: "research-mode-3"
+    question: "What is the multi-source verification technique?"
+    type: "multiple-choice"
+    options:
+      - "Using multiple Claude sessions"
+      - "Asking Claude to search for information from multiple independent sources and compare them to identify consensus and conflicts"
+      - "Running the same query twice"
+      - "Using different search engines"
+    correct: 1
+    explanation: "Multi-source verification means asking Claude to find information from several independent sources and explicitly compare them. This helps identify which claims are widely agreed upon (high confidence) and which are contradicted across sources (needs more investigation). It prevents relying on a single potentially outdated or biased source."
+  - id: "research-mode-4"
+    question: "How should you structure a research prompt for best results?"
+    type: "multiple-choice"
+    options:
+      - "Ask a single vague question"
+      - "Define what you're researching, what specific questions to answer, what sources to prioritize, and what format the output should take"
+      - "Just say 'research X'"
+      - "Ask Claude to write an essay"
+    correct: 1
+    explanation: "Structured research prompts produce dramatically better results. Specify: the topic/question, specific sub-questions to answer, preferred source types (docs, blogs, papers), recency requirements, and output format (table, report, comparison). This gives Claude clear objectives instead of wandering through search results."
+---
+
+## What Research Mode Actually Does
+
+When you activate research mode, Claude gains the ability to search the web in real time. Instead of relying only on its training data, Claude can:
+
+1. **Search** — query the web for current information
+2. **Read** — visit and read the content of web pages
+3. **Synthesize** — combine findings from multiple sources into a coherent answer
+4. **Cite** — reference the specific sources it used
+
+This is not a simple Google search wrapper. Claude reads the actual content of pages, understands context, cross-references information, and produces a synthesized answer that no single source contains.
+
+## When to Use Research Mode
+
+Here is the decision tree I use every day:
+
+```
+Do I need CURRENT information?
+├── YES → Is it about the web/world (not my codebase)?
+│   ├── YES → Use research mode
+│   └── NO → Use Claude Code (it reads your files directly)
+└── NO → Is Claude's training data sufficient?
+    ├── YES → Use regular Claude (faster, cheaper)
+    └── NO → Use research mode
+```
+
+### Use Research Mode For:
+
+```bash
+# Current library versions and migration guides
+"Research the latest Next.js version. What changed from 14 to 15? 
+What are the breaking changes I need to handle?"
+
+# Technology comparisons with current data
+"Compare Bun, Deno, and Node.js as of 2025. Performance benchmarks, 
+ecosystem maturity, production readiness."
+
+# Finding documentation
+"Find the official documentation for Supabase Row Level Security. 
+How do you set up RLS policies for multi-tenant apps?"
+
+# Investigating errors
+"Research this error: 'TLS handshake timeout in Bun 1.2'. 
+What causes it and what are the known fixes?"
+```
+
+### Do NOT Use Research Mode For:
+
+```bash
+# Tasks involving YOUR code — use Claude Code instead
+"Fix the bug in my auth module"  # Claude Code, not research
+
+# Well-established knowledge — use regular Claude
+"Explain how TCP/IP works"  # Training data is sufficient
+
+# Writing code — use Claude Code
+"Build a REST API"  # Claude Code can do this without web search
+```
+
+## Trick 1: Multi-Source Verification
+
+The most powerful research technique. Ask Claude to cross-reference multiple sources.
+
+```bash
+"Research the best practices for JWT token storage in 2025.
+
+Search at least 5 different sources including:
+- OWASP documentation
+- Auth0/Okta blog posts
+- Recent security conference talks or papers
+- Stack Overflow discussions with high votes
+
+For each practice you find:
+1. State the recommendation
+2. How many sources agree
+3. Any sources that disagree and why
+4. Your confidence level (high/medium/low)"
+```
+
+This produces output like:
+
+```
+1. Store JWTs in httpOnly cookies (not localStorage)
+   - Sources agreeing: 5/5 (OWASP, Auth0, multiple blog posts)
+   - Disagreements: None
+   - Confidence: HIGH
+
+2. Use short expiration times (15-30 minutes)
+   - Sources agreeing: 4/5
+   - Disagreement: One source suggests 1 hour for better UX
+   - Confidence: HIGH
+
+3. Implement refresh token rotation
+   - Sources agreeing: 4/5
+   - One source suggests this adds complexity without benefit for small apps
+   - Confidence: MEDIUM (depends on scale)
+```
+
+## Trick 2: The Comparison Framework
+
+For technology decisions, use this structured comparison prompt:
+
+```bash
+"I need to choose between Playwright and Cypress for E2E testing 
+a Next.js 15 app. Research both as of 2025 and compare:
+
+| Criteria | Details Needed |
+|----------|---------------|
+| Performance | Speed benchmarks, parallel execution |
+| Browser support | Which browsers, mobile support |
+| Developer experience | Setup complexity, debugging tools |
+| Community | GitHub stars, npm downloads, Stack Overflow activity |
+| CI/CD integration | GitHub Actions support, Docker images |
+| Cost | Free tier limits, pricing for teams |
+| Recent momentum | Major releases in last 6 months |
+
+End with a clear recommendation for my specific case:
+- Small team (3 developers)
+- Next.js 15 with App Router
+- GitHub Actions for CI
+- Need cross-browser testing"
+```
+
+## Trick 3: The "Search Then Compare" Chain
+
+Break complex research into two phases:
+
+```bash
+# Phase 1: Gather
+"Search for all the major React state management libraries 
+available in 2025. For each one, find:
+- Current version
+- Bundle size
+- GitHub stars
+- Monthly npm downloads
+- Last release date"
+
+# Phase 2: Analyze (in the same session)
+"Now compare these libraries specifically for a large-scale 
+enterprise app with 200+ components, complex server state, 
+and real-time updates. Which ones are best suited and why?"
+```
+
+Splitting gather and analyze lets you verify the data before drawing conclusions.
+
+## Trick 4: Building Research Reports
+
+For thorough research, use this report template:
+
+```bash
+"Research [TOPIC] and produce a report with these sections:
+
+## Executive Summary (3 sentences max)
+
+## Current State
+- What exists today
+- Key players/tools/approaches
+- Market/adoption data
+
+## Options Analysis
+For each option:
+- Pros (with evidence)
+- Cons (with evidence)  
+- Best suited for (use case)
+- Not suited for (use case)
+
+## Recommendation
+- Primary recommendation with rationale
+- Fallback option
+- What would change this recommendation
+
+## Sources
+- List all sources with URLs
+- Note recency of each source
+
+Constraints: Focus on sources from the last 12 months. 
+Prioritize official documentation over blog posts."
+```
+
+## Trick 5: Investigating Specific Errors
+
+Research mode excels at finding solutions to errors that are too new for Claude's training data.
+
+```bash
+"I'm getting this error with the latest version of Drizzle ORM:
+
+Error: Cannot find module 'drizzle-orm/pg-core' 
+
+Search for:
+1. Is this a known issue? Check GitHub issues.
+2. What version introduced this change?
+3. What is the migration path?
+4. Any workarounds if the fix isn't released yet?
+
+Show me the exact import changes needed."
+```
+
+This works because research mode can find GitHub issues, release notes, and discussions that are newer than Claude's training data.
+
+## Trick 6: Documentation Discovery
+
+When official docs are hard to navigate:
+
+```bash
+"Find the Supabase documentation for implementing 
+Row Level Security with multi-tenant data.
+
+I need:
+1. The exact SQL syntax for RLS policies
+2. How to use auth.uid() in policies
+3. How to handle the case where one user belongs to multiple tenants
+4. Any performance implications of complex RLS policies
+
+Link to the specific documentation pages."
+```
+
+## Trick 7: Competitive Analysis
+
+```bash
+"Research the top 5 open-source alternatives to [Product].
+For each, find:
+- Core features vs [Product]
+- Pricing (if any)
+- Community size (GitHub, Discord)
+- Last significant update
+- Known limitations
+- Who should choose this over [Product]
+
+Present as a comparison table, then a paragraph 
+recommendation for a startup with <$500/month budget."
+```
+
+## Real Example: Technology Evaluation
+
+Here is a real research session I ran when evaluating deployment platforms:
+
+```bash
+"I need to deploy a Next.js 15 app with:
+- Server components and server actions
+- PostgreSQL database
+- Cron jobs
+- File uploads (S3-compatible)
+- Custom domain with SSL
+- Budget: $20/month or less
+
+Research and compare: Vercel, Railway, Fly.io, Render, and Coolify.
+
+For each platform:
+1. Does it support all my requirements?
+2. What's the actual cost for my use case?
+3. Any gotchas or limitations I should know about?
+4. How's the developer experience?
+5. Find a recent review or experience report (2024-2025).
+
+End with a ranked recommendation."
+```
+
+The research mode response included current pricing (which changes frequently), recent platform updates, and real user experiences that would not be in training data.
+
+## Combining Research Mode with Claude Code
+
+The most powerful workflow: research first, then implement.
+
+```bash
+# Step 1: Research in research mode
+"Research the current best practice for implementing 
+rate limiting in Next.js API routes. What libraries are 
+recommended? What approach works with edge runtime?"
+
+# Step 2: Implement in Claude Code (new session)
+claude "Implement rate limiting in @src/app/api/ using 
+the upstash/ratelimit approach. Use sliding window, 
+10 requests per 10 seconds per IP."
+```
+
+Research mode finds the current best approach. Claude Code implements it in your codebase. Using them together gives you both current knowledge and hands-on implementation.
+
+## Key Takeaway
+
+Research mode is your bridge to current information. Use it when you need data newer than Claude's training, when comparing technologies with rapidly changing landscapes, or when investigating errors that are too recent for training data. Structure your research prompts with specific questions, preferred sources, and clear output formats. The multi-source verification technique is the single most valuable research skill — it turns Claude from a search engine into a research analyst that cross-references and evaluates information quality for you.

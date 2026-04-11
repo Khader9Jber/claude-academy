@@ -1,0 +1,363 @@
+---
+title: "Debugging Tricks: When Claude Gets It Wrong"
+slug: "debugging-tricks"
+order: 7
+difficulty: "intermediate"
+duration: 18
+tags: ["tips", "debugging", "troubleshooting", "errors"]
+objectives:
+  - "Recognize when Claude is stuck in a loop or producing bad output"
+  - "Apply specific recovery techniques for common Claude failure modes"
+  - "Recover from bad Claude sessions without losing progress"
+  - "Know when to start fresh versus when to redirect"
+quiz:
+  - id: "debugging-tricks-1"
+    question: "What should you do when Claude keeps making the same mistake in a loop?"
+    type: "multiple-choice"
+    options:
+      - "Keep asking it to try again"
+      - "Start a new session with a more specific prompt that addresses the root cause of the mistake"
+      - "Wait longer between messages"
+      - "Use a different language"
+    correct: 1
+    explanation: "When Claude loops on the same mistake, it means the current conversation context is steering it toward that mistake. Starting a new session with a fresh, more specific prompt that explicitly addresses the issue breaks the loop. For example, if Claude keeps using the wrong import, start fresh with: 'Use the import from @package/core, NOT @package/legacy.'"
+  - id: "debugging-tricks-2"
+    question: "What is the most common cause of Claude hallucinating an API or function?"
+    type: "multiple-choice"
+    options:
+      - "Claude is broken"
+      - "The context doesn't include enough information about the actual API, so Claude fills in with plausible-sounding but incorrect details"
+      - "The API doesn't exist"
+      - "Network issues"
+    correct: 1
+    explanation: "Hallucinations usually happen when Claude lacks context. If Claude doesn't have access to the actual API documentation or source code, it generates what looks plausible based on its training data. The fix: give Claude the actual source — reference the file with @, paste the API docs, or show the type definitions. More context means fewer hallucinations."
+  - id: "debugging-tricks-3"
+    question: "When should you use /clear vs starting a completely new session?"
+    type: "multiple-choice"
+    options:
+      - "They are exactly the same"
+      - "/clear resets conversation history within the same session (keeps CLAUDE.md); new session restarts everything — use /clear for quick topic switches, new session when the entire approach needs rethinking"
+      - "/clear is faster so always use it"
+      - "New session is always better"
+    correct: 1
+    explanation: "/clear wipes conversation history but keeps the session running — CLAUDE.md stays loaded, the process stays alive. It's great for switching to a different task within the same project. A new session (Ctrl+C and restart) is better when you need a completely fresh start — new CLAUDE.md read, clean process state, and no lingering context that might bias Claude."
+  - id: "debugging-tricks-4"
+    question: "What's the best approach when Claude's code changes break something that was working?"
+    type: "multiple-choice"
+    options:
+      - "Ask Claude to fix the bug it created"
+      - "Revert with git, then start a new session with a more constrained prompt that prevents the breaking change"
+      - "Debug the broken code manually"
+      - "Ignore the broken tests"
+    correct: 1
+    explanation: "When Claude breaks something, revert first (git checkout -- file.ts or git stash). Then start a new session with a prompt that is more specific about what should NOT change. Adding constraints like 'don't modify the return type' or 'keep the existing function signatures' prevents Claude from making the same breaking change again."
+---
+
+## Claude Is Not Perfect
+
+Let me be honest: Claude gets things wrong. It hallucinates APIs that do not exist, gets stuck in loops, breaks working code, and sometimes confidently produces complete nonsense. Knowing how to handle these failures is what separates frustrated users from productive ones.
+
+This lesson is about what to do when Claude fails — and it will fail.
+
+## Failure Mode 1: The Infinite Loop
+
+Claude makes a change, the tests fail, Claude tries to fix it, breaks something else, tries again, breaks something else. Round and round.
+
+**What it looks like:**
+
+```
+> "Fix the failing test"
+Claude changes auth.ts → 2 tests fail
+> "Those tests are still failing"
+Claude changes auth.ts differently → 3 tests now fail
+> "Now more tests are failing"
+Claude reverts and tries again → back to 2 failures
+> ... (repeat 10 times)
+```
+
+**Why it happens:** Claude is operating on stale context. Each failed attempt adds noise to the conversation, making it harder for Claude to find the right solution.
+
+**The fix:**
+
+```bash
+# Step 1: Stop the loop. Don't send another message.
+# Step 2: Revert to clean state
+git checkout -- src/lib/auth.ts
+
+# Step 3: Start a FRESH session with a precise prompt
+claude -p "The test 'should validate JWT token' in auth.test.ts 
+fails with: 'Expected token to be valid but got: invalid signature'
+
+The issue is in @src/lib/auth.ts in the verifyToken function.
+The JWT secret is loaded from process.env.JWT_SECRET but 
+in the test environment, it's set in the jest setup file at 
+@jest.setup.ts
+
+Fix verifyToken to work with the test environment secret."
+```
+
+The fresh session eliminates the accumulated noise. The specific prompt eliminates guesswork.
+
+## Failure Mode 2: Hallucinated APIs
+
+Claude writes code using functions, methods, or APIs that do not exist.
+
+**What it looks like:**
+
+```typescript
+// Claude writes this:
+import { createServerAction } from 'next/server-actions';
+
+const action = createServerAction(async (data) => {
+  // ...
+});
+
+// But createServerAction doesn't exist in Next.js
+```
+
+**Why it happens:** Claude's training data includes many libraries and frameworks. When it does not have the exact documentation in context, it generates plausible-looking code based on patterns it has seen. Sometimes those patterns are from outdated versions or entirely imagined.
+
+**The fix:**
+
+```bash
+# Give Claude the actual API surface
+"Fix this code — createServerAction doesn't exist in Next.js 15.
+Here's how server actions actually work in Next.js 15:
+'use server' directive at the top of an async function.
+Reference: @src/app/actions/existing-action.ts for a working example."
+
+# Or reference documentation directly
+"The function you used doesn't exist. 
+Check the Next.js docs: server actions use the 'use server' directive.
+Here's the pattern:
+export async function myAction(formData: FormData) {
+  'use server';
+  // implementation
+}"
+```
+
+The key: **give Claude correct examples to follow**, either from your own codebase or from documentation.
+
+## Failure Mode 3: Breaking Working Code
+
+Claude fixes one thing but breaks another.
+
+**What it looks like:**
+
+```bash
+> "Add error handling to the login function"
+# Claude adds try-catch but changes the return type
+# Now 5 other files that depend on the old return type break
+```
+
+**Why it happens:** Claude optimizes for the task you gave it without always considering the ripple effects. It sees the function in isolation, not the 5 files that depend on it.
+
+**The fix — prevent it:**
+
+```bash
+# Add constraints to your prompt
+"Add error handling to the login function in @src/lib/auth.ts.
+CONSTRAINTS:
+- Don't change the function signature
+- Don't change the return type
+- Keep the existing behavior for successful logins
+- Only add error handling for the failure cases"
+```
+
+**The fix — recover from it:**
+
+```bash
+# Step 1: Revert
+git checkout -- src/lib/auth.ts
+
+# Step 2: New session with constraints
+claude -p "Add try-catch error handling to the login function 
+in @src/lib/auth.ts. 
+
+The function currently returns Promise<User | null>.
+DO NOT change this return type.
+Return null for error cases, throw only for unexpected errors.
+Other files depend on this signature — don't break them."
+```
+
+## Failure Mode 4: Confident Nonsense
+
+Claude gives an answer that sounds authoritative but is wrong.
+
+**What it looks like:**
+
+```bash
+> "What's the maximum connection pool size for Supabase?"
+Claude: "Supabase supports up to 500 concurrent connections 
+by default with the Pro plan."
+# This number might be completely made up
+```
+
+**Why it happens:** Claude generates plausible-sounding answers based on patterns. For specific numbers, versions, or configuration details, it might confuse different products or use outdated data.
+
+**The fix:**
+
+```bash
+# Verify specific claims
+"You said Supabase supports 500 connections. 
+Search the Supabase documentation to verify this number.
+What is the actual connection limit for each plan?"
+
+# Or use research mode for current data
+# Research mode can fetch the actual current documentation
+```
+
+Rule of thumb: **verify any specific numbers, limits, or version-specific claims** that Claude makes, especially for configuration and pricing.
+
+## Failure Mode 5: The Wrong Approach
+
+Claude picks an approach that technically works but is the wrong solution.
+
+**What it looks like:**
+
+```bash
+> "Make this page load faster"
+# Claude adds aggressive caching everywhere
+# But the real issue was an N+1 query in the database
+```
+
+**Why it happens:** Without enough context about the actual problem, Claude picks the most common solution, not the right one.
+
+**The fix:**
+
+```bash
+# Give Claude the diagnosis, not just the symptom
+"This page takes 4 seconds to load. I profiled it and 
+the bottleneck is the getUsersWithProjects query in 
+@src/lib/queries.ts — it makes a separate database call 
+for each user's projects (N+1 problem).
+
+Fix the N+1 query by using a JOIN or a single batched query.
+Don't add caching — fix the underlying query."
+```
+
+When you know the problem, tell Claude the problem. Do not just describe the symptom.
+
+## Recovery Strategies
+
+### Strategy 1: The Git Safety Net
+
+Always have a way to go back:
+
+```bash
+# Before a big Claude session
+git add -A && git commit -m "WIP: checkpoint before refactor"
+
+# If Claude breaks everything
+git reset --soft HEAD~1  # Undo commit but keep changes staged
+git checkout -- .        # Discard all changes
+
+# Or use stash
+git stash push -m "before claude refactor"
+# ... Claude does its thing ...
+git stash pop  # If you need to go back
+```
+
+### Strategy 2: The Incremental Approach
+
+Do not let Claude change 20 files at once:
+
+```bash
+# BAD: Everything at once
+"Refactor the entire API layer to use middleware pattern"
+
+# GOOD: One file at a time
+"Refactor @src/app/api/users/route.ts to use the middleware 
+pattern. Keep the same behavior."
+# Test. Verify. Then move to the next file.
+```
+
+### Strategy 3: The Specification Approach
+
+When Claude keeps getting it wrong, write a specification:
+
+```bash
+"Implement a rate limiter with EXACTLY these behaviors:
+
+INPUT:
+- identifier: string (IP address or user ID)
+- limit: number (max requests)  
+- window: number (time window in seconds)
+
+OUTPUT:
+- { allowed: boolean, remaining: number, resetAt: Date }
+
+BEHAVIOR:
+- First request: allowed=true, remaining=limit-1
+- limit+1 request within window: allowed=false, remaining=0
+- After window expires: counter resets
+- Must be atomic (handle concurrent requests)
+
+IMPLEMENTATION:
+- Use Redis for storage
+- Use the existing Redis client from @src/lib/redis.ts
+- Export as a function, not a class
+- No external rate-limiting libraries"
+```
+
+The more precise the specification, the less room Claude has to go wrong.
+
+### Strategy 4: The Review-Before-Apply Pattern
+
+```bash
+# Ask Claude to show changes without applying
+"Show me exactly what changes you would make to 
+@src/lib/auth.ts to add refresh token rotation.
+Use diff format. Don't modify the file yet."
+
+# Review the diff
+# If it looks right:
+"Apply those changes."
+
+# If something is wrong:
+"The approach is wrong because [reason]. Instead, do [this]."
+```
+
+## When to /clear vs New Session vs Be More Specific
+
+```
+Claude gave a slightly wrong answer?
+└── BE MORE SPECIFIC in the same session
+    "That's close, but use X instead of Y"
+
+Claude is on the wrong track entirely?
+└── /clear and restate the problem differently
+
+Claude is stuck in a loop?
+└── NEW SESSION with a precise prompt
+
+Claude keeps making the same type of mistake?
+└── Update CLAUDE.md with explicit instructions
+    "Never use deprecated API X, always use API Y"
+```
+
+## Prevention: CLAUDE.md Anti-Hallucination Rules
+
+Add common mistakes to your CLAUDE.md to prevent them:
+
+```markdown
+# CLAUDE.md
+
+## Common Mistakes to Avoid
+- DO NOT use `createServerAction` — it doesn't exist. Use 'use server' directive.
+- DO NOT import from `@/lib/old-auth` — it was deleted. Use `@/lib/auth`.
+- DO NOT use `pool.query()` directly — always use the `db` wrapper from `@/lib/db`.
+- The max page size is 100, not 1000. Always enforce this in API routes.
+- We use `date-fns`, NOT `moment.js`. Do not install moment.
+
+## API Patterns
+- All API routes must return `{ data, error }` shape
+- Always validate input with zod before processing
+- Use the `withAuth` middleware for protected routes
+```
+
+This prevents Claude from repeating known mistakes across sessions.
+
+## Key Takeaway
+
+Claude fails in predictable ways: loops, hallucinations, breaking changes, wrong approaches, and confident incorrectness. For each failure mode, there is a specific recovery strategy. The most important habits are: always have a git safety net, start fresh sessions instead of fighting loops, give Claude correct examples instead of just telling it what is wrong, and use constraints to prevent breaking changes. Add recurring mistakes to your CLAUDE.md to prevent them permanently. The developers who get the most out of Claude are not the ones who never encounter failures — they are the ones who recover from failures quickly and prevent the same failure from happening twice.

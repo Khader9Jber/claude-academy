@@ -1,0 +1,12 @@
+{
+  "title": "Tips and Tricks",
+  "slug": "tips-and-tricks",
+  "description": "Practical tips, shortcuts, and lesser-known techniques that make you dramatically more effective with Claude. Each lesson is a focused collection of actionable tricks.",
+  "arc": "practitioner",
+  "order": 18,
+  "icon": "Lightbulb",
+  "color": "#5e9ed6",
+  "estimatedHours": 5,
+  "prerequisites": ["claude-code-basics"],
+  "lessonCount": 7
+}

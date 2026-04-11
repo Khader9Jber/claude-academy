@@ -1,0 +1,425 @@
+---
+title: "Token Saving Tricks That Cut Your Bill in Half"
+slug: "token-saving-tricks"
+order: 1
+difficulty: "intermediate"
+duration: 20
+tags: ["tips", "tokens", "cost", "optimization"]
+objectives:
+  - "Identify the biggest sources of token waste in your Claude workflow"
+  - "Apply 15+ specific tricks to reduce token consumption"
+  - "Measure before and after token usage for each optimization"
+  - "Build habits that keep your daily usage under control"
+quiz:
+  - id: "token-saving-1"
+    question: "What does the /compact command do?"
+    type: "multiple-choice"
+    options:
+      - "Deletes old messages from the conversation"
+      - "Summarizes the conversation context to reduce token usage while preserving key information"
+      - "Compresses files on disk"
+      - "Switches to a smaller model"
+    correct: 1
+    explanation: "/compact summarizes your conversation context into a shorter representation. This preserves the key information Claude needs while dramatically reducing the token count of the context window. Use it when your session gets long and you notice Claude slowing down or hitting limits."
+  - id: "token-saving-2"
+    question: "Why does referencing files with @ use fewer tokens than pasting file contents?"
+    type: "multiple-choice"
+    options:
+      - "@ compresses the file"
+      - "@ only sends the file name, not the contents"
+      - "@ lets Claude read the file on demand rather than loading everything into context upfront"
+      - "@ is just a shortcut, token usage is the same"
+    correct: 2
+    explanation: "When you use @ to reference a file, Claude Code reads the file on demand and can be selective about what it loads into context. When you paste the full file contents into your prompt, every single character counts as tokens in your input — even parts Claude doesn't need."
+  - id: "token-saving-3"
+    question: "Which effort level should you use for simple, straightforward tasks?"
+    type: "multiple-choice"
+    options:
+      - "Always use max effort for best results"
+      - "Use low or medium effort — they use fewer tokens and are sufficient for simple tasks"
+      - "Effort levels don't affect token usage"
+      - "Always use the default"
+    correct: 1
+    explanation: "Low and medium effort levels use fewer tokens by reducing the depth of Claude's reasoning. For straightforward tasks like 'rename this variable' or 'add a console.log here', low effort is perfectly sufficient and can cut token usage by 50-70% compared to max effort."
+  - id: "token-saving-4"
+    question: "What is the most effective way to reduce token usage across multiple sessions?"
+    type: "multiple-choice"
+    options:
+      - "Use a faster internet connection"
+      - "Keep sessions short and focused — start new sessions for new tasks instead of continuing long ones"
+      - "Disable syntax highlighting"
+      - "Use shorter variable names in your code"
+    correct: 1
+    explanation: "Long sessions accumulate context that gets resent with every message. A session with 50 back-and-forth messages sends all that history with each new prompt. Starting fresh sessions for new tasks keeps context lean. Combined with good CLAUDE.md files that provide persistent context, short sessions are the single biggest token saver."
+---
+
+## The Token Bill Reality Check
+
+I was burning through tokens like they were free. My daily usage looked like this:
+
+```
+Monday:    2.1M tokens
+Tuesday:   1.8M tokens  
+Wednesday: 2.4M tokens
+Thursday:  1.9M tokens
+Friday:    2.2M tokens
+───────────────────────
+Weekly:    10.4M tokens
+```
+
+After applying the tricks in this lesson, my usage dropped to:
+
+```
+Monday:    780K tokens
+Tuesday:   650K tokens
+Wednesday: 920K tokens
+Thursday:  710K tokens
+Friday:    830K tokens
+───────────────────────
+Weekly:    3.89M tokens (62% reduction)
+```
+
+Same productivity. Less than half the tokens. Here is every trick that made the difference.
+
+## Trick 1: Use /compact Religiously
+
+The single biggest token drain is long conversation context. Every message you send includes the entire conversation history.
+
+```
+Message 1:  You send 500 tokens, Claude reads 500
+Message 10: You send 500 tokens, Claude reads ~15,000 (all history)
+Message 30: You send 500 tokens, Claude reads ~80,000 (all history)
+Message 50: You send 500 tokens, Claude reads ~200,000 (all history)
+```
+
+The fix:
+
+```bash
+# After 10-15 messages, or when you switch subtasks:
+/compact
+
+# Before: 45,000 tokens of context
+# After:  3,000 tokens of context (summary)
+```
+
+Run `/compact` every time you finish a subtask. It summarizes the conversation into a fraction of the original tokens while keeping the important details.
+
+**Token savings: 60-80% of context per compaction**
+
+## Trick 2: Reference Files with @ Instead of Pasting
+
+Stop copying file contents into your prompts.
+
+```bash
+# BAD: Pasting 200 lines of code (2,000+ tokens)
+"Here's my file:
+import React from 'react';
+... (200 lines) ...
+Fix the bug on line 45"
+
+# GOOD: Reference the file (20 tokens)
+"Fix the bug on line 45 of @src/components/UserProfile.tsx"
+```
+
+When you use `@`, Claude reads the file on demand. When you paste, every character counts against your input tokens — including all the lines Claude does not need.
+
+**Token savings: 90-95% per file reference**
+
+## Trick 3: Use Effort Levels Strategically
+
+Not every task needs Claude's deepest thinking.
+
+```bash
+# Simple rename — use low effort
+claude --effort low "Rename the variable 'x' to 'userCount' in @src/utils/stats.ts"
+
+# Straightforward bug fix — use medium
+claude --effort medium "Fix the off-by-one error in the pagination logic in @src/lib/paginate.ts"
+
+# Complex architecture decision — use max
+claude --effort max "Design the database schema for a multi-tenant SaaS with per-tenant encryption"
+```
+
+Token usage by effort level (approximate for a typical task):
+
+```
+Low effort:    ~2,000 tokens output
+Medium effort: ~5,000 tokens output  
+Default:       ~8,000 tokens output
+Max effort:    ~15,000 tokens output
+```
+
+**Token savings: 50-75% on simple tasks with low effort**
+
+## Trick 4: Keep Sessions Short and Focused
+
+This is the highest-impact habit. One task per session.
+
+```bash
+# BAD: One mega-session for everything
+claude
+> "Add the user profile page"
+> "Now fix the login bug"
+> "Also update the README"
+> "And refactor the API routes"
+# By message 40, every prompt carries 200K+ tokens of context
+
+# GOOD: Separate sessions for separate tasks
+claude "Add the user profile page to @src/app/profile/page.tsx"
+# Done. Exit.
+
+claude "Fix the login bug in @src/lib/auth.ts — error: 'Cannot read property of undefined'"
+# Done. Exit.
+
+claude "Update the README to document the new profile feature"
+# Done. Exit.
+```
+
+Each fresh session starts with zero context overhead.
+
+**Token savings: 40-60% across a full workday**
+
+## Trick 5: Use .claudeignore to Exclude Noise
+
+Claude reads your project structure. If your project has 10,000 files in `node_modules`, build artifacts, or generated code, Claude might scan them.
+
+Create `.claudeignore`:
+
+```bash
+# .claudeignore
+node_modules/
+dist/
+build/
+.next/
+coverage/
+*.min.js
+*.map
+*.lock
+__pycache__/
+.git/
+*.pyc
+vendor/
+```
+
+This prevents Claude from reading files that are never relevant, reducing both automatic context gathering and accidental file reads.
+
+**Token savings: 10-30% on project-wide operations**
+
+## Trick 6: Write Structured Prompts, Not Rambling Ones
+
+Structured prompts use fewer tokens and get better results.
+
+```bash
+# BAD: Rambling (85 tokens)
+"So I have this React component and it's supposed to show a list of users 
+but for some reason when I click the delete button nothing happens and 
+I think it might be related to the state management but I'm not sure, 
+can you take a look and figure out what's wrong?"
+
+# GOOD: Structured (42 tokens)
+"Bug: Delete button in @src/components/UserList.tsx does nothing.
+Expected: Clicking delete removes user from list.
+Actual: Click handler fires but list doesn't update.
+Suspect: State not updating after API call."
+```
+
+The structured version is half the tokens and gives Claude better information to work with.
+
+**Token savings: 30-50% on prompt input**
+
+## Trick 7: Use Headless Mode for Known Tasks
+
+When you know exactly what you want, skip the interactive session entirely.
+
+```bash
+# Interactive mode: multiple back-and-forth messages
+claude
+> "Add error handling to the API route"
+> "Actually, use try-catch with a custom error class"
+> "And log the errors to our logging service"
+> "Perfect, now do the same for the other 5 routes"
+
+# Headless mode: one shot, no conversation overhead
+claude -p "Add try-catch error handling to all API routes in @src/app/api/. 
+Use the CustomError class from @src/lib/errors.ts. 
+Log errors using the logger from @src/lib/logger.ts.
+Apply to all 6 route files."
+```
+
+Headless mode (`-p`) sends one prompt, gets one response, done. No conversation history building up.
+
+**Token savings: 50-70% for well-defined tasks**
+
+## Trick 8: Be Specific About What You Want Changed
+
+Vague prompts make Claude read more files and produce more output.
+
+```bash
+# BAD: Vague (Claude reads 20 files trying to figure out what you mean)
+"Improve the performance of my app"
+
+# GOOD: Specific (Claude reads 1-2 files)
+"Add React.memo to @src/components/ExpensiveList.tsx to prevent 
+unnecessary re-renders when parent state changes"
+```
+
+**Token savings: 60-80% on file reading**
+
+## Trick 9: Use /clear Instead of Starting Over
+
+If you need to reset context mid-session but stay in the same terminal:
+
+```bash
+# In an active Claude Code session:
+/clear
+
+# This wipes the conversation history without closing the session
+# Much faster than Ctrl+C and restarting
+```
+
+Useful when you finished one task and want to start another without the overhead of restarting the process.
+
+**Token savings: equivalent to starting a new session**
+
+## Trick 10: Put Repetitive Context in CLAUDE.md
+
+If you find yourself typing the same instructions in every session:
+
+```markdown
+# CLAUDE.md
+
+## Project conventions
+- Use TypeScript strict mode
+- Error handling: always use AppError class from src/lib/errors.ts
+- Logging: use the logger from src/lib/logger.ts, never console.log
+- Tests: co-locate with source files as *.test.ts
+- Styling: Tailwind only, no CSS modules
+
+## Key files
+- Database schema: src/db/schema.ts
+- API routes: src/app/api/
+- Shared types: src/types/
+```
+
+CLAUDE.md is loaded once per session — it is far cheaper than repeating instructions in every prompt.
+
+**Token savings: 200-500 tokens per message you would have repeated**
+
+## Trick 11: Avoid "Explain" When You Need "Do"
+
+```bash
+# BAD: Costs extra tokens for explanation you don't need
+"Explain how to add pagination to this API and then implement it"
+
+# GOOD: Just do it
+"Add cursor-based pagination to @src/app/api/users/route.ts. 
+Use the 'cursor' and 'limit' query params. Default limit 20."
+```
+
+If you need understanding, ask for explanation. If you need code, just ask for code. Mixing both doubles the output tokens.
+
+**Token savings: 40-60% on output**
+
+## Trick 12: Use Precise Error Messages
+
+```bash
+# BAD: Claude has to reproduce and investigate (expensive)
+"My app crashes when I click submit"
+
+# GOOD: Claude can go straight to the fix (cheap)
+"TypeError: Cannot read properties of undefined (reading 'email')
+at handleSubmit (src/components/ContactForm.tsx:34)
+Fix this — the form data object is possibly undefined"
+```
+
+Pasting the actual error message saves Claude from reading files to diagnose.
+
+**Token savings: 30-50% on debugging tasks**
+
+## Trick 13: Batch Related Changes
+
+```bash
+# BAD: 5 separate sessions (each with startup overhead)
+claude "Add email field to User type"
+claude "Update the user form to include email"
+claude "Add email validation"
+claude "Update the API to accept email"
+claude "Add email to the database migration"
+
+# GOOD: One session with a clear plan
+claude -p "Add an email field to the user system:
+1. Add 'email: string' to the User type in @src/types/user.ts
+2. Add email input to @src/components/UserForm.tsx with validation
+3. Update @src/app/api/users/route.ts to accept and validate email
+4. Create a migration in @src/db/migrations/ to add email column
+Use zod for validation. Email must be valid format and unique."
+```
+
+**Token savings: 30-40% compared to multiple sessions**
+
+## Trick 14: Stop Asking Claude to Repeat Itself
+
+```bash
+# BAD: 
+"Show me the UserProfile component"
+# Claude outputs the full component
+"Now add a loading state to it"
+# Claude outputs the FULL component again with the loading state added
+
+# GOOD:
+"Add a loading state to @src/components/UserProfile.tsx — 
+show a skeleton loader while data is fetching. 
+Only show me the changed parts."
+```
+
+By referencing the file and asking for changes only, you avoid Claude echoing back hundreds of lines of unchanged code.
+
+**Token savings: 50-70% on output for modification tasks**
+
+## Trick 15: Monitor Your Usage
+
+Keep track of what is costing you the most:
+
+```bash
+# Check your recent usage
+claude usage
+
+# Set a budget alert in your settings
+# This warns you when approaching your daily limit
+```
+
+What I discovered from tracking my own usage:
+
+```
+Debugging sessions:     45% of total tokens (longest conversations)
+Feature implementation: 30% of total tokens
+Quick fixes:            10% of total tokens  
+Explanations:           15% of total tokens (eliminated most of these)
+```
+
+Debugging was my biggest cost because those sessions went 30+ messages. Applying `/compact` and being more specific about errors cut debugging costs by 60%.
+
+## The Compound Effect
+
+These tricks compound. Here is a real before-and-after for a single task — "add user authentication":
+
+```
+BEFORE (no tricks):
+- 1 long session, 45 messages
+- Rambling prompts, vague requests
+- Pasted file contents, asked for explanations
+- Total: 380,000 tokens
+
+AFTER (all tricks applied):
+- 3 short sessions (login, signup, middleware)
+- Structured prompts, specific requests
+- File references, headless mode for known changes
+- /compact between subtasks
+- Total: 95,000 tokens
+
+Savings: 75%
+```
+
+## Key Takeaway
+
+Token savings come from three principles: keep context small (short sessions, /compact, .claudeignore), be precise (structured prompts, specific errors, file references), and avoid waste (right effort level, no unnecessary explanations, batch related work). You do not need to apply all 15 tricks at once. Start with the top 3 — short sessions, /compact, and file references — and you will see an immediate 50% drop in token usage.

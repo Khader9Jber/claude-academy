@@ -1,0 +1,289 @@
+---
+title: "Plan Mode and Ultra Plan Mode"
+slug: "plan-mode-tricks"
+order: 4
+difficulty: "intermediate"
+duration: 20
+tags: ["tips", "plan-mode", "architecture", "strategy"]
+objectives:
+  - "Use plan mode to explore approaches before committing to code"
+  - "Understand when ultra plan mode is worth the extra tokens"
+  - "Save hours on large migrations and refactors with upfront planning"
+  - "Execute plans efficiently after the planning phase"
+quiz:
+  - id: "plan-mode-1"
+    question: "What does plan mode (/plan) do differently from normal mode?"
+    type: "multiple-choice"
+    options:
+      - "It makes Claude think faster"
+      - "It tells Claude to analyze, plan, and propose an approach WITHOUT making any changes to files"
+      - "It creates a project plan document"
+      - "It switches to a different model"
+    correct: 1
+    explanation: "Plan mode instructs Claude to read, analyze, and think through the problem without modifying any files. Claude will explore your codebase, identify relevant files, consider approaches, and present a structured plan. You review the plan and then decide whether to proceed with implementation. This prevents premature changes that might need reverting."
+  - id: "plan-mode-2"
+    question: "When is plan mode most valuable?"
+    type: "multiple-choice"
+    options:
+      - "For renaming a variable"
+      - "Before large refactors, migrations, or architectural changes where a wrong approach would be costly to undo"
+      - "For every single task"
+      - "Only for new projects"
+    correct: 1
+    explanation: "Plan mode shines when mistakes are expensive. A database migration, a major refactor, or an architectural change could take hours to undo if the approach is wrong. Spending 5 minutes in plan mode to validate the approach before committing saves the pain of reverting bad changes across dozens of files."
+  - id: "plan-mode-3"
+    question: "What is ultra plan mode and how does it differ from regular plan mode?"
+    type: "multiple-choice"
+    options:
+      - "It uses a bigger model"
+      - "It performs deeper analysis with extended thinking, exploring more possibilities and edge cases before proposing a plan"
+      - "It plans for multiple projects at once"
+      - "It creates a visual diagram"
+    correct: 1
+    explanation: "Ultra plan mode uses extended thinking to perform deeper analysis. It considers more edge cases, explores alternative approaches more thoroughly, and produces more detailed plans. It uses more tokens but catches issues that regular plan mode might miss — especially valuable for complex architectural decisions."
+  - id: "plan-mode-4"
+    question: "After reviewing a plan from plan mode, what is the best way to proceed?"
+    type: "multiple-choice"
+    options:
+      - "Start a completely new session"
+      - "Tell Claude to execute the plan, optionally with modifications based on your review"
+      - "Copy the plan into a document"
+      - "Manually implement it yourself"
+    correct: 1
+    explanation: "After reviewing the plan, you can tell Claude to proceed with execution in the same session. You can also modify the plan: 'Execute this plan but skip step 3 and use approach B for the database instead.' Claude retains the full context of the plan and can implement it efficiently."
+---
+
+## The 5-Minute Investment That Saves 3 Hours
+
+I was midway through a database migration — moving from MongoDB to PostgreSQL. Thirty files changed, new schemas written, queries rewritten. Then I realized the approach was wrong. The migration path I chose could not handle the nested document structures.
+
+Three hours of work, rolled back with `git checkout .`.
+
+If I had spent 5 minutes in plan mode first, Claude would have identified the nested document problem before a single file was changed. That experience changed how I work with Claude on anything non-trivial.
+
+## Plan Mode: The Basics
+
+Activate plan mode by starting your prompt with `/plan` or by telling Claude to plan without making changes:
+
+```bash
+# Using the /plan command
+/plan Migrate our authentication from session-based to JWT
+
+# Or explicitly instructing Claude
+"Plan how to migrate our authentication from session-based to JWT.
+Don't make any changes yet — just analyze the codebase and 
+propose an approach.
+
+Consider:
+- What files need to change
+- The order of changes
+- Backwards compatibility
+- What could go wrong"
+```
+
+Claude will read your codebase, analyze the relevant files, and produce a structured plan:
+
+```
+## Migration Plan: Session Auth → JWT
+
+### Files to Modify (12 files)
+1. src/lib/auth.ts — Replace session creation with JWT signing
+2. src/middleware.ts — Replace session validation with JWT verification
+3. src/app/api/auth/login/route.ts — Return JWT instead of session cookie
+4. src/app/api/auth/logout/route.ts — Handle JWT invalidation
+...
+
+### Approach
+Phase 1: Add JWT infrastructure alongside existing sessions
+Phase 2: Migrate endpoints one by one (backwards compatible)
+Phase 3: Remove session code after all endpoints migrated
+
+### Risks
+- Risk: Existing sessions become invalid during migration
+  Mitigation: Support both auth methods during Phase 2
+- Risk: JWT secret rotation
+  Mitigation: Use JWKS with key rotation support from day 1
+
+### Estimated Scope
+- 12 files modified
+- 3 new files (JWT utils, JWKS endpoint, token refresh)
+- ~400 lines changed
+- Recommended: write tests before migrating (especially middleware)
+```
+
+You review this. If it looks right, tell Claude to proceed. If not, adjust the plan before any code changes.
+
+## When to Use Plan Mode
+
+```
+Simple task (< 5 minutes of work)?
+├── YES → Skip plan mode. Just do it.
+│   Examples: rename variable, add a field, fix a typo
+│
+└── NO → Could a wrong approach cost > 30 minutes to undo?
+    ├── YES → USE PLAN MODE
+    │   Examples: database migration, auth refactor,
+    │   API redesign, dependency upgrade
+    │
+    └── NO → Optional. Use if you're unsure about approach.
+        Examples: new feature with multiple valid approaches,
+        unfamiliar codebase area
+```
+
+My rule of thumb: **if you would sketch it on a whiteboard before coding, use plan mode.**
+
+## Real Scenarios Where Plan Mode Saved Me
+
+### Scenario 1: Database Schema Redesign
+
+```bash
+/plan "We need to add multi-tenancy to our database. 
+Currently all data is in shared tables with no tenant isolation.
+
+Our tables: users, projects, tasks, comments, files
+
+Options to evaluate:
+A) Add tenant_id column to every table
+B) Schema-per-tenant in PostgreSQL
+C) Separate database per tenant
+
+Constraints:
+- 50 tenants now, expecting 500 in 12 months
+- Some queries need cross-tenant analytics (admin dashboard)
+- Using Supabase (PostgreSQL)
+- Must not break existing API contracts"
+```
+
+Plan mode explored all three options, identified that schema-per-tenant would break Supabase's connection pooling, and recommended Option A with RLS policies — something I would have discovered the hard way after implementing Option B.
+
+### Scenario 2: Framework Upgrade
+
+```bash
+/plan "Upgrade this Next.js 14 app to Next.js 15.
+
+Analyze the codebase and identify:
+1. All breaking changes that affect us
+2. Files that need modification
+3. The safest order to make changes
+4. What tests to run at each step
+
+@package.json
+@next.config.js
+@src/app/"
+```
+
+The plan identified 8 breaking changes specific to our codebase, including a middleware API change that would have caused a production outage if I had missed it.
+
+### Scenario 3: Refactor Before Feature
+
+```bash
+/plan "Before adding the notification system, I think we 
+need to refactor the event handling. Currently events are 
+handled inline in each API route.
+
+Analyze the current event handling in @src/app/api/ and 
+propose a refactored architecture that would make adding 
+notifications clean.
+
+Don't implement — just show me the proposed architecture."
+```
+
+## Ultra Plan Mode
+
+Ultra plan mode is plan mode with extended thinking. Claude thinks more deeply, considers more edge cases, and produces more thorough analysis.
+
+```bash
+# Activate ultra plan mode
+"Use ultrathink to plan this migration."
+
+# Or be explicit
+"Think very deeply about this before proposing a plan.
+Consider edge cases, failure modes, and alternative approaches.
+Take your time — thoroughness matters more than speed."
+```
+
+### When Ultra Plan Mode Is Worth It
+
+```
+Regular plan mode:  ~5,000 tokens (good for most planning)
+Ultra plan mode:    ~15,000 tokens (deep analysis)
+```
+
+Use ultra plan mode when:
+- The decision is hard to reverse (database migrations, API contracts)
+- Multiple valid approaches exist and you need thorough comparison
+- The system is complex with many interdependencies
+- Security or data integrity is at stake
+
+Skip ultra plan mode when:
+- The approach is obvious and you just need a file list
+- The change is isolated to a few files
+- You have already decided on the approach and just need execution steps
+
+### Ultra Plan Mode in Action
+
+```bash
+"Use extended thinking to plan how we should implement 
+real-time collaboration in our document editor.
+
+Current stack: Next.js, Supabase, Tiptap editor.
+
+I need you to deeply consider:
+1. WebSocket vs SSE vs Supabase Realtime
+2. Conflict resolution strategy (OT vs CRDT)
+3. How to handle offline edits
+4. Cursor presence and awareness
+5. Performance with 50 concurrent editors
+
+For each decision point, explain the trade-offs and 
+justify your recommendation. Consider what the industry 
+leaders (Google Docs, Notion) do and why."
+```
+
+Ultra plan mode produced a 2,000-word analysis that identified CRDTs as the better choice for our use case (Supabase Realtime does not handle OT well), recommended Yjs as the CRDT library, and outlined a phased implementation plan. That analysis would have taken me hours of research to produce on my own.
+
+## Executing After Planning
+
+Once you have reviewed and approved the plan:
+
+```bash
+# Simple execution
+"The plan looks good. Execute it."
+
+# Execution with modifications
+"Execute the plan with these changes:
+- Skip Phase 3 for now (we'll do it next sprint)
+- Use approach B for the database instead of approach A
+- Start with the tests before modifying production code"
+
+# Phased execution
+"Execute Phase 1 only. I'll review before moving to Phase 2."
+```
+
+## Plan Mode Workflow Pattern
+
+The most effective workflow I have found:
+
+```bash
+# Step 1: Plan (5 minutes)
+/plan "Add role-based access control to the API..."
+
+# Step 2: Review the plan (2 minutes)
+# Read Claude's plan, check for gaps
+
+# Step 3: Refine if needed (1 minute)
+"Good plan, but also consider: what happens when a user's 
+role changes while they have active sessions?"
+
+# Step 4: Execute (Claude implements)
+"Plan looks complete. Execute starting with Phase 1."
+
+# Step 5: Verify
+"Run the tests and show me any failures."
+```
+
+Total planning time: 8 minutes. Time saved by avoiding wrong approaches: often hours.
+
+## Key Takeaway
+
+Plan mode is the difference between coding and engineering. Anyone can tell Claude to "just do it" and fix mistakes later. Engineers plan first, validate the approach, then execute with confidence. Use plan mode before any change that would cost more than 30 minutes to undo. Use ultra plan mode for decisions that are hard to reverse. The 5-minute investment in planning consistently saves hours of debugging, reverting, and re-implementing. Make it a habit: when in doubt, plan first.

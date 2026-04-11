@@ -1,0 +1,418 @@
+---
+title: "Prompt Writing Tricks for 10x Better Output"
+slug: "prompt-writing-tricks"
+order: 2
+difficulty: "intermediate"
+duration: 22
+tags: ["tips", "prompts", "writing", "patterns"]
+objectives:
+  - "Master the Role + Task + Context + Format framework for prompts"
+  - "Apply 15+ prompt patterns that consistently improve output quality"
+  - "Recognize and avoid common prompt anti-patterns"
+  - "Build a personal library of reusable prompt templates"
+quiz:
+  - id: "prompt-writing-1"
+    question: "What is the most effective prompt structure for complex tasks?"
+    type: "multiple-choice"
+    options:
+      - "Just describe what you want in natural language"
+      - "Role + Task + Context + Format — tell Claude who to be, what to do, what it needs to know, and how to format the output"
+      - "Write the shortest possible prompt"
+      - "Always start with 'Please'"
+    correct: 1
+    explanation: "The Role + Task + Context + Format framework consistently produces better results because it gives Claude a clear mental model (role), specific objective (task), relevant background (context), and output expectations (format). Each component reduces ambiguity and steers Claude toward exactly what you need."
+  - id: "prompt-writing-2"
+    question: "Why are XML tags useful in prompts?"
+    type: "multiple-choice"
+    options:
+      - "Claude can only read XML"
+      - "They visually separate different parts of your prompt so Claude can parse structure clearly"
+      - "They make prompts run faster"
+      - "They are required for Claude Code"
+    correct: 1
+    explanation: "XML tags like <context>, <requirements>, <examples> create clear visual boundaries in your prompt. Claude was trained to recognize these structural markers, making it much better at distinguishing between your instructions, the context you're providing, and the examples you want it to follow. This prevents Claude from confusing 'what to do' with 'reference material.'"
+  - id: "prompt-writing-3"
+    question: "When should you use 'think step by step' in a prompt?"
+    type: "multiple-choice"
+    options:
+      - "Always — it improves every prompt"
+      - "For complex reasoning tasks where Claude needs to work through multiple logical steps before reaching a conclusion"
+      - "Only for math problems"
+      - "Never — it wastes tokens"
+    correct: 1
+    explanation: "'Think step by step' (chain-of-thought prompting) is most valuable for tasks requiring multi-step reasoning: debugging complex logic, architectural decisions, analyzing trade-offs, or mathematical calculations. For simple tasks like 'rename this variable,' it wastes tokens without improving results."
+  - id: "prompt-writing-4"
+    question: "What is a 'negative prompt' and when should you use it?"
+    type: "multiple-choice"
+    options:
+      - "A prompt that criticizes Claude"
+      - "Telling Claude what NOT to do — useful when Claude consistently produces unwanted patterns in its output"
+      - "A prompt that produces errors"
+      - "A prompt written in passive voice"
+    correct: 1
+    explanation: "Negative prompting means explicitly telling Claude what to avoid: 'Don't add comments to the code,' 'Don't use any external libraries,' 'Don't explain the changes, just make them.' This is especially useful when Claude has a tendency you want to override — like adding verbose comments or suggesting alternatives when you just want the implementation."
+---
+
+## The Prompt Quality Gap
+
+The difference between a mediocre prompt and a great prompt is not length — it is structure. I have seen two developers ask Claude for the same thing and get wildly different results. The developer who got 10x better output was not smarter. They just knew how to ask.
+
+## Framework: Role + Task + Context + Format
+
+Every effective prompt has four components. You do not need all four every time, but knowing the framework helps you diagnose why a prompt is failing.
+
+```bash
+# The framework in action:
+
+"You are a senior TypeScript developer reviewing code for production readiness.
+
+Review @src/lib/auth.ts for:
+- Security vulnerabilities (XSS, injection, auth bypass)
+- Error handling gaps
+- TypeScript type safety issues
+
+Context: This handles user authentication for a SaaS app with 10K users.
+The auth flow is: email/password -> JWT -> httpOnly cookie.
+
+Format your response as:
+1. Critical issues (must fix before deploy)
+2. Warnings (should fix soon)
+3. Suggestions (nice to have)
+Each with the line number, issue, and fix."
+```
+
+Compare that to: "Review my auth file." Same task. Dramatically different output quality.
+
+## Trick 1: The "Act As" Pattern
+
+Tell Claude what role to inhabit. It changes how Claude approaches the problem.
+
+```bash
+# Generic response
+"How should I structure my database?"
+
+# Expert response
+"Act as a senior database architect with 15 years of experience in 
+PostgreSQL. I'm designing a database for a multi-tenant project 
+management app. We expect 500 organizations, each with up to 
+1000 users. What schema design would you recommend?"
+```
+
+Useful roles:
+- "Act as a senior security engineer reviewing this code for vulnerabilities"
+- "Act as a technical writer creating API documentation"
+- "Act as a performance engineer profiling this function"
+- "Act as a QA engineer writing edge case tests"
+
+## Trick 2: XML Tags for Structure
+
+XML tags create clear boundaries between different parts of your prompt.
+
+```bash
+"Review this API endpoint for issues.
+
+<code>
+// paste or reference code here
+@src/app/api/users/route.ts
+</code>
+
+<requirements>
+- Must handle 1000 concurrent requests
+- Response time under 200ms
+- Must validate all input with zod
+- Must return proper HTTP status codes
+</requirements>
+
+<constraints>
+- No external dependencies beyond what's in package.json
+- Must be backwards compatible with v1 API
+- Don't change the response shape
+</constraints>"
+```
+
+Without XML tags, Claude might confuse your requirements with its own suggestions. With them, each section is unambiguous.
+
+## Trick 3: "Think Step by Step" — When It Matters
+
+Chain-of-thought prompting improves results for complex reasoning. But it wastes tokens on simple tasks.
+
+```bash
+# WORTH IT: Complex debugging
+"This function calculates compound interest but gives wrong results 
+for periods > 12 months. Think step by step:
+1. Trace through the logic for a 24-month period
+2. Identify where the calculation diverges from the expected formula
+3. Fix the issue
+
+@src/lib/interest.ts"
+
+# NOT WORTH IT: Simple task
+"Rename the 'data' variable to 'userData' in @src/utils/helpers.ts"
+# Adding "think step by step" here just wastes tokens
+```
+
+Use it for: debugging, architecture decisions, algorithm design, trade-off analysis.
+Skip it for: renames, simple edits, formatting, straightforward implementations.
+
+## Trick 4: Negative Prompting
+
+Tell Claude what NOT to do. This is surprisingly effective.
+
+```bash
+# Without negative prompt:
+"Write a function to parse CSV data"
+# Claude adds: comments, error messages, console.logs, type exports, 
+# usage examples, alternative approaches...
+
+# With negative prompts:
+"Write a function to parse CSV data.
+- Don't add comments
+- Don't add console.log statements  
+- Don't suggest alternative approaches
+- Don't add usage examples
+- Don't export types separately — keep them in the same file"
+```
+
+Common negative prompts that save you from re-prompting:
+
+```bash
+"Don't explain the changes, just make them"
+"Don't add any new dependencies"
+"Don't refactor existing code, only add the new feature"
+"Don't change the function signatures"
+"Don't add error handling — I'll add it later"
+```
+
+## Trick 5: Give Examples of Desired Output
+
+Nothing beats showing Claude exactly what you want.
+
+```bash
+"Generate API documentation for @src/app/api/users/route.ts
+
+Follow this exact format:
+
+### GET /api/users
+**Description:** Retrieves a paginated list of users
+**Auth:** Required (Bearer token)
+**Query Params:**
+| Param | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| page  | number | No | 1 | Page number |
+| limit | number | No | 20 | Items per page |
+
+**Response 200:**
+\`\`\`json
+{
+  \"users\": [...],
+  \"total\": 150,
+  \"page\": 1,
+  \"totalPages\": 8
+}
+\`\`\`
+
+**Response 401:** Unauthorized
+**Response 500:** Internal server error
+
+---
+
+Now document all endpoints in the file using this exact format."
+```
+
+One concrete example is worth a hundred words of description.
+
+## Trick 6: The Specificity Ladder
+
+When Claude gives you something generic, make your prompt more specific by climbing the ladder:
+
+```bash
+# Level 1: Vague (bad)
+"Make this component better"
+
+# Level 2: Somewhat specific
+"Improve the performance of this component"
+
+# Level 3: Specific
+"Add memoization to prevent unnecessary re-renders in this component"
+
+# Level 4: Very specific (best)
+"Wrap the UserList component in React.memo and memoize the 
+filterUsers callback with useMemo. The dependency should be 
+[users, searchQuery]. This prevents re-renders when the 
+parent Sidebar component updates its unrelated state."
+```
+
+The more specific your prompt, the less Claude has to guess — and guessing is where mistakes happen.
+
+## Trick 7: Constraint-Based Prompting
+
+Give Claude constraints instead of instructions. It is often more effective.
+
+```bash
+# Instruction-based (Claude decides how to interpret it):
+"Write a fast sorting function"
+
+# Constraint-based (Claude has clear boundaries):
+"Write a sorting function with these constraints:
+- Must handle arrays up to 1M elements
+- Must be stable (equal elements keep original order)
+- Must not allocate more than O(n) extra memory
+- Must handle already-sorted arrays in O(n) time
+- Must work with any comparable type (use generics)
+- TypeScript, no external libraries"
+```
+
+Constraints eliminate ambiguity. Claude knows exactly what success looks like.
+
+## Trick 8: The "Before You Start" Pattern
+
+For complex tasks, tell Claude to plan before executing.
+
+```bash
+"Before you start writing code:
+1. List all the files you'll need to modify
+2. Describe the approach you'll take
+3. Identify any potential breaking changes
+4. Then implement the changes
+
+Task: Add role-based access control to the API. 
+Roles: admin, editor, viewer.
+@src/app/api/"
+```
+
+This prevents Claude from diving in and making changes that need to be reverted. You can review the plan and redirect before any code is written.
+
+## Trick 9: Format Specification
+
+Tell Claude exactly how to format the output.
+
+```bash
+# For code reviews:
+"Format as: [SEVERITY] file:line — description. Fix: code snippet"
+
+# For comparisons:
+"Create a table with columns: Feature, Option A, Option B, Winner"
+
+# For implementations:
+"Show only the changed lines with 3 lines of context above and below.
+Use diff format with + and - prefixes."
+
+# For lists:
+"Number each item. Keep each to one sentence. No sub-bullets."
+```
+
+Format specifications prevent Claude from choosing a format that does not work for your needs.
+
+## Trick 10: The "As If" Pattern
+
+```bash
+"Write this API endpoint as if it will handle 10,000 requests per second.
+Consider: connection pooling, query optimization, response caching,
+and error handling under load."
+
+"Review this code as if you're the security team at a bank.
+Flag anything that could lead to data exposure."
+
+"Write this documentation as if the reader is a junior developer 
+on their first day. Assume they know JavaScript but not this codebase."
+```
+
+The "as if" pattern sets a quality bar and perspective without being prescriptive.
+
+## Anti-Pattern 1: The Kitchen Sink Prompt
+
+```bash
+# BAD: Too many unrelated requests in one prompt
+"Fix the login bug, add dark mode support, update the README, 
+refactor the database queries, and add unit tests for the auth module"
+
+# GOOD: One focused task
+"Fix the login bug: users get 'Invalid credentials' when password 
+contains special characters. The issue is in @src/lib/auth.ts 
+in the validatePassword function."
+```
+
+Multiple unrelated tasks in one prompt degrade quality across all of them.
+
+## Anti-Pattern 2: Over-Politeness Tax
+
+```bash
+# BAD: Wasting tokens on pleasantries (every token counts)
+"Hi Claude! I hope you're doing well today. I was wondering if you 
+could possibly help me with something. I have this file and I think 
+there might be a bug in it. Would you be so kind as to take a look 
+at it and let me know what you think? Thank you so much in advance!"
+
+# GOOD: Direct and clear
+"Bug in @src/lib/auth.ts:34 — validatePassword returns true for empty strings. 
+Fix: add empty string check before bcrypt comparison."
+```
+
+Claude does not have feelings. Politeness tokens are wasted tokens.
+
+## Anti-Pattern 3: The Re-Explain Loop
+
+```bash
+# BAD: Giving Claude the same context repeatedly
+Message 1: "I'm building a SaaS with React and Next.js..."
+Message 5: "Remember, this is a SaaS built with React and Next.js..."
+Message 10: "As I mentioned, the stack is React + Next.js..."
+
+# GOOD: Put it in CLAUDE.md once, reference it
+# CLAUDE.md: "Stack: Next.js 14, React, TypeScript, Tailwind, Supabase"
+# Then just ask your question without repeating context
+```
+
+## Copy-Paste Prompt Templates
+
+### Code Review Template
+```
+Review @{file} for:
+1. Bugs and logic errors
+2. Security vulnerabilities  
+3. Performance issues
+4. TypeScript type safety
+
+For each issue: [severity] line:number — description — fix.
+Skip style/formatting issues.
+```
+
+### Feature Implementation Template
+```
+Implement: {feature description}
+
+Files to modify: {list files or use @}
+Requirements: {numbered list}
+Constraints: {what NOT to do}
+
+Follow existing patterns in the codebase.
+Run the linter after changes.
+```
+
+### Bug Fix Template
+```
+Bug: {one-line description}
+Error: {paste exact error message}
+File: @{file path}
+Line: {line number if known}
+Expected: {what should happen}
+Actual: {what happens instead}
+Steps to reproduce: {if relevant}
+```
+
+### Refactor Template
+```
+Refactor @{file} to {goal}.
+
+Constraints:
+- Don't change the public API
+- Don't change behavior (this is a pure refactor)
+- Keep all existing tests passing
+- {any other constraints}
+
+Show me the plan before making changes.
+```
+
+## Key Takeaway
+
+Great prompts are not about being verbose — they are about being structured and specific. Use the Role + Task + Context + Format framework as your default. Add XML tags when prompts get complex. Use negative prompts to prevent unwanted output. Give examples when format matters. And avoid the three anti-patterns: kitchen sink prompts, over-politeness, and repeated context. Build a library of prompt templates for your common tasks, and you will get consistently excellent results without thinking about prompt craft every time.

@@ -1,0 +1,363 @@
+---
+title: "Every Claude Mode Explained"
+slug: "claude-modes-masterclass"
+order: 5
+difficulty: "intermediate"
+duration: 22
+tags: ["tips", "modes", "workflows", "mastery"]
+objectives:
+  - "Understand every available Claude mode and its purpose"
+  - "Choose the right mode for any given task"
+  - "Combine modes for powerful multi-step workflows"
+  - "Build mode-based workflows into your daily routine"
+quiz:
+  - id: "claude-modes-1"
+    question: "When should you use headless mode (-p) instead of interactive mode?"
+    type: "multiple-choice"
+    options:
+      - "When you want to chat with Claude"
+      - "When you have a well-defined task that can be completed in a single prompt without back-and-forth"
+      - "When you need to debug"
+      - "When you're learning Claude"
+    correct: 1
+    explanation: "Headless mode (-p) is perfect for well-defined, single-shot tasks: 'add error handling to this file,' 'generate tests for this module,' 'fix this specific bug.' It sends one prompt, gets one response, and exits — no conversation overhead. Use interactive mode when you need back-and-forth refinement."
+  - id: "claude-modes-2"
+    question: "What does /loop do?"
+    type: "multiple-choice"
+    options:
+      - "Creates an infinite loop in your code"
+      - "Runs a prompt or command repeatedly on an interval, useful for monitoring, polling, or iterative tasks"
+      - "Loops through files in a directory"
+      - "Repeats the last command"
+    correct: 1
+    explanation: "/loop runs a specified prompt or command on a recurring interval. It's useful for monitoring tasks (check build status every 2 minutes), iterative improvements (keep refining until tests pass), or polling for state changes. Claude self-paces the loop based on what it's waiting for."
+  - id: "claude-modes-3"
+    question: "What is the best mode combination for a complex refactor?"
+    type: "multiple-choice"
+    options:
+      - "Just use interactive mode for everything"
+      - "Plan mode to design the approach, then headless mode (-p) to execute each phase, then interactive mode to review and fix issues"
+      - "Only use headless mode"
+      - "Use /loop to keep refactoring until done"
+    correct: 1
+    explanation: "The plan-execute-review pattern is the most effective for complex refactors. Plan mode ensures your approach is sound before changing any code. Headless mode efficiently executes each phase without conversation overhead. Interactive mode handles the nuanced review and any issues that arise. Each mode plays to its strength."
+  - id: "claude-modes-4"
+    question: "What does /simplify do?"
+    type: "multiple-choice"
+    options:
+      - "Simplifies your prompt"
+      - "Reviews recently changed code for opportunities to simplify, remove duplication, and improve quality"
+      - "Reduces the model size"
+      - "Shortens file names"
+    correct: 1
+    explanation: "/simplify reviews code changes you've recently made (or that Claude has made) and looks for opportunities to simplify: removing duplication, extracting shared logic, improving naming, reducing complexity. It's like a code review focused specifically on simplification. Best used after implementation, before committing."
+---
+
+## The Mode Menu
+
+Claude is not one tool — it is several tools wearing the same name. Each mode changes how Claude behaves, what it optimizes for, and what kind of output you get. Using the wrong mode is like using a screwdriver to hammer nails. It works, but badly.
+
+Here is every mode, when to use it, and what most people get wrong about each one.
+
+## Interactive Mode (Default)
+
+What it is: The standard Claude Code session. You type, Claude responds, you refine.
+
+```bash
+# Start interactive mode
+claude
+
+# You're now in a conversation
+> "Help me refactor the auth module"
+> "Actually, keep the old interface but change the internals"
+> "Good, but handle the edge case where token is expired"
+```
+
+**Best for:**
+- Exploratory work where you do not know exactly what you need
+- Debugging sessions that require back-and-forth
+- Learning and understanding unfamiliar code
+- Tasks that need iterative refinement
+
+**Watch out for:**
+- Token accumulation in long sessions (use /compact)
+- Using interactive mode for tasks that should be headless
+
+## Headless Mode (-p)
+
+What it is: Send one prompt, get one response, exit. No conversation, no session.
+
+```bash
+# Single-shot task
+claude -p "Add input validation to @src/app/api/users/route.ts using zod. 
+Validate: email (string, email format), name (string, 2-50 chars), 
+role (enum: admin, user, viewer)"
+
+# Pipe input
+cat error.log | claude -p "Analyze these errors and identify the root cause"
+
+# Chain with other tools
+claude -p "Generate a SQL migration for adding an 'email' column to users" > migration.sql
+```
+
+**Best for:**
+- Well-defined tasks with clear requirements
+- Scripting and automation
+- Batch processing multiple files
+- CI/CD integration
+- Tasks where you know exactly what you want
+
+**Watch out for:**
+- Using it for tasks that need clarification (you cannot ask follow-up questions)
+- Prompts that are too vague for single-shot execution
+
+## Plan Mode (/plan)
+
+What it is: Claude analyzes and plans without making changes.
+
+```bash
+/plan "How should we add caching to our API layer? 
+Analyze @src/app/api/ and propose an approach."
+```
+
+Covered in depth in the Plan Mode lesson. Key point: it prevents premature implementation.
+
+**Best for:** Anything you would sketch on a whiteboard first.
+
+## Research Mode
+
+What it is: Claude searches the web for current information and synthesizes findings.
+
+```bash
+# Activate in claude.ai or with web search tools
+"Research the current state of WebAssembly support 
+in major browsers as of 2025"
+```
+
+Covered in depth in the Research Mode lesson. Key point: use it for current information, not for working with your code.
+
+**Best for:** Technology decisions, finding documentation, investigating new errors.
+
+## Batch Mode
+
+What it is: Process multiple prompts or files in sequence.
+
+```bash
+# Process multiple files with the same instruction
+claude -p "Add JSDoc comments to all exported functions in @src/lib/auth.ts"
+claude -p "Add JSDoc comments to all exported functions in @src/lib/database.ts"
+claude -p "Add JSDoc comments to all exported functions in @src/lib/cache.ts"
+
+# Or use a script
+for file in src/lib/*.ts; do
+  claude -p "Add JSDoc comments to all exported functions in @$file"
+done
+```
+
+**Best for:**
+- Applying the same transformation across many files
+- Generating documentation for an entire module
+- Running the same analysis on multiple codebases
+
+**Watch out for:**
+- Each invocation has no memory of previous ones
+- Make sure the prompt works well on a single file before batching
+
+## Loop Mode (/loop)
+
+What it is: Runs a prompt or command repeatedly on an interval.
+
+```bash
+# Monitor a build
+/loop 2m "Check if the build at https://ci.example.com/build/123 has completed"
+
+# Iterative improvement
+/loop "Run the tests. If any fail, fix the failing test and run again. 
+Stop when all tests pass."
+
+# Polling for changes
+/loop 5m "Check if there are new PRs on the repo that need review"
+```
+
+**Best for:**
+- Monitoring long-running processes (builds, deployments)
+- Iterative fix-and-test cycles
+- Polling for state changes
+- Tasks that need periodic attention
+
+**Watch out for:**
+- Token costs — each loop iteration uses tokens
+- Setting intervals too short (burning tokens for no reason)
+
+## Simplify Mode (/simplify)
+
+What it is: Reviews recent changes and suggests simplifications.
+
+```bash
+# After implementing a feature
+/simplify
+
+# Claude reviews your recent changes and might say:
+# "I notice three functions in auth.ts share similar validation logic.
+#  Extracting a shared validateToken() function would reduce 
+#  duplication by 40 lines."
+```
+
+**Best for:**
+- Post-implementation review
+- Catching duplication and complexity before committing
+- Learning better patterns from your own code
+
+## The Mode Decision Tree
+
+```
+What do I need to do?
+│
+├── I need current info from the web
+│   └── Research mode
+│
+├── I know exactly what I want (one-shot)
+│   └── Headless mode (-p)
+│
+├── I need to explore/discuss/iterate
+│   └── Interactive mode
+│
+├── This is a big change I should plan first
+│   └── Plan mode → then execute
+│
+├── I need to apply changes to many files
+│   └── Batch mode (loop of headless calls)
+│
+├── I need to monitor/wait for something
+│   └── Loop mode (/loop)
+│
+└── I just finished implementing, need review
+    └── /simplify
+```
+
+## Combining Modes: Power Workflows
+
+### Workflow 1: Plan → Execute → Simplify
+
+The gold standard for any non-trivial feature:
+
+```bash
+# Phase 1: Plan
+/plan "Add a notification system. Users should get 
+in-app notifications for: new comments, task assignments, 
+mentions. Need a notification center UI and a way to 
+mark notifications as read."
+
+# Review the plan, adjust if needed
+"Good plan. Skip email notifications for now, 
+just in-app. Execute Phase 1."
+
+# Claude implements Phase 1
+
+# Phase 2: Simplify
+/simplify
+# Claude reviews the implementation and suggests improvements
+
+# Phase 3: Execute improvements
+"Apply those simplifications."
+```
+
+### Workflow 2: Research → Plan → Headless Execute
+
+For implementing something you have not done before:
+
+```bash
+# Step 1: Research (in research mode)
+"Research best practices for implementing WebSocket 
+connections in Next.js 15 with the App Router"
+
+# Step 2: Plan (in Claude Code)
+/plan "Based on the Socket.io approach, plan how to add 
+real-time notifications to our app. @src/app/ @src/lib/"
+
+# Step 3: Execute each phase headlessly
+claude -p "Execute Phase 1 of the WebSocket plan: 
+set up the Socket.io server in @src/app/api/socket/route.ts"
+
+claude -p "Execute Phase 2: Add the client-side 
+useSocket hook in @src/hooks/useSocket.ts"
+```
+
+### Workflow 3: Headless → Loop → Verify
+
+For automated fix-and-verify cycles:
+
+```bash
+# Step 1: Make changes
+claude -p "Upgrade all dependencies in package.json to latest versions"
+
+# Step 2: Loop until stable
+/loop "Run 'npm test'. If tests fail, fix the failures. 
+If tests pass, stop the loop."
+```
+
+### Workflow 4: Interactive Debug → Headless Fix
+
+```bash
+# Step 1: Debug interactively
+claude
+> "The checkout flow is broken. When I add an item to cart 
+   and go to checkout, the total shows $0. Help me trace 
+   through the code to find the bug."
+# ... back and forth debugging ...
+> "Found it — the cart total calculation in useCart.ts 
+   doesn't account for quantity."
+
+# Step 2: Fix headlessly (clean, no debug context)
+claude -p "In @src/hooks/useCart.ts, fix the calculateTotal 
+function to multiply price by quantity for each item 
+instead of just summing prices."
+```
+
+Starting a fresh headless session for the fix avoids carrying debug conversation tokens into the implementation.
+
+## Common Mode Mistakes
+
+### Mistake 1: Using Interactive for Everything
+
+```bash
+# BAD: 20-message interactive session for a simple task
+claude
+> "Add a loading spinner to the button"
+> "Make it blue"
+> "Center it"
+> "Make it smaller"
+> "Perfect"
+
+# GOOD: One headless command
+claude -p "Add a blue loading spinner (16px) centered inside 
+the submit button in @src/components/SubmitButton.tsx. 
+Show spinner when isLoading prop is true."
+```
+
+### Mistake 2: Skipping Plan Mode on Big Changes
+
+```bash
+# BAD: Diving straight into a database migration
+claude "Migrate from MongoDB to PostgreSQL"
+# 45 minutes later: "actually, this approach doesn't work..."
+
+# GOOD: Plan first
+/plan "Migrate from MongoDB to PostgreSQL. Analyze all 
+collections, map to relational tables, identify the 
+migration path."
+```
+
+### Mistake 3: Using Research Mode for Local Tasks
+
+```bash
+# BAD: Using research mode to understand your own code
+"Research how our auth module works"
+
+# GOOD: Use Claude Code to read your actual code
+"Explain how @src/lib/auth.ts works. Trace the login flow."
+```
+
+## Key Takeaway
+
+Mastering Claude modes is like mastering a toolkit — you need to know which tool is right for each job. Interactive mode for exploration, headless for execution, plan mode for strategy, research for current knowledge, loop for monitoring, simplify for review. The real power comes from combining modes: plan then execute, research then implement, debug interactively then fix headlessly. Stop using interactive mode for everything and match each task to its optimal mode.

@@ -33,29 +33,35 @@ jobs:
       - name: Test + Coverage
         run: npm run test:coverage
 
-  # ── Deploy to GitHub Pages (static, no auth) ──
-  deploy-github-pages:
-    name: GitHub Pages
-    needs: ci-gate
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-        env:
-          DEPLOY_TARGET: github-pages
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  # ── Deploy to GitHub Pages (static, no auth) ── DISABLED: admin dynamic routes
+  # are incompatible with Next.js static export. Re-enable when admin routes are
+  # refactored or removed from the static build.
+  # deploy-github-pages:
+  #   name: GitHub Pages
+  #   needs: ci-gate
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deployment.outputs.page_url }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+  #         cache: npm
+  #     - run: npm ci
+  #     - name: Remove admin dynamic routes (incompatible with static export)
+  #       run: |
+  #         rm -rf src/app/admin/content/\[id\]
+  #         rm -rf src/app/admin/users/\[id\]
+  #     - run: npm run build
+  #       env:
+  #         DEPLOY_TARGET: github-pages
+  #     - uses: actions/upload-pages-artifact@v3
+  #       with:
+  #         path: out
+  #     - id: deployment
+  #       uses: actions/deploy-pages@v4
 
   # ── Deploy to Netlify (SSR, full features) ──
   deploy-netlify:

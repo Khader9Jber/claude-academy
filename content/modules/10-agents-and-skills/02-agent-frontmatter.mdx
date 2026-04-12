@@ -85,20 +85,32 @@ Claude uses this description to decide when to route tasks to the agent. Make it
 
 ### model
 
-Which Claude model the agent uses:
+Which Claude model the agent uses. Use the current 4.6/4.5 IDs:
 
 ```yaml
 ---
-model: opus    # Most capable — complex analysis
-model: sonnet  # Balanced — general tasks (default)
-model: haiku   # Fastest — simple lookups
+model: claude-opus-4-6     # Most capable — complex analysis, 1M context
+model: claude-sonnet-4-6   # Balanced — general tasks (default)
+model: claude-haiku-4-5    # Fastest — simple lookups
 ---
 ```
 
-Choose based on the task complexity:
-- **opus**: Security review, architecture, complex debugging
-- **sonnet**: Code generation, testing, standard tasks
-- **haiku**: Code exploration, simple queries, lookups
+Choose based on task complexity:
+- **Opus 4.6**: Security review, architecture, complex debugging. The 1M-token context window is useful for whole-codebase analysis.
+- **Sonnet 4.6**: Code generation, testing, standard tasks (200K context).
+- **Haiku 4.5**: Code exploration, simple queries, lookups (200K context).
+
+### tools
+
+Restrict what the agent can do. If omitted, the agent inherits the parent session's tools.
+
+```yaml
+---
+tools: Read, Grep, Glob, Edit, Bash(git diff:*)
+---
+```
+
+For read-only review agents, list only read tools. For builder agents, add `Write`, `Edit`, and scoped `Bash` patterns.
 
 ## Permission Modes
 
@@ -192,14 +204,14 @@ Prevents the agent from running indefinitely. Good defaults:
 
 ### effort
 
-Sets the agent's reasoning depth:
+Sets the agent's reasoning depth. On Claude 4.6 this maps to the API's adaptive thinking mode (`thinking: {type: "adaptive"}` + `output_config: {effort: "..."}`). The old `budget_tokens` knob is deprecated.
 
 ```yaml
 ---
 effort: high   # Deep reasoning
 effort: medium # Balanced (default)
 effort: low    # Quick and direct
-effort: max    # No token limit (Opus only)
+effort: max    # Unrestricted thinking (Opus 4.6 only)
 ---
 ```
 
@@ -248,9 +260,10 @@ This enables coordination in multi-agent workflows (covered in the Agent Teams l
 
 ```yaml
 ---
-name: Security Reviewer
+name: security-reviewer
 description: Reviews code changes for security vulnerabilities
-model: opus
+tools: Read, Grep, Glob, Bash(git diff:*)
+model: claude-opus-4-6
 permissionMode: plan
 isolation: worktree
 effort: high
@@ -266,9 +279,10 @@ You are a security reviewer. Focus exclusively on security issues...
 
 ```yaml
 ---
-name: Test Generator
+name: test-generator
 description: Generates comprehensive tests for source files
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob, Bash(npm test:*)
+model: claude-sonnet-4-6
 permissionMode: acceptEdits
 effort: medium
 maxTurns: 25
@@ -283,9 +297,10 @@ You write comprehensive tests for source files...
 
 ```yaml
 ---
-name: Code Explorer
+name: code-explorer
 description: Explores and explains codebase structure
-model: haiku
+tools: Read, Grep, Glob
+model: claude-haiku-4-5
 permissionMode: plan
 effort: low
 maxTurns: 10
@@ -301,25 +316,25 @@ You explore codebases and explain what you find...
 
 Create two agents — one plans (read-only), one implements:
 
-- **Analyst**: model: opus, permissionMode: plan, effort: high
-- **Implementer**: model: sonnet, permissionMode: acceptEdits, effort: medium
+- **Analyst**: Opus 4.6, permissionMode: plan, effort: high
+- **Implementer**: Sonnet 4.6, permissionMode: acceptEdits, effort: medium
 
 The analyst reviews and plans, the implementer executes.
 
-### Pattern 2: Worker + Reviewer
+### Pattern 2: Writer + Reviewer
 
-- **Worker**: model: sonnet, permissionMode: acceptEdits, isolation: worktree
-- **Reviewer**: model: opus, permissionMode: plan, effort: high
+This is one of the more underrated patterns. The Writer agent implements a change in its own worktree. A fresh Reviewer agent — no conversation history, no rationalizations — reads the diff cold and flags issues. Because the reviewer starts with zero context bias, it catches things the writer "explained away" mid-implementation.
 
-The worker implements in a worktree, the reviewer checks the work.
+- **Writer**: Sonnet 4.6, permissionMode: acceptEdits, isolation: worktree
+- **Reviewer**: Opus 4.6, permissionMode: plan, effort: high, fresh context
 
 ### Pattern 3: Specialist Pool
 
 Multiple specialists for different concerns:
 
-- **Security**: model: opus, effort: high, focus on vulnerabilities
-- **Performance**: model: sonnet, effort: high, focus on efficiency
-- **Tests**: model: sonnet, background: true, focus on coverage
+- **Security**: Opus 4.6, effort: high, focus on vulnerabilities
+- **Performance**: Sonnet 4.6, effort: high, focus on efficiency
+- **Tests**: Sonnet 4.6, background: true, focus on coverage
 
 Route different aspects of a review to different specialists.
 

@@ -12,15 +12,15 @@ objectives:
   - "Be aware of the token cost of agent teams"
 quiz:
   - id: "teams-1"
-    question: "How do you enable agent teams?"
+    question: "What is an Agent Team in Claude Code?"
     type: "multiple-choice"
     options:
-      - "Install a plugin"
-      - "Set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable"
-      - "Add a team section to CLAUDE.md"
-      - "It's enabled by default"
+      - "A GitHub org"
+      - "An Anthropic-managed coordinated multi-session workflow with a team lead that decomposes and delegates work to specialist teammates"
+      - "A permissions group"
+      - "A list of collaborators"
     correct: 1
-    explanation: "Agent teams are an experimental feature enabled with the CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 environment variable. Set it in your shell profile or settings.json env key."
+    explanation: "Agent Teams are an Anthropic-managed feature where a team lead (typically Opus 4.6) coordinates multiple specialist teammates in parallel sessions. The lead decomposes tasks, assigns work, monitors progress, and integrates results. It's more formalized than ad-hoc Task-tool delegation."
   - id: "teams-2"
     question: "What's the role of the 'lead' agent in a team?"
     type: "multiple-choice"
@@ -55,27 +55,15 @@ quiz:
 
 ## What Are Agent Teams?
 
-Agent teams are multiple Claude instances working together on a task. One agent leads — decomposing work, assigning tasks, and integrating results. The others are teammates — specialized workers that implement their assigned tasks in parallel.
+Agent Teams are an Anthropic-managed coordination layer for multi-agent work. One agent leads — decomposing work, assigning tasks, and integrating results. The others are teammates — specialized workers that implement their assigned tasks in parallel.
 
-This is the most powerful and most expensive feature in Claude Code. It's designed for large, complex tasks that benefit from parallel work: migrating a codebase, implementing a feature across many files, or running comprehensive reviews.
+This is the heaviest feature in Claude Code. It's designed for large, complex tasks that genuinely benefit from parallel work: migrating a codebase, implementing a feature across many files, or running comprehensive reviews.
 
-## Enabling Agent Teams
+Claude 4.6 is already eager to delegate through the Task tool. Agent Teams goes further — it formalizes the delegation into persistent teammate sessions with a dedicated lead. The flip side: if the task doesn't need five people, a team wastes tokens and wall-clock time on coordination overhead you didn't need.
 
-Agent teams are experimental. Enable them with:
+## Spinning Up a Team
 
-```bash
-export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-```
-
-Or in settings.json:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
+Start a team session the same way you start a normal session — the difference is the scope of the prompt. When the prompt clearly warrants decomposition (large migration, multi-module feature, codebase-wide review), the lead proposes a team and you approve the roster before work begins.
 
 ## How Teams Work
 
@@ -113,14 +101,14 @@ When teammates finish, the lead reviews their work, resolves conflicts, and inte
 
 ```
 ┌─────────────────┐
-│   Lead Agent    │  Model: Opus (planning + coordination)
-│   (Coordinator)  │  Role: Decompose, assign, integrate
+│   Lead Agent    │  Model: Opus 4.6 (planning + coordination)
+│   (Coordinator) │  Role: Decompose, assign, integrate
 └────────┬────────┘
          │
-    ┌────┼────┬────────��
+    ┌────┼────┬────────┐
     ▼    ▼    ▼        ▼
 ┌──────┐┌──────┐┌──────┐┌──────┐
-│Team 1││Team 2││Team 3││Team 4│  Model: Sonnet (implementation)
+│Team 1││Team 2││Team 3││Team 4│  Model: Sonnet 4.6 (implementation)
 │      ││      ││      ││      │  Role: Implement assigned tasks
 └──────┘└──────┘└──────┘└──────┘
 ```
@@ -184,9 +172,10 @@ In your agent frontmatter, you can configure team behavior:
 
 ```yaml
 ---
-name: Feature Implementer
+name: feature-implementer
 description: Implements features in assigned files
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob, Bash(npm test:*)
+model: claude-sonnet-4-6
 isolation: worktree
 permissionMode: acceptEdits
 ---
@@ -266,16 +255,20 @@ maxTurns: 25
 
 ### 4. Use the Right Models
 
-Lead should be Opus (planning). Teammates should be Sonnet (implementation).
+Lead should be Opus 4.6 (planning). Teammates should be Sonnet 4.6 (implementation). Reserve Haiku 4.5 teammates for pure read/lookup work.
 
 ```yaml
 # Lead
-model: opus
+model: claude-opus-4-6
 
 # Teammates
-model: sonnet
+model: claude-sonnet-4-6
 ```
+
+### 5. Resist the Urge to Team Up for Small Jobs
+
+Claude 4.6 will volunteer a team for tasks that don't need one. If the work fits in one session, decline the team and let the lead just do it. Over-delegation is the single biggest waste pattern in 4.6-era workflows.
 
 ## Key Takeaway
 
-Agent teams enable parallel multi-agent work on large tasks. The lead (Opus) decomposes and coordinates; teammates (Sonnet) implement in parallel. Enable with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Use Shift+Up/Down for direct messages, broadcasts for team-wide instructions. The trade-off is ~7x token cost for parallel execution. Use teams for large migrations, cross-module features, and scale-out reviews — not for simple tasks where a single session is faster and cheaper.
+Agent Teams are an Anthropic-managed multi-session feature where a lead (Opus 4.6) decomposes and coordinates and teammates (Sonnet 4.6) implement in parallel. Use Shift+Up/Down for direct messages, broadcasts for team-wide instructions. The trade-off is roughly 7x token cost for parallel execution. Use teams for large migrations, cross-module features, and scale-out reviews — not for simple tasks where a single session is faster and cheaper. Be especially careful with 4.6's tendency to spawn teammates by default.

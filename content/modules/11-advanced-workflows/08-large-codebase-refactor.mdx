@@ -252,20 +252,21 @@ Full green? Commit. Move to the next core file.
 
 ## Using Agent Teams for Parallel Refactoring
 
-If you have a Max plan with agent teams, you can parallelize independent batches:
+For truly large refactors, Anthropic's Agent Teams feature coordinates a lead (Opus 4.6) that decomposes and assigns work to specialist teammates (Sonnet 4.6) working in parallel worktrees. Each teammate owns its branch so conflicts are contained.
 
 ```
-Use sub-agents to migrate these independent leaf services in parallel:
+Use the agent-team workflow to migrate these independent leaf services in parallel:
 
-Agent 1: @src/services/AnalyticsService.ts and @src/services/ReportService.ts
-Agent 2: @src/services/ExportService.ts and @src/services/CacheService.ts
-Agent 3: @src/services/NotificationService.ts and @src/services/WebhookService.ts
+Teammate 1: @src/services/AnalyticsService.ts and @src/services/ReportService.ts
+Teammate 2: @src/services/ExportService.ts and @src/services/CacheService.ts
+Teammate 3: @src/services/NotificationService.ts and @src/services/WebhookService.ts
 
-All agents should follow the golden file pattern from 
-@src/services/UserService.ts. Run tests after each file.
+All teammates should follow the golden file pattern from
+@src/services/UserService.ts. Each works in its own worktree and runs tests
+after every file.
 ```
 
-This cuts the migration time significantly for independent files. Never parallelize files that depend on each other.
+This cuts migration time significantly for independent files. Never parallelize files that depend on each other. And be honest about whether you actually need a team — Claude 4.6 is eager to delegate, so if the refactor is smaller than "cross-module, many-day," a single session is usually cheaper and faster end-to-end.
 
 ## Verification Strategies
 

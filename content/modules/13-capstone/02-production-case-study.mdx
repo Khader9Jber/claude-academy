@@ -42,15 +42,15 @@ quiz:
     correct: 1
     explanation: "Add agents when you identify recurring specialized tasks. If you're doing a security review on every PR, create a security-reviewer agent. If you're writing tests for every new service, create a test-writer agent. Don't create agents preemptively — create them when the pattern emerges."
   - id: "case-study-4"
-    question: "What's the complete development loop with Claude Code?"
+    question: "What's the complete 4-phase development loop with Claude Code?"
     type: "multiple-choice"
     options:
-      - "Write code → push"
-      - "/plan → /execute → /simplify → test → /commit → PR → review → merge"
+      - "Write code -> push"
+      - "Explore -> Plan -> Implement -> Commit, with /simplify between implement and commit"
       - "Ask Claude to do everything"
       - "Only use Claude for debugging"
     correct: 1
-    explanation: "The complete loop: /plan (analyze and plan), /execute (implement the plan), /simplify (clean up), test (verify), /commit (commit with good message), PR (create pull request), review (code review), merge. Each step uses the Claude Code tool best suited for it."
+    explanation: "The 4-phase workflow: Explore (Claude reads relevant code, often in plan mode), Plan (propose the approach, press Ctrl+G to edit it), Implement (leave plan mode, write code against the plan), Commit (/commit with a message grounded in the plan). /simplify fits naturally between implement and commit as a quality pass."
 ---
 
 ## The Project: ScheduleForge API
@@ -126,16 +126,19 @@ REST API for managing appointments, availability, and scheduling.
 
 ### Step 3: Project Scaffold
 
-```bash
-claude -n "project-scaffold"
+Follow the 4-phase workflow — Explore, Plan, Implement, Commit:
 
-/plan
+```bash
+claude -n "project-scaffold" --permission-mode plan
+
 "Plan the project structure for ScheduleForge. Include:
 - Directory structure following our architecture
 - Database schema (appointments, users, availability)
 - Configuration setup"
 
-/execute
+# Review the plan. Ctrl+G to edit in your editor if needed.
+# Shift+Tab to leave plan mode, then:
+
 "Create the project scaffold following the plan"
 ```
 
@@ -159,32 +162,31 @@ Each feature gets its own session:
 
 ```bash
 # Session: User management
-claude -n "feature-users"
-/plan
+claude -n "feature-users" --permission-mode plan
 "Plan the user management module: CRUD operations, authentication"
-/execute
+# Review plan, Shift+Tab out of plan mode
 "Implement the user module"
 /simplify
 /commit
 
 # Session: Availability management
-claude -n "feature-availability"
-/plan
+claude -n "feature-availability" --permission-mode plan
 "Plan the availability module"
-/execute
+# Shift+Tab out of plan mode
+"Implement it"
 /simplify
 /commit
 
 # Session: Appointment booking
-claude -n "feature-appointments"
-/plan
+claude -n "feature-appointments" --permission-mode plan
 "Plan the appointment booking module with conflict detection"
-/execute
+# Shift+Tab out of plan mode
+"Implement it"
 /simplify
 /commit
 ```
 
-One task, one session. Each session starts fresh with focused context.
+One task, one session. Each session starts fresh with focused context and follows Explore -> Plan -> Implement -> Commit.
 
 ## Phase 3: Custom Commands
 
@@ -226,8 +228,10 @@ When recurring patterns appear:
 `.claude/agents/security-reviewer.md`:
 ```markdown
 ---
-name: Security Reviewer
-model: opus
+name: security-reviewer
+description: Reviews code for auth bypass, input validation, data exposure, and injection
+tools: Read, Grep, Glob, Bash(git diff:*)
+model: claude-opus-4-6
 permissionMode: plan
 effort: high
 ---
@@ -240,7 +244,7 @@ Follow the checklist in our PR review conventions.
 `.claude/skills/api-endpoint/SKILL.md`:
 ```markdown
 ---
-name: API Endpoint Creator
+name: api-endpoint
 description: Creates new API endpoints following ScheduleForge conventions
 ---
 [Templates for route, handler, service, repository, tests]
@@ -278,16 +282,14 @@ claude mcp add postgres -e DATABASE_URL=$DATABASE_URL --transport stdio npx -y @
 The daily workflow crystallizes:
 
 ```bash
-# Morning: pick up a task
-claude -n "task-name"
-/plan
+# Morning: pick up a task — start in plan mode
+claude -n "task-name" --permission-mode plan
 "Plan the notification system for appointment reminders"
 
-# Implement
-/execute
+# Shift+Tab to leave plan mode, then implement
 "Implement following the plan"
 
-# Quality
+# Quality pass
 /simplify
 "Run the tests"
 
@@ -295,8 +297,8 @@ claude -n "task-name"
 /commit
 "Create a PR targeting main"
 
-# Review
-"@security-reviewer Review the changes in this PR"
+# Review with the fresh-context reviewer pattern
+"Use the security-reviewer subagent to review the changes in this PR"
 ```
 
 ## Phase 8: Testing and Deployment
@@ -315,7 +317,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install -g @anthropic-ai/claude-code
-      - run: claude -p "Review this PR for security and quality" --max-turns 15
+      - run: claude --permission-mode auto -p "Review this PR for security and quality" --output-format json --max-turns 15 --allowedTools "Read,Grep,Glob,Bash(git diff:*)"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -341,13 +343,13 @@ Deploy to $ARGUMENTS:
 | Phase | Tools Used |
 |---|---|
 | Foundation | CLAUDE.md, settings.json |
-| Development | /plan, /execute, /simplify, /commit |
+| Development | Plan mode (Shift+Tab, Ctrl+G), /simplify, /commit |
 | Automation | Commands, hooks, agents |
 | Integration | MCP (GitHub, Postgres) |
-| Quality | Security reviewer agent, /simplify |
-| Deployment | Deploy command, CI/CD |
+| Quality | Security reviewer agent, /simplify, Writer+Reviewer pattern |
+| Deployment | Deploy command, CI/CD with `--permission-mode auto` + `--allowedTools` |
 | Monitoring | /cost, /insights |
 
 ## Key Takeaway
 
-A production project with Claude Code follows a clear progression: CLAUDE.md first (always), then settings.json, then iterative feature development with the plan-execute-simplify-test-commit loop. Commands emerge from repeated patterns, agents from recurring specialized roles, and skills from reusable knowledge. MCP connects external tools, hooks automate quality gates, and CI/CD extends Claude into your pipeline. The result: a codebase built consistently with every Claude Code feature working in concert.
+A production project with Claude Code follows a clear progression: CLAUDE.md first (always), then settings.json, then iterative feature development with the 4-phase Explore -> Plan -> Implement -> Commit loop (plus /simplify as the quality pass). Commands emerge from repeated patterns, agents from recurring specialized roles, and skills from reusable knowledge. MCP connects external tools, hooks automate quality gates, and CI/CD extends Claude into your pipeline. The result: a codebase built consistently with every Claude Code feature working in concert.

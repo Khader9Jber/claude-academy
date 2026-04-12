@@ -22,15 +22,15 @@ quiz:
     correct: 1
     explanation: "A production-ready skill goes beyond a simple prompt. It includes detailed context about the task, handles edge cases explicitly, specifies the exact output format, includes verification steps (run tests, check types), and defines what success looks like. This makes the output reliable and consistent."
   - id: "skill-gal-2"
-    question: "Where should you place a SKILL.md file for Claude Code to recognize it?"
+    question: "Where do skill definitions live versus custom slash commands?"
     type: "multiple-choice"
     options:
-      - "In the root directory"
-      - "In .claude/skills/ directory with the skill name as the filename"
-      - "Anywhere — Claude finds it automatically"
+      - "Both go in the project root"
+      - "Skills live at .claude/skills/<name>/SKILL.md (directory + SKILL.md). Custom slash commands live at .claude/commands/<name>.md (single file)."
+      - "Anywhere — Claude finds them automatically"
       - "In node_modules/"
     correct: 1
-    explanation: "Skill files go in .claude/skills/<skill-name>.md or .claude/commands/<skill-name>.md. Claude Code reads these directories and makes the skills available as slash commands. The filename (minus .md) becomes the command name."
+    explanation: "Skills are directories: .claude/skills/<name>/SKILL.md, plus optional templates/, scripts/, references/ alongside. Custom slash commands are single markdown files: .claude/commands/<name>.md. The recipes in this lesson are easiest to deploy as commands, but each one can also live as a skill if you want progressive disclosure and supporting files."
   - id: "skill-gal-3"
     question: "Why should skills include a 'verification' section?"
     type: "multiple-choice"
@@ -55,9 +55,9 @@ quiz:
 
 ## Skills You Can Use Today
 
-Building custom skills from scratch is powerful, but you don't always need to start from zero. This gallery contains 10 complete, battle-tested skill definitions that solve common development tasks. Each one has been refined through real usage — handling the edge cases that simpler prompts miss.
+Building your own from scratch is powerful, but you don't always need to start from zero. This gallery contains 10 recipes for common development tasks. Each one has been refined through real usage — handling the edge cases that simpler prompts miss.
 
-For each skill, you'll get: what it does, the complete SKILL.md content, trigger patterns, and examples of how to use it. Copy them into your `.claude/commands/` directory, customize for your project, and start using them immediately.
+A quick note before we start: all ten recipes below are written as **custom slash commands** (`.claude/commands/<name>.md`) for quick copy-paste. If you want progressive disclosure or supporting templates/scripts, promote any of them to a full skill by moving the body into `.claude/skills/<name>/SKILL.md` and adding the `name:` / `description:` frontmatter keys. Same content, different surface area.
 
 ## Skill 1: Database Migration Generator
 

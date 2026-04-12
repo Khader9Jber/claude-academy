@@ -70,11 +70,11 @@ Let's look back at everything you've learned — and be honest about which parts
 You started here — understanding what Claude is, how tokens work, how to install Claude Code, and how to navigate the interface.
 
 **Key skills acquired**:
-- Understanding Claude's model family (Opus, Sonnet, Haiku) and when to use each
+- Understanding Claude's 4.6/4.5 model family (Opus 4.6 with 1M context, Sonnet 4.6, Haiku 4.5) and when to use each
 - Installing and authenticating Claude Code
-- Using slash commands (/help, /model, /effort, /compact)
-- Keyboard shortcuts and session navigation
-- Effort levels and extended thinking
+- Using slash commands (`/help`, `/model`, `/effort`, `/compact`, `/btw`, `/rewind`)
+- Keyboard shortcuts and session navigation (Shift+Tab for permission modes, Ctrl+G for plan editing)
+- Effort levels backed by the adaptive thinking API (`thinking: {type: "adaptive"}` + `effort: high|medium|low|max`; `budget_tokens` is deprecated)
 
 **The skill that matters most from this arc**: Model switching. I still see experienced users leaving the model on Sonnet for everything. Switching to Haiku for a batch rename saves real money over time, and switching to Opus for a tricky debugging session saves real *hours*.
 
@@ -173,10 +173,10 @@ Here's the real test. Not multiple choice questions — can you actually *do* th
 - [ ] Build a PostToolUse auto-format hook that runs Prettier/ESLint on file writes
 - [ ] Create a PreToolUse safety guard that blocks writes to production config files
 - [ ] Set up notification hooks (Slack, Discord, or system notifications)
-- [ ] Define a custom sub-agent with specific permissions and role
-- [ ] Create a reusable skill with progressive disclosure
-- [ ] Use /plan before complex implementations, then /execute
-- [ ] Use /fork for parallel debugging (try two approaches simultaneously)
+- [ ] Define a custom sub-agent with specific `tools:`, `model:`, and `isolation:`
+- [ ] Create a reusable skill with progressive disclosure (`.claude/skills/<name>/SKILL.md`)
+- [ ] Use plan mode (Shift+Tab / `--permission-mode plan`) before complex implementations
+- [ ] Use `/rewind` to step back from a wrong direction, or worktrees to run parallel debugging hypotheses
 
 ### Expert (Multiplying your team's effectiveness)
 

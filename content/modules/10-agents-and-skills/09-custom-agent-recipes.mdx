@@ -35,21 +35,21 @@ quiz:
     type: "multiple-choice"
     options:
       - "Import it in your code"
-      - "Use /agent security-reviewer or reference it by name in a prompt"
+      - "Reference it by name in your prompt (e.g., 'use the security-reviewer subagent to...') — Claude routes via the Task tool"
       - "Restart Claude Code"
       - "Copy the file contents into your prompt"
     correct: 1
-    explanation: "Custom agents in .claude/agents/ are automatically discovered by Claude Code. Invoke them with /agent followed by the agent name (without the .md extension). You can also reference the agent by name in prompts when using agent teams."
+    explanation: "Custom agents in .claude/agents/ are auto-discovered. To invoke one, reference it by name in a prompt ('use the security-reviewer subagent to audit src/routes/auth.ts'). Claude's orchestration layer routes the task through the Task tool. Claude 4.6 is eager to delegate, so sometimes you need to be explicit to steer it."
   - id: "agent-recipe-4"
     question: "What model should you typically assign to a custom agent that does implementation work (writing code, tests, docs)?"
     type: "multiple-choice"
     options:
-      - "Always Opus"
-      - "Sonnet — it's fast, capable enough for implementation, and significantly cheaper than Opus"
+      - "Always Opus 4.6"
+      - "Sonnet 4.6 — fast, capable enough for implementation, and substantially cheaper than Opus"
       - "The cheapest model available"
       - "Model choice doesn't matter"
     correct: 1
-    explanation: "Sonnet is the sweet spot for implementation agents. It writes code, tests, and documentation well, runs 3-4x faster than Opus, and costs significantly less. Reserve Opus for planning agents that need to decompose complex problems, coordinate teams, or make architectural decisions."
+    explanation: "Sonnet 4.6 is the sweet spot for implementation agents. It writes code, tests, and documentation well, runs much faster than Opus 4.6, and costs a fraction per token ($3/$15 vs $15/$75). Reserve Opus 4.6 for planning agents that need deep reasoning, whole-codebase analysis (its 1M context window helps), or coordinating teams."
 ---
 
 ## What Makes a Good Agent
@@ -66,10 +66,10 @@ This agent audits code for security vulnerabilities, referencing OWASP categorie
 
 ```markdown
 ---
-name: Security Reviewer
+name: security-reviewer
 description: Audits code for security vulnerabilities with OWASP references
-model: sonnet
-isolation: none
+tools: Read, Grep, Glob, Bash(git diff:*)
+model: claude-sonnet-4-6
 permissionMode: default
 ---
 
@@ -110,19 +110,18 @@ For each finding, use this exact format:
 
 ### Usage
 
+Reference the agent by name in your prompt — Claude routes the task through the Task tool:
+
 ```bash
 # Review a specific file
-/agent security-reviewer
-"Review src/routes/auth.ts for security vulnerabilities"
+"Use the security-reviewer subagent to review src/routes/auth.ts"
 
 # Review a directory
-/agent security-reviewer
-"Audit all files in src/middleware/ for security issues"
+"Have the security-reviewer audit all files in src/middleware/"
 
 # Review with specific focus
-/agent security-reviewer
-"Check the payment processing flow in src/services/payment.ts 
-for PCI-DSS compliance issues"
+"Run the security-reviewer on src/services/payment.ts with focus on
+PCI-DSS compliance issues"
 ```
 
 ### Example Output
@@ -161,9 +160,10 @@ This agent generates comprehensive test suites for existing code.
 
 ```markdown
 ---
-name: Test Writer
+name: test-writer
 description: Generates comprehensive test suites for existing code
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob, Bash(npm test:*)
+model: claude-sonnet-4-6
 isolation: worktree
 permissionMode: acceptEdits
 maxTurns: 30
@@ -215,16 +215,13 @@ describe('FunctionName', () => {
 ### Usage
 
 ```bash
-/agent test-writer
-"Write tests for src/services/order-service.ts"
+"Have the test-writer subagent generate tests for src/services/order-service.ts"
 
-/agent test-writer
-"Generate a test suite for the auth middleware in src/middleware/auth.ts. 
-Mock the JWT verification and database calls."
+"Use the test-writer subagent on src/middleware/auth.ts — mock JWT verification
+and database calls."
 
-/agent test-writer
-"Write integration tests for the /api/v2/products endpoints. 
-Use Supertest with the test database."
+"Ask the test-writer subagent to write integration tests for the /api/v2/products
+endpoints using Supertest with the test database."
 ```
 
 **Why worktree isolation**: The test writer creates new files. With worktree isolation, you can review the generated tests in a separate branch before merging them. If the tests are not right, discard the worktree — your working branch is untouched.
@@ -237,9 +234,10 @@ This agent generates and updates project documentation.
 
 ```markdown
 ---
-name: Documentation Generator
+name: doc-writer
 description: Generates technical documentation from source code
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob
+model: claude-sonnet-4-6
 isolation: worktree
 permissionMode: acceptEdits
 maxTurns: 25
@@ -293,17 +291,15 @@ For each endpoint:
 ### Usage
 
 ```bash
-/agent doc-writer
-"Generate API reference documentation for all endpoints in src/routes/"
+"Use the doc-writer subagent to generate API reference docs for all endpoints
+in src/routes/"
 
-/agent doc-writer
-"Add JSDoc comments to every exported function in src/utils/"
+"Have the doc-writer add JSDoc comments to every exported function in src/utils/"
 
-/agent doc-writer
-"Write a README.md for this project based on the codebase structure"
+"Ask the doc-writer subagent to write a README.md for this project based on the
+codebase structure"
 
-/agent doc-writer
-"Generate a CHANGELOG.md from the last 20 commits"
+"Use the doc-writer to generate CHANGELOG.md from the last 20 commits"
 ```
 
 ## Building Your Own Agents
@@ -312,12 +308,13 @@ For each endpoint:
 
 ```yaml
 ---
-name: Agent Name
+name: agent-name                 # lowercase, kebab-case
 description: One sentence describing what this agent does
-model: sonnet          # sonnet for implementation, opus for planning
-isolation: worktree    # worktree for file changes, none for read-only
-permissionMode: default  # default, acceptEdits, or full
-maxTurns: 25          # prevent runaway agents
+tools: Read, Grep, Edit, Bash    # restrict to what's needed
+model: claude-sonnet-4-6         # sonnet 4.6 for implementation, opus 4.6 for planning
+isolation: worktree              # worktree for file changes, omit for read-only
+permissionMode: default          # default, acceptEdits, plan, or dontAsk
+maxTurns: 25                     # prevent runaway agents
 ---
 ```
 
@@ -325,21 +322,21 @@ maxTurns: 25          # prevent runaway agents
 
 | Agent Type | Model | Why |
 |---|---|---|
-| Code review (read-only) | sonnet | Fast, reads and analyzes well |
-| Test writer | sonnet | Implementation work, good balance |
-| Doc writer | sonnet | Writes well, fast enough for iteration |
-| Architecture planner | opus | Needs deep reasoning about tradeoffs |
-| Team lead | opus | Coordinates other agents, decomposes tasks |
-| Quick fixer | haiku | Simple changes, maximum speed |
+| Code review (read-only) | Sonnet 4.6 | Fast, reads and analyzes well |
+| Test writer | Sonnet 4.6 | Implementation work, good balance |
+| Doc writer | Sonnet 4.6 | Writes well, fast enough for iteration |
+| Architecture planner | Opus 4.6 | Deep reasoning; 1M context for whole-codebase view |
+| Team lead | Opus 4.6 | Coordinates other agents, decomposes tasks |
+| Quick fixer / scout | Haiku 4.5 | Simple changes, maximum speed |
 
 ### Isolation Guide
 
 | Agent Behavior | Isolation | Why |
 |---|---|---|
-| Read-only review | none | Does not modify files |
+| Read-only review | (omit) | Does not modify files |
 | Writes new files | worktree | Review before merging |
 | Modifies existing files | worktree | Protect your working state |
-| One-shot quick fix | none | Fast, low risk |
+| One-shot quick fix | (omit) | Fast, low risk |
 
 ### Common Mistake: Over-Specified Prompts
 
@@ -358,4 +355,4 @@ The user adds specificity at invocation time: "Focus on the payment flow and PCI
 
 ## Key Takeaway
 
-Custom agents are markdown files with a focused system prompt, model choice, and isolation setting. The security reviewer agent uses `isolation: none` because it only reads. The test writer uses `isolation: worktree` because it creates files you want to review. The documentation generator uses `worktree` for the same reason. Match model to task: Sonnet for implementation, Opus for planning. Keep agent prompts focused on expertise and output format — let the invocation prompt provide specific context. Three well-designed agents (security, testing, documentation) cover the most common automation needs for any development team.
+Custom agents are markdown files with a focused system prompt, model choice, restricted tools, and isolation setting. The security reviewer agent omits worktree because it only reads. The test writer uses `isolation: worktree` because it creates files you want to review. The documentation generator uses `worktree` for the same reason. Match model to task: Sonnet 4.6 for implementation, Opus 4.6 for planning, Haiku 4.5 for scouting. Keep agent prompts focused on expertise and output format — let the invocation prompt provide specific context. Three well-designed agents (security, testing, documentation) cover the most common automation needs for any development team.

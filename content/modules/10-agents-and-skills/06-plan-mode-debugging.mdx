@@ -12,7 +12,7 @@ objectives:
   - "Apply the systematic debugging approach"
 quiz:
   - id: "plan-debug-1"
-    question: "What does /plan mode do?"
+    question: "What does plan mode do?"
     type: "multiple-choice"
     options:
       - "Creates a project plan document"
@@ -20,33 +20,33 @@ quiz:
       - "Plans a meeting"
       - "Schedules tasks"
     correct: 1
-    explanation: "/plan puts Claude in read-only mode. It can read files, analyze code, and create detailed plans — but it cannot write files, run commands, or make changes. This is perfect for architecture review and planning before committing to an approach."
+    explanation: "Plan mode (enabled with --permission-mode plan or Shift+Tab to toggle) puts Claude in read-only mode. It can read files, analyze code, and create detailed plans — but it cannot write files, run destructive commands, or make changes. Perfect for architecture review before committing to an approach."
   - id: "plan-debug-2"
-    question: "How do you apply a plan created in /plan mode?"
+    question: "How do you enter plan mode?"
     type: "multiple-choice"
     options:
-      - "Copy-paste it manually"
-      - "Type /execute to switch from plan mode to execution mode"
+      - "Type /plan"
+      - "Launch with --permission-mode plan or press Shift+Tab to toggle during a session"
+      - "Edit settings.json manually every time"
       - "Create a new session"
-      - "Plans can't be executed"
     correct: 1
-    explanation: "/execute switches from plan mode to execution mode. Claude now has full tool access and applies the plan it just created. The plan context remains — Claude knows exactly what to do because it just finished planning it."
+    explanation: "Enter plan mode either by starting Claude with --permission-mode plan, or by pressing Shift+Tab mid-session to cycle through permission modes until you land on plan. Ctrl+G opens the current plan in your editor so you can revise it before implementation."
   - id: "plan-debug-3"
     question: "How do you test parallel debugging hypotheses?"
     type: "multiple-choice"
     options:
       - "Try them one at a time"
-      - "Use /fork to create parallel sessions — each fork tests a different hypothesis"
+      - "Use /rewind to a checkpoint and branch, or use git worktrees so each hypothesis lives in its own directory"
       - "Ask Claude to test all at once"
       - "Write a test suite"
     correct: 1
-    explanation: "/fork creates a copy of the current session. Fork once for hypothesis A, go back and fork again for hypothesis B. Each fork explores independently. When you find the answer, continue in the successful fork and discard the others."
+    explanation: "Use /rewind to restore a conversation or code checkpoint, then branch from there with a different approach. For deeper isolation — especially when the hypotheses modify files — spin up separate git worktrees so each experiment has its own directory and doesn't contaminate the others."
   - id: "plan-debug-4"
     question: "What is the systematic debugging approach?"
     type: "multiple-choice"
     options:
       - "Try random fixes until it works"
-      - "Reproduce → Isolate → Diagnose → Fix → Verify"
+      - "Reproduce -> Isolate -> Diagnose -> Fix -> Verify"
       - "Delete and rewrite"
       - "Ask ChatGPT"
     correct: 1
@@ -57,14 +57,17 @@ quiz:
 
 The most common mistake developers make with Claude Code is jumping straight to implementation. "Build me a payment service" produces mediocre results. "Let's plan the payment service first, then build it" produces excellent results.
 
-Plan mode gives you a structured way to think before you code.
+Plan mode gives you a structured way to think before you code. In Claude 4.6 it's also the first stop in the **4-phase workflow**: Explore → Plan → Implement → Commit.
 
-## /plan Mode
+## Entering Plan Mode
 
-Type `/plan` during a session to enter plan mode:
+Enter plan mode one of two ways:
 
 ```bash
-/plan
+# Start a session already in plan mode
+claude --permission-mode plan
+
+# Or press Shift+Tab during a session to cycle modes until you land on plan
 ```
 
 In plan mode, Claude:
@@ -73,10 +76,12 @@ In plan mode, Claude:
 
 This is deliberately limiting. The constraint forces Claude to think, not act.
 
+Need to revise the plan yourself? Press `Ctrl+G` to open it in your editor. Edit, save, and the updated plan comes back into the session.
+
 ### Using Plan Mode
 
 ```bash
-/plan
+claude --permission-mode plan
 
 "I need to add order cancellation with refund processing to our API.
 Read the existing order service, payment service, and database schema.
@@ -127,65 +132,39 @@ You can review, ask questions, and refine the plan before any code is written.
 
 ### Executing the Plan
 
-When you're satisfied with the plan:
+When you're satisfied with the plan, press Shift+Tab to leave plan mode (or tell Claude "go ahead and implement this"). Claude switches to full tool access and implements the plan. The plan stays in context, so it follows the architecture, naming, and patterns you agreed on.
+
+This is the **4-phase workflow** in action:
+
+1. **Explore** — Claude reads the relevant code (still in plan mode).
+2. **Plan** — Claude proposes the approach; you review and edit via `Ctrl+G`.
+3. **Implement** — Leave plan mode; Claude writes code against the plan.
+4. **Commit** — `/commit` or manual git, with the plan as the context for a good message.
+
+## Parallel Debugging with /rewind and Worktrees
+
+When you have multiple hypotheses about a bug, you have two tools for exploring them in parallel.
+
+**`/rewind`** restores a conversation or code checkpoint — and it persists across sessions. Try hypothesis A; if it's wrong, `/rewind` to the pre-hypothesis state and try hypothesis B. You pick what to rewind: conversation, code, or both.
 
 ```bash
-/execute
+# Baseline
+"I think the timeout is in the database query. Let's check order-repo.ts..."
+
+# Dead end. Rewind conversation + code.
+/rewind
+
+# Try the other theory
+"Actually, let's check the Redis connection instead..."
 ```
 
-Claude switches to full mode and implements the plan. It has the complete plan in context, so it follows the architecture, naming, and patterns you agreed on.
-
-## Starting in Plan Mode
-
-You can start a session directly in plan mode:
+For hypotheses that modify files in conflicting ways, use **git worktrees** so each experiment runs in its own directory:
 
 ```bash
-claude --permission-mode plan
+git worktree add ../theory-db feature/debug-db
+git worktree add ../theory-redis feature/debug-redis
+# Start a Claude session in each; they can't contaminate each other
 ```
-
-This is useful when you know you want to analyze before acting — like reviewing a new codebase or planning a large refactoring.
-
-## The /debug Skill
-
-Claude Code has a built-in debugging skill that provides guided troubleshooting:
-
-```bash
-/debug
-```
-
-This activates a structured debugging workflow where Claude:
-
-1. Asks you to describe the symptoms
-2. Reads relevant code and logs
-3. Forms hypotheses
-4. Tests each hypothesis systematically
-5. Identifies the root cause
-6. Proposes and implements a fix
-
-## Parallel Debugging with /fork
-
-When you're debugging and have multiple theories about the root cause, use `/fork` to test them in parallel:
-
-```bash
-# In a debugging session
-"I think the timeout is either in the database query or the Redis connection"
-
-# Fork to test database theory
-/fork theory-database
-"Let's check the database query. Read the order-repo.ts query 
-and check for slow operations..."
-
-# Go back to the original session
-/resume
-# Select the pre-fork session
-
-# Fork to test Redis theory  
-/fork theory-redis
-"Let's check the Redis connection. Read the cache service 
-and check for connection timeouts..."
-```
-
-Each fork explores independently. When you find the answer, continue in the successful fork.
 
 ## The Systematic Debugging Approach
 
@@ -247,28 +226,24 @@ The most effective debugging sessions combine multiple strategies:
 
 ```bash
 # Start in plan mode to understand the problem
-/plan
+claude --permission-mode plan
 "Analyze the payment processing code and identify all places where
 a timeout could occur. Don't fix anything yet — just map the risks."
 
-# Review the analysis
-# ...
+# Review the analysis. Edit the plan with Ctrl+G if needed.
 
-# Switch to execution with a clear target
-/execute
-"Fix the timeout in the webhook handler — add a 30-second timeout 
+# Leave plan mode (Shift+Tab) and implement
+"Fix the timeout in the webhook handler — add a 30-second timeout
 with retry logic"
 
-# Fork to test the fix safely
-/fork test-fix
-"Apply the fix and run the payment service test suite"
+# If the fix is risky, set a checkpoint before running it
+"Run the payment test suite"
 
-# If tests pass, continue in the fork
-# If tests fail, go back and try a different approach
+# If tests fail, /rewind to the pre-fix state and try a different approach
 ```
 
-Plan → Execute → Fork → Verify. Each tool serves a specific purpose in the workflow.
+Explore → Plan → Implement → Verify, with `/rewind` as the safety net. Each tool serves a specific purpose.
 
 ## Key Takeaway
 
-Plan mode (`/plan`) gives Claude read-only access for analysis and planning before making changes. Use `/execute` to apply the plan. Use `/fork` to test multiple debugging hypotheses in parallel. The systematic debugging approach — reproduce, isolate, diagnose, fix, verify — gives Claude the structure it needs to find root causes efficiently. Always plan complex changes before implementing them, and fork for risky experiments.
+Plan mode (entered via `--permission-mode plan` or `Shift+Tab`) gives Claude read-only access for analysis and planning before making changes. `Ctrl+G` opens the plan in your editor for manual revision. Leave plan mode to implement. Use `/rewind` (persistent across sessions) to branch debugging hypotheses, and git worktrees when hypotheses conflict at the file level. The systematic debugging approach — reproduce, isolate, diagnose, fix, verify — plus the 4-phase workflow gives Claude the structure it needs to find root causes efficiently.

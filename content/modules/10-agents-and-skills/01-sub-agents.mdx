@@ -77,41 +77,49 @@ Security Reviewer Agent:
 Claude (Lead): Presents the security review to you
 ```
 
-Each agent is independent — it has its own context, its own instructions, and potentially its own model (Opus for complex analysis, Sonnet for standard tasks, Haiku for simple lookups).
+Each agent is independent — it has its own context, its own instructions, and potentially its own model (Opus 4.6 for complex analysis, Sonnet 4.6 for standard tasks, Haiku 4.5 for simple lookups).
 
 ## Built-In Agents
 
-Claude Code comes with four built-in agents:
+Claude Code ships with a set of built-in agents that handle common routing patterns:
 
 ### Explore Agent
 
-- **Model**: Haiku (fast, cheap)
-- **Tools**: Read only
+- **Model**: Haiku 4.5 (fast, cheap)
+- **Tools**: Read-only
 - **Purpose**: Quick code navigation and exploration
 - **When it's used**: "What does this function do?" "Find where X is defined"
 
 ### Plan Agent
 
-- **Model**: Opus
-- **Tools**: Read only
+- **Model**: Opus 4.6
+- **Tools**: Read-only
 - **Purpose**: Architecture analysis and planning
 - **When it's used**: "How should we restructure the auth module?" "Plan the migration"
 
 ### General Agent
 
-- **Model**: Sonnet
-- **Tools**: All tools
+- **Model**: Sonnet 4.6
+- **Tools**: Full tool access
 - **Purpose**: Standard implementation tasks
 - **When it's used**: "Implement this feature" "Write tests" "Fix this bug"
 
 ### Bash Agent
 
-- **Model**: Sonnet
-- **Tools**: Bash primarily
+- **Model**: Sonnet 4.6
+- **Tools**: Bash-focused
 - **Purpose**: Terminal operations
 - **When it's used**: "Run the tests" "Check the build" "Deploy to staging"
 
 Claude auto-routes tasks to the most appropriate built-in agent. You can also invoke them explicitly.
+
+### A Word on Over-Delegation
+
+Claude 4.6 is noticeably more eager to spawn sub-agents than earlier versions. That's usually helpful, but it cuts the other way too: for a two-file fix, you don't need a specialist pool and a supervisor. If you notice Claude launching sub-agents for trivial work, say so directly — "just do this yourself, don't delegate." The model tracks its remaining context window and will factor that into decisions, but it still leans toward parallelism when in doubt.
+
+### AskUserQuestion: When the Agent Needs You
+
+Sub-agents run with their own context, but they can still pull you in for decisions. The `AskUserQuestion` tool lets an agent pause and surface a structured question to the human — "Which ORM should I target?", "Should I keep `v1` behavior or migrate?" — rather than guessing and baking a wrong assumption into 30 files. When you're designing agent prompts, give the agent explicit permission to ask: *"If you are unsure about auth middleware placement, use AskUserQuestion rather than picking one."* You will trade a few seconds of your attention for avoiding an expensive rework.
 
 ## Creating Custom Agents
 
@@ -123,9 +131,10 @@ Create `.claude/agents/security-reviewer.md`:
 
 ```markdown
 ---
-name: Security Reviewer
+name: security-reviewer
 description: Reviews code for security vulnerabilities
-model: opus
+tools: Read, Grep, Glob, Bash(git diff:*)
+model: claude-opus-4-6
 isolation: worktree
 ---
 
@@ -181,14 +190,26 @@ The frontmatter in an agent file configures its behavior:
 
 ```yaml
 ---
-name: Agent Display Name
+name: agent-name                 # lowercase, kebab-case
 description: What this agent does (used for routing)
-model: opus          # opus, sonnet, haiku
-isolation: worktree  # Separate git worktree
+tools: Read, Grep, Edit, Bash    # restrict what the agent can do
+model: claude-sonnet-4-6         # or claude-opus-4-6, claude-haiku-4-5
+isolation: worktree              # separate git worktree
 ---
 ```
 
 We'll cover the full set of options in the next lesson.
+
+### Installing Agents from Plugins
+
+You don't always need to author agents from scratch. `/plugin` lets you install pre-built agents, skills, and commands from the plugin marketplace:
+
+```bash
+/plugin install security-review
+/plugin list
+```
+
+Installed agents show up alongside your local `.claude/agents/` definitions.
 
 ## More Agent Examples
 
@@ -198,9 +219,10 @@ We'll cover the full set of options in the next lesson.
 
 ```markdown
 ---
-name: Test Writer
+name: test-writer
 description: Generates comprehensive tests for source files
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob, Bash(npm test:*)
+model: claude-sonnet-4-6
 ---
 
 You write tests. Given a source file, generate comprehensive tests that cover:
@@ -225,9 +247,10 @@ You write tests. Given a source file, generate comprehensive tests that cover:
 
 ```markdown
 ---
-name: Documentation Writer
+name: doc-writer
 description: Generates and updates technical documentation
-model: sonnet
+tools: Read, Write, Edit, Grep, Glob
+model: claude-sonnet-4-6
 ---
 
 You write technical documentation. Given a file or module, generate

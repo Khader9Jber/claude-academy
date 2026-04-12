@@ -15,12 +15,12 @@ quiz:
     question: "What's the optimal model assignment by task type?"
     type: "multiple-choice"
     options:
-      - "Use Opus for everything"
-      - "Opus for architecture/security, Sonnet for coding/testing, Haiku for boilerplate/lookups"
-      - "Use Haiku for everything"
+      - "Use Opus 4.6 for everything"
+      - "Opus 4.6 for architecture/security, Sonnet 4.6 for coding/testing, Haiku 4.5 for boilerplate/lookups"
+      - "Use Haiku 4.5 for everything"
       - "It doesn't matter"
     correct: 1
-    explanation: "Match model to task: Opus for complex reasoning (architecture, security review, debugging hard bugs), Sonnet for standard work (implementing features, writing tests, code review), and Haiku for simple tasks (lookups, boilerplate, exploration). This optimizes both cost and quality."
+    explanation: "Match model to task: Opus 4.6 for complex reasoning (architecture, security review, debugging hard bugs, whole-codebase analysis with its 1M context window), Sonnet 4.6 for standard work (implementing features, writing tests, code review), and Haiku 4.5 for simple tasks (lookups, boilerplate, exploration). This optimizes both cost and quality."
   - id: "tokens-2"
     question: "How much is a Max subscription worth in equivalent API costs?"
     type: "multiple-choice"
@@ -61,32 +61,32 @@ Token optimization is quality optimization.
 
 ## Strategy 1: Model Switching
 
-Different tasks need different models. Don't use Opus for renaming variables, and don't use Haiku for architecture review.
+Different tasks need different models. Don't use Opus 4.6 for renaming variables, and don't use Haiku 4.5 for architecture review.
 
 ### The Assignment Matrix
 
 | Task | Model | Why |
 |---|---|---|
-| Architecture design | Opus | Complex reasoning, multi-factor analysis |
-| Security review | Opus | Deep pattern recognition, threat modeling |
-| Complex debugging | Opus | Subtle bug analysis, multi-file reasoning |
-| Feature implementation | Sonnet | Balanced capability and speed |
-| Writing tests | Sonnet | Good at pattern following |
-| Code review | Sonnet | Catches issues without over-reasoning |
-| Boilerplate generation | Haiku | Fast, pattern-based |
-| Code exploration | Haiku | Quick lookups, simple queries |
-| Renaming/formatting | Haiku | Mechanical tasks |
+| Architecture design | Opus 4.6 | Complex reasoning, multi-factor analysis, 1M context |
+| Security review | Opus 4.6 | Deep pattern recognition, threat modeling |
+| Complex debugging | Opus 4.6 | Subtle bug analysis, multi-file reasoning |
+| Feature implementation | Sonnet 4.6 | Balanced capability and speed |
+| Writing tests | Sonnet 4.6 | Good at pattern following |
+| Code review | Sonnet 4.6 | Catches issues without over-reasoning |
+| Boilerplate generation | Haiku 4.5 | Fast, pattern-based |
+| Code exploration | Haiku 4.5 | Quick lookups, simple queries |
+| Renaming/formatting | Haiku 4.5 | Mechanical tasks |
 
 ### Switching During a Session
 
 ```bash
-/model opus
+/model claude-opus-4-6
 "Analyze the auth module architecture and identify single points of failure"
 
-/model sonnet
+/model claude-sonnet-4-6
 "Implement the changes we discussed"
 
-/model haiku
+/model claude-haiku-4-5
 "Add JSDoc comments to all public functions"
 ```
 
@@ -111,12 +111,28 @@ claude -n "notifications"
 
 ### Compact at 80%
 
-Don't wait for the 95% auto-compact:
+Don't wait for auto-compact at the limit. Claude 4.6 tracks its own remaining context window and will usually flag when it's getting close, but you can act earlier:
 
 ```bash
 /context           # Check usage
 /compact "keep the payment refund logic details"  # Manual compact with hint
 ```
+
+### Ask Side Questions with /btw
+
+Mid-task, you sometimes need a quick unrelated answer — "what was the name of that Prisma flag?" Drop it into context and you pollute the session. `/btw` handles the side question out-of-band: the answer shows up in your terminal but does not enter the main conversation history. Fewer derailments, cleaner context.
+
+```bash
+/btw what's the syntax for a Prisma composite unique index?
+```
+
+### Step Back with /rewind
+
+If a direction goes wrong, don't fight your way back by typing corrections — those corrections themselves bloat context. Use `/rewind` to restore a checkpoint. You pick what to rewind: the conversation, the code, or both. Checkpoints persist across sessions, so you can rewind something from earlier in the day.
+
+### Auto Mode for Unattended Runs
+
+When you need Claude to keep going without prompting you for every permission (long migrations, overnight jobs), use auto mode — `claude --permission-mode auto -p "..."`. Combined with restricted `--allowedTools`, it gives you uninterrupted execution while still constraining what Claude can touch. Pair it with a final `/simplify` pass instead of babysitting individual approvals.
 
 ### Write, Then Compact
 
@@ -247,7 +263,7 @@ The token savings are real, but the quality improvement is worth even more.
 1. Enable `ENABLE_LSP_TOOL=1` (biggest single win)
 2. One task = one session
 3. Disconnect unused MCP servers
-4. Match model to task (Opus/Sonnet/Haiku)
+4. Match model to task (Opus 4.6 / Sonnet 4.6 / Haiku 4.5)
 5. Match effort to task (low/medium/high)
 6. Compact at 80%, not 95%
 7. Reference files late, not early

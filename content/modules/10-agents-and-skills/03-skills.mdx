@@ -42,15 +42,15 @@ quiz:
     correct: 1
     explanation: "Skills add knowledge and instructions to the current context — like giving Claude a handbook. Agents are independent Claude instances with their own context window, model, and permissions. Skills enhance the current session; agents work in parallel."
   - id: "skills-4"
-    question: "What does disableAutoInvocation: true do?"
+    question: "What does disable-model-invocation: true do?"
     type: "multiple-choice"
     options:
       - "Prevents the skill from working"
-      - "Prevents automatic triggering — the skill must be invoked explicitly with /skillname"
+      - "Prevents automatic triggering — the skill must be invoked explicitly with /skill-name"
       - "Disables the skill permanently"
       - "Stops notifications"
     correct: 1
-    explanation: "disableAutoInvocation: true means the skill won't trigger automatically based on task matching. It can only be used when you explicitly invoke it with /skillname. This is useful for skills that should only run on demand — like deployment or migration skills."
+    explanation: "disable-model-invocation: true means the skill won't trigger automatically based on task matching. It can only be used when you explicitly invoke it. Useful for skills that should only run on demand — like deployment or destructive migration skills."
 ---
 
 ## Skills vs. Agents vs. Commands
@@ -90,10 +90,9 @@ The SKILL.md file has frontmatter and a body:
 
 ```markdown
 ---
-name: Database Migration
+name: db-migrate
 description: Creates and validates Prisma database migrations
-disableAutoInvocation: false
-disableModelInvocation: false
+# disable-model-invocation: true   # opt-out of auto-triggering
 ---
 
 ## When to Use This Skill
@@ -141,11 +140,11 @@ naming rules.
 
 ### name
 
-Display name for the skill:
+Identifier for the skill. Lowercase, kebab-case — this matches the directory name under `.claude/skills/`.
 
 ```yaml
 ---
-name: Database Migration
+name: db-migrate
 ---
 ```
 
@@ -159,31 +158,19 @@ description: Creates and validates Prisma database migrations
 ---
 ```
 
-Claude uses this description to decide when to auto-invoke the skill.
+Claude uses this description to decide when to auto-invoke the skill. Write it like a trigger condition: "Creates X when the user asks for Y."
 
-### disableAutoInvocation
-
-Prevents automatic triggering:
-
-```yaml
----
-disableAutoInvocation: true
----
-```
-
-When `true`, the skill only activates if you explicitly invoke it. Useful for skills you only want on demand (like deployment or destructive operations).
-
-### disableModelInvocation
+### disable-model-invocation
 
 Prevents Claude from invoking the skill on its own:
 
 ```yaml
 ---
-disableModelInvocation: true
+disable-model-invocation: true
 ---
 ```
 
-The skill can only be invoked by you, never by Claude's own decision.
+When `true`, the skill only activates if you explicitly invoke it. Useful for skills that touch production (deployments, destructive migrations) where you never want auto-triggering.
 
 ## Progressive Disclosure
 
@@ -195,7 +182,7 @@ When a session starts, Claude reads only the frontmatter of each skill:
 
 ```yaml
 ---
-name: Database Migration
+name: db-migrate
 description: Creates and validates Prisma database migrations
 ---
 ```
@@ -230,7 +217,7 @@ If the user never asks about migrations, the full skill body is never loaded. Ze
 
 ```markdown
 ---
-name: API Endpoint Creator
+name: api-endpoint
 description: Creates new API endpoints following project conventions
 ---
 
@@ -292,9 +279,9 @@ export async function createHandler(
 
 ```markdown
 ---
-name: Code Review
+name: code-review
 description: Reviews code changes for quality, security, and conventions
-disableAutoInvocation: true
+disable-model-invocation: true
 ---
 
 ## Review Checklist

@@ -89,6 +89,8 @@ Task is a full project → Agent team
 
 The rule of thumb: **use the minimum number of agents that achieves the goal**. Each agent adds complexity and token cost.
 
+Claude 4.6 is unusually eager to spawn sub-agents. The model tracks its remaining context window and factors that into delegation decisions, but it still leans toward parallelism in ambiguous cases. When a task doesn't need a crew, be explicit: "just handle this yourself, don't delegate."
+
 ## Architecture Patterns
 
 ### Pattern 1: Specialist Pool
@@ -99,7 +101,7 @@ Multiple independent specialists, each handling their domain:
 ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
 │   Security   │  │  Performance │  │   Testing    │
 │  Reviewer    │  │   Analyst    │  │   Writer     │
-│  (Opus)      │  │  (Sonnet)    │  │  (Sonnet)    │
+│  (Opus 4.6)  │  │  (Sonnet 4.6)│  │  (Sonnet 4.6)│
 └──────────────┘  └──────────────┘  └──────────────┘
        │                 │                  │
        └─────────────────┴──────────────────┘
@@ -116,22 +118,31 @@ Each specialist works independently on its concern. Results are aggregated in yo
 A lead agent coordinates worker agents:
 
 ```
-┌─────────────────────┐
-│   Supervisor (Opus) │
-│   Plans, assigns,   │
-│   reviews, integrates│
-└──────────┬──────────┘
+┌──────────────────────────┐
+│ Supervisor (Opus 4.6)    │
+│ Plans, assigns,          │
+│ reviews, integrates      │
+└──────────┬───────────────┘
            │
     ┌──────┼──────┐
     ▼      ▼      ▼
 ┌──────┐┌──────┐┌──────┐
-│Work 1││Work 2││Work 3│  (Sonnet)
+│Work 1││Work 2││Work 3│  (Sonnet 4.6)
 └──────┘└──────┘└──────┘
 ```
 
 The supervisor decomposes the task, assigns subtasks, reviews results, and integrates. Workers implement their assigned subtask.
 
-**Best for**: Large tasks with interdependencies that need coordinated planning.
+**Best for**: Large tasks with interdependencies that need coordinated planning. Anthropic's managed Agent Teams feature implements this pattern formally.
+
+### Pattern 2b: Writer + Reviewer
+
+A Writer agent implements a change; a *fresh-context* Reviewer agent reads the diff cold. Because the reviewer hasn't lived through the implementation, it doesn't rationalize the writer's compromises. This catches issues that the writer "explained away" mid-task.
+
+- **Writer**: Sonnet 4.6, permissionMode: acceptEdits, `isolation: worktree`
+- **Reviewer**: Opus 4.6, permissionMode: plan, effort: high, new context
+
+Use this for any change where correctness is hard to verify from inside the implementation session — security-sensitive code, migration scripts, public API changes.
 
 ### Pattern 3: Pipeline
 
@@ -290,9 +301,11 @@ Don't give every agent the full codebase context.
 2. **Clear boundaries**: Each agent knows exactly what it can and can't do.
 3. **Minimal communication**: Agents that need to communicate constantly should probably be one agent.
 4. **Fail gracefully**: Plan for agent failures from the start.
-5. **Human in the loop**: Keep a human checkpoint for critical decisions.
-6. **Match model to role**: Opus for reasoning, Sonnet for implementation, Haiku for exploration.
-7. **Isolate experiments**: Use worktrees for agents making changes.
+5. **Human in the loop**: Keep a human checkpoint for critical decisions — and for cost-sensitive workflows, observability (request counts, token use, durations) is part of the loop.
+6. **Match model to role**: Opus 4.6 for reasoning, Sonnet 4.6 for implementation, Haiku 4.5 for exploration.
+7. **Isolate experiments**: Use worktrees (`isolation: worktree`) for agents making changes.
+8. **Rollback on purpose**: Design for rollback — `/rewind` for session-level, git for code-level, revert-capable deployments for production.
+9. **Cost controls**: Cap `maxTurns`, prefer scoped `--allowedTools`, and use `--permission-mode auto` only when you've already constrained the blast radius.
 
 ## Key Takeaway
 

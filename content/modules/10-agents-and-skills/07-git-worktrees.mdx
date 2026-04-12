@@ -12,15 +12,15 @@ objectives:
   - "Know when to use worktrees vs fork"
 quiz:
   - id: "worktrees-1"
-    question: "What does claude -w feature-auth do?"
+    question: "What does claude --worktree feature-auth do?"
     type: "multiple-choice"
     options:
       - "Opens the auth feature"
-      - "Creates a new git worktree at .claude/worktrees/feature-auth/ with an auto-created branch"
+      - "Creates a new git worktree under .claude/worktrees/feature-auth/ with an auto-created branch and starts a Claude Code session there"
       - "Watches the auth directory"
       - "Switches to the auth branch"
     correct: 1
-    explanation: "claude -w feature-auth creates a new git worktree in .claude/worktrees/feature-auth/, auto-creates a new branch, and starts a Claude Code session in that worktree. Your main working directory is untouched — all changes happen in the isolated worktree."
+    explanation: "claude --worktree feature-auth creates a new git worktree, auto-creates a branch, and starts a Claude Code session inside the worktree. Your main working directory is untouched — all changes happen in the isolated worktree. Agents can also opt into the same isolation via isolation: worktree in their frontmatter."
   - id: "worktrees-2"
     question: "What happens to an empty worktree when the session ends?"
     type: "multiple-choice"
@@ -42,15 +42,15 @@ quiz:
     correct: 1
     explanation: "sparsePaths in settings.json specify which directories to include when creating a worktree in a monorepo. Instead of checking out the entire 50GB monorepo, the worktree only contains the specified paths — saving disk space and making operations faster."
   - id: "worktrees-4"
-    question: "When should you use a worktree instead of /fork?"
+    question: "When should you use a worktree instead of /rewind?"
     type: "multiple-choice"
     options:
       - "Always"
-      - "When you need file-level isolation — worktrees create separate directories; forks only branch the conversation"
+      - "When you need file-level isolation — worktrees create separate directories, while /rewind just restores a checkpoint in the same directory"
       - "Never — they're the same"
       - "Only for monorepos"
     correct: 1
-    explanation: "Worktrees provide file-level isolation — a separate directory with its own file state. Forks only branch the conversation — they share the same files. Use worktrees when you need Claude to make experimental changes without affecting your working directory. Use forks when you want to explore different conversational approaches."
+    explanation: "Worktrees provide file-level isolation — a separate directory with its own file state, so multiple agents or experiments can run in parallel. /rewind restores a conversation or code checkpoint sequentially in the same directory. Use worktrees when experiments need to run side-by-side without contaminating each other. Use /rewind when you want to step back and try a different approach from a known-good checkpoint."
 ---
 
 ## What Are Git Worktrees?
@@ -69,29 +69,32 @@ In Claude Code, worktrees provide **file-level isolation**. When an agent or ses
 ### From the Command Line
 
 ```bash
-claude -w feature-auth
+claude --worktree feature-auth
 ```
 
 This:
-1. Creates `.claude/worktrees/feature-auth/`
+1. Creates a worktree under `.claude/worktrees/feature-auth/`
 2. Creates a new branch `worktree/feature-auth`
 3. Checks out the branch in the worktree
 4. Starts a Claude Code session in the worktree directory
 
 Your main working directory is untouched. All of Claude's file operations happen in the worktree.
 
-### During a Session
+### Via Agent Frontmatter
 
-```bash
-/branch feature-auth
+Agents can request their own worktree without any CLI flag — add `isolation: worktree` to the agent's frontmatter and every invocation spins up a fresh worktree automatically:
+
+```yaml
+---
+name: refactor-bot
+isolation: worktree
+---
 ```
-
-Creates a worktree and switches to it mid-session.
 
 ## Worktree Lifecycle
 
 ```
-1. Create:  claude -w my-experiment
+1. Create:  claude --worktree my-experiment
              └── .claude/worktrees/my-experiment/ created
              └── Branch worktree/my-experiment created
 
@@ -136,11 +139,11 @@ You can have multiple worktrees active simultaneously:
 
 ```bash
 # Terminal 1
-claude -w feature-auth
+claude --worktree feature-auth
 # Working on authentication
 
 # Terminal 2
-claude -w feature-payments
+claude --worktree feature-payments
 # Working on payments
 
 # Terminal 3 (your main directory)
@@ -182,17 +185,17 @@ Instead of checking out the entire monorepo (which might be gigabytes), the work
 - Time (checkout is faster)
 - Context (Claude only sees relevant code)
 
-## Worktree vs. Fork
+## Worktree vs. /rewind
 
 These are easy to confuse. Here's the difference:
 
-| Aspect | Worktree | Fork |
+| Aspect | Worktree | /rewind |
 |---|---|---|
-| What's isolated | Files (separate directory) | Conversation (separate session) |
-| File changes | Completely isolated | Shared file system |
-| Git branch | New branch created | Same branch |
-| Use case | Claude making experimental changes | Exploring conversational approaches |
-| Cleanup | Auto-cleanup if empty | Manual /resume |
+| What's isolated | Files (separate directory) | A checkpoint in the same session/directory |
+| File changes | Completely isolated | Restored to a prior state |
+| Git branch | New branch created | No branch change |
+| Use case | Parallel experiments that shouldn't collide | Sequentially stepping back to retry |
+| Persistence | Filesystem, survives restarts | Persists across sessions (recent snapshots) |
 
 ### When to Use Worktrees
 
@@ -201,17 +204,17 @@ These are easy to confuse. Here's the difference:
 - You want to **experiment** with a refactoring without risk
 - You're in a **monorepo** and want isolated work on a package
 
-### When to Use Fork
+### When to Use /rewind
 
-- You want to **explore different approaches** conversationally
-- The code changes are **small** and you can Esc Esc to rewind
-- You want to **preserve conversation context** between branches
+- You realize the current direction is wrong and want to **step back**
+- The changes are small and you want to **retry** from a known-good state
+- You don't need parallelism — just a single do-over
 
 ## Real-World Worktree Workflow
 
 ```bash
 # Start a worktree for the refactoring
-claude -w refactor-auth-service
+claude --worktree refactor-auth-service
 
 # In the worktree session
 "Refactor the auth service to use the new JWT library. 
@@ -260,4 +263,4 @@ The WorktreeCreate hook runs `pnpm install` in every new worktree — ensuring t
 
 ## Key Takeaway
 
-Git worktrees provide file-level isolation for Claude Code sessions and agents. Create them with `claude -w name` or via agent frontmatter (`isolation: worktree`). Each worktree is a separate directory with its own branch — Claude's changes don't affect your main working directory. Use sparsePaths for monorepo efficiency. Empty worktrees auto-cleanup. Worktrees are essential for multi-agent parallel work and any scenario where you want to review Claude's changes before they affect your codebase.
+Git worktrees provide file-level isolation for Claude Code sessions and agents. Create them with `claude --worktree name` or via agent frontmatter (`isolation: worktree`). Each worktree is a separate directory with its own branch — Claude's changes don't affect your main working directory. Use sparsePaths for monorepo efficiency. Empty worktrees auto-cleanup. Worktrees are essential for multi-agent parallel work and any scenario where you want to review Claude's changes before they affect your codebase.

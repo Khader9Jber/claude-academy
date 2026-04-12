@@ -287,6 +287,10 @@ Post the results as a GitHub discussion."
 with the task name and error details."
 ```
 
+### Schedule + Cloud CI/CD
+
+Scheduled agents are also well-suited to cloud CI/CD integrations — triggering builds on AWS or GCP, kicking off nightly deploys, or running infrastructure audits. Pair `/schedule` with an MCP server for your cloud provider, and you can express "every Sunday at 3 AM, snapshot the staging database and report the size delta" as a single schedule.
+
 ## Key Takeaway
 
 /schedule creates cloud-based cron jobs powered by Claude Code. Unlike /loop (which runs locally and dies when your machine sleeps), /schedule persists independently. Use it for daily dependency audits, weekly security scans, test suite monitoring, and automated report generation. Manage schedules with /schedule list, show, update, remove, and run. Choose /loop for active monitoring during work sessions and /schedule for reliable recurring automation.

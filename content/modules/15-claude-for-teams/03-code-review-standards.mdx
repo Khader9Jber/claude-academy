@@ -222,7 +222,7 @@ Report coverage percentage for changed files.
 
 ### Automated Review on PR Creation
 
-Use a GitHub Action to run Claude review on every PR:
+The easiest setup is the official Claude Code Action. Run `/install-github-app` inside Claude Code once to configure the app and set the `ANTHROPIC_API_KEY` secret for your repo, then add a workflow:
 
 ```yaml
 # .github/workflows/claude-review.yml
@@ -234,30 +234,24 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Claude Review
-        run: |
-          # Run Claude in headless mode with the review command
-          claude --print "$(cat .claude/commands/review.md)" \
-            2>&1 | tee review-output.txt
-      
-      - name: Post Review Comment
-        uses: actions/github-script@v7
+        uses: anthropics/claude-code-action@v1
         with:
-          script: |
-            const fs = require('fs');
-            const review = fs.readFileSync('review-output.txt', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## Claude Code Review\n\n${review}`
-            });
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt_file: .claude/commands/review.md
 ```
+
+Prefer the official action over hand-rolled shell — it handles auth, retries, and PR comment posting. If you need fully custom behavior, you can fall back to headless mode (`claude -p "$(cat .claude/commands/review.md)" --output-format json`) and post comments yourself, but start with the action.
+
+Never hardcode the API key. It belongs in GitHub repository secrets as `ANTHROPIC_API_KEY`, nowhere else.
 
 ### Review Comment Format
 

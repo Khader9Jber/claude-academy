@@ -284,7 +284,19 @@ Claude will make three tool calls — potentially in parallel — combine all re
 
 ## Parallel Tool Calls
 
-When Claude needs multiple tools that don't depend on each other, it can call them in parallel. You'll see multiple `tool_use` blocks in a single response:
+Claude 4.6 is strong at parallel tool use, but the model sometimes serializes calls by default. Nudge it explicitly in your system prompt when you want concurrency:
+
+```python
+system = (
+    "If you intend to call multiple tools and there are no dependencies "
+    "between the calls, make all of the independent tool calls in parallel "
+    "in a single response."
+)
+```
+
+Add that one sentence and unrelated calls (weather + user lookup + calculator) collapse into a single assistant turn with multiple `tool_use` blocks — one round trip instead of three.
+
+When Claude needs multiple tools that don't depend on each other, you'll see multiple `tool_use` blocks in a single response:
 
 ```json
 {

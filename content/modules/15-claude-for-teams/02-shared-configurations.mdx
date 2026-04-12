@@ -64,6 +64,17 @@ CLAUDE.md           → What Claude knows about the project
 
 All three live in the repo, are committed to version control, and apply to every team member automatically.
 
+## CLAUDE.md vs CLAUDE.local.md
+
+Before going deeper, understand this split — it is the single most common source of team friction:
+
+| File | Committed to git? | Purpose |
+|---|---|---|
+| `CLAUDE.md` | Yes | Shared team conventions, architecture, do-not-touch rules |
+| `CLAUDE.local.md` | No (gitignored) | Personal preferences: your editor, your aliases, your scratchpad |
+
+Add `CLAUDE.local.md` to `.gitignore`. Claude Code reads both automatically when present. The local file is where personal notes go — "remind me to run the preflight script before committing" — without polluting the team config. If a developer adds personal preferences to `CLAUDE.md`, they leak into every teammate's session. Catch this in PR review.
+
 ## Layer 1: The Shared CLAUDE.md
 
 ### Structure for Teams

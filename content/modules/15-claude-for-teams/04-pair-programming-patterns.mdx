@@ -52,9 +52,9 @@ quiz:
     explanation: "Letting the junior drive builds their prompting skills and decision-making ability. The senior observes their approach, asks questions ('Why did you ask for it this way?', 'What would happen if the input is null?'), and only intervenes for critical errors. This mentoring model is more effective than the senior doing everything while the junior watches."
 ---
 
-## Four Patterns
+## Five Patterns
 
-Every Claude Code pair programming session falls into one of four patterns. Each has its place. Using the wrong pattern wastes time or produces code nobody understands.
+Every Claude Code pair programming session falls into one of five patterns. Each has its place. Using the wrong pattern wastes time or produces code nobody understands.
 
 ## Pattern 1: Navigator-Driver
 
@@ -226,6 +226,44 @@ After full delegation, you MUST read every line as if you wrote it. Ask yourself
 
 If the answer is no, switch to Navigator-Driver and redo the parts you do not understand.
 
+## Pattern 5: Writer/Reviewer
+
+**One Claude writes. A fresh Claude reviews.**
+
+This is the team-scale evolution of Full Delegation — the same safety net, just automated. The writer session focuses on producing the change. A second session with a clean context loads the diff and critiques it as if a senior teammate just walked up to review.
+
+### How It Works
+
+```
+Session A (Writer):
+  "Implement the password reset flow per the spec in docs/auth-reset.md.
+  Add the routes, service, tests, and wire it into the existing mailer."
+
+[Session A produces the diff]
+
+Session B (Reviewer — new session, fresh context):
+  "Review the changes in git diff main...HEAD against docs/auth-reset.md.
+  Flag: missing auth checks, race conditions, test gaps, deviations from
+  CLAUDE.md conventions. Be skeptical — the writer was confident."
+```
+
+Session B has no sunk cost. It never watched the writer convince itself the code was fine, so it is far more likely to catch the "I forgot the rate limit" class of bug.
+
+### Why Fresh Context Matters
+
+Inside one session, Claude accumulates assumptions from its own earlier output. If it decided on turn 3 that a field is validated upstream, it will trust that assumption on turn 30 even when it is wrong. A reviewer session reads the diff without that history — it re-derives every assumption from the code.
+
+### When to Use
+
+- Any change going to production where a human reviewer is not available right now
+- High-stakes code: auth, payments, migrations, security
+- As the automated gate in a CI-driven review (see the code-review-standards lesson)
+- After Full Delegation — always. Never merge fully delegated code without a fresh-context review
+
+### The Rule
+
+The reviewer session must not see the writer session's transcript. If both sessions share context, you get one Claude agreeing with itself. The whole value is the independent look.
+
 ## Choosing the Right Pattern
 
 | Situation | Pattern | Why |
@@ -234,10 +272,11 @@ If the answer is no, switch to Navigator-Driver and redo the parts you do not un
 | Stuck on a design decision | Rubber Duck | Explaining reveals the answer |
 | Mixed creativity + implementation | Ping-Pong | Each does what they are best at |
 | Repeating an established pattern | Full Delegation | Speed matters, pattern is proven |
+| High-stakes or fully delegated change | Writer/Reviewer | Fresh context catches what the writer missed |
 | Junior developer learning | Navigator (junior)-Driver (Claude) | Builds junior's decision-making |
 | Debugging production issue | Rubber Duck → Navigator | Analyze first, fix second |
 | Large refactoring | Navigator-Driver | You steer the refactor, Claude makes changes |
-| Writing tests for existing code | Full Delegation | Pattern is well-defined |
+| Writing tests for existing code | Full Delegation + Writer/Reviewer | Pattern is well-defined, review catches gaps |
 
 ## Anti-Patterns to Avoid
 
@@ -275,4 +314,4 @@ review is worse than no review — it creates false confidence.
 
 ## Key Takeaway
 
-Effective Claude pair programming requires choosing the right pattern for the situation. Navigator-Driver gives you strategic control while Claude handles implementation speed. Rubber Duck uses Claude as a sounding board that helps you solve problems through articulation. Ping-Pong alternates between human creativity and Claude implementation. Full Delegation maximizes speed but requires thorough post-review. The anti-pattern to watch for: treating Claude as a code vending machine instead of a thinking partner. The best results come from staying engaged — reviewing every change, understanding every decision, and switching patterns when the current one is not working.
+Effective Claude pair programming requires choosing the right pattern for the situation. Navigator-Driver gives you strategic control while Claude handles implementation speed. Rubber Duck uses Claude as a sounding board that helps you solve problems through articulation. Ping-Pong alternates between human creativity and Claude implementation. Full Delegation maximizes speed but requires thorough post-review. Writer/Reviewer adds a fresh-context second Claude that catches what the writer could not see — use it as the default gate on any delegated change. The anti-pattern to watch for: treating Claude as a code vending machine instead of a thinking partner. The best results come from staying engaged — reviewing every change, understanding every decision, and switching patterns when the current one is not working.

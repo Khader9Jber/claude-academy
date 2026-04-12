@@ -1,0 +1,255 @@
+---
+title: "Diligence: Owning What You Do With AI"
+slug: "diligence"
+order: 5
+difficulty: "beginner"
+duration: 20
+tags: ["fluency", "diligence", "ethics", "responsibility"]
+objectives:
+  - "Accept that you, not the AI, remain accountable for outputs you ship"
+  - "Apply diligence practices across attribution, privacy, IP, bias, and verification"
+  - "Use the 'explain it back' test before shipping AI-assisted work"
+  - "Recognize when professional contexts (legal, medical, financial) require heightened diligence"
+quiz:
+  - id: "diligence-1"
+    question: "What does it mean that you are 'the author' when using AI?"
+    type: "multiple-choice"
+    options:
+      - "You should claim credit for all AI outputs"
+      - "You remain accountable for what you produce with AI — the output is YOUR output, and you own the consequences of shipping it"
+      - "AI can't be used for professional work"
+      - "You need to attribute AI involvement on every output"
+    correct: 1
+    explanation: "You are the author in the sense of accountability — you own what you ship. This doesn't mean taking false credit or always attributing AI; it means that when the output succeeds or fails, the responsibility is yours. That framing drives every diligence practice: verify facts, check bias, respect privacy, disclose when appropriate."
+  - id: "diligence-2"
+    question: "You paste confidential customer data into Claude to analyze it. What's the diligence concern?"
+    type: "multiple-choice"
+    options:
+      - "There's no concern — Claude is confidential by default"
+      - "Privacy — you need to understand the data retention and usage policy of the AI tool, and whether your organization permits sharing that data externally. Sensitive data may require enterprise-only tools or redaction"
+      - "It's fine as long as you don't save the conversation"
+      - "You can only paste customer data if it's encrypted first"
+    correct: 1
+    explanation: "Pasting sensitive data into any external tool is a diligence concern. You need to know: the tool's data retention and usage policy (is it used for training? how long is it stored?), your organization's policy on external data sharing, and whether the data should be in an enterprise-tier tool with a business agreement rather than a consumer tool. Privacy diligence is foundational, not optional."
+  - id: "diligence-3"
+    question: "What is the 'explain it back' test for diligence?"
+    type: "multiple-choice"
+    options:
+      - "Asking Claude to explain its output again"
+      - "If you couldn't explain WHY the AI's answer is correct without the AI, you haven't done diligence — you're shipping something you don't understand"
+      - "Having someone else re-explain the output to you"
+      - "Translating the output into plain English"
+    correct: 1
+    explanation: "The explain-it-back test is a personal check: could I, without Claude's help, explain why this answer is correct and sound? If the answer is no — if you don't understand why it works, only that Claude said so — you haven't done diligence. This protects you from shipping output you can't defend or debug."
+  - id: "diligence-4"
+    question: "You're drafting a legal contract with Claude's help. What's the appropriate diligence level?"
+    type: "multiple-choice"
+    options:
+      - "Normal — Claude is good at writing, just review the output"
+      - "Minimal — Claude has been trained on lots of legal text"
+      - "Heightened — regulated professional contexts require extra care: verify every clause against authoritative sources or a qualified lawyer, never ship AI-generated legal text as final without expert review, and document your process"
+      - "None — AI can handle legal work autonomously"
+    correct: 2
+    explanation: "Legal, medical, and financial contexts are accountability-heavy and expertise-sensitive. AI-assisted drafts in these domains require heightened diligence: a qualified expert reviews and owns the final output, every specific claim or clause is verified, and you document how AI was used. 'I let Claude write it' is never a defensible answer when things go wrong in a regulated context."
+---
+
+## You Are the Author
+
+Here's the principle this entire lesson hangs on:
+
+> **AI is a tool. You are the author, the decision-maker, the accountable person. The output is YOUR output.**
+
+This isn't about ego or attribution. It's about responsibility. When something you shipped is wrong — factually, ethically, legally — "Claude wrote it" is not a defense. You decided what to submit. You decided to trust it. You shipped it under your name or your organization's name. The ownership is yours.
+
+**Diligence**, the fourth D, is how you act on that ownership. It's the set of practices that keep AI-assisted work trustworthy, responsible, and defensible — to yourself, to your colleagues, to your customers, to regulators, and to the people downstream of whatever you produce.
+
+If Delegation is "should I engage AI?", Description is "what do I want?", and Discernment is "is this output good?", then Diligence is: **"what does it take to responsibly ship this?"**
+
+## The Core Practices
+
+Diligence breaks into five concrete practices. You won't always need all of them — a personal to-do list doesn't require the same diligence as a quarterly earnings report — but for work that matters, walk through each.
+
+### 1. Attribution and Transparency
+
+Sometimes you should disclose that AI was involved. Sometimes you shouldn't. The question is context-dependent:
+
+**Disclose when:**
+- Your institution, employer, or publication has a disclosure policy (increasingly common in academic, journalistic, and government contexts)
+- The output will be evaluated as a reflection of your personal work (e.g., a job application essay, a graded assignment)
+- Readers might make different decisions if they knew AI was involved (e.g., code review, peer review)
+- You've used AI for analysis or conclusions, not just mechanical drafting
+
+**Disclosure usually not required when:**
+- AI was used for light assistance (spell check, rephrasing a sentence, brainstorming) on your own work
+- You used AI the way you'd use autocomplete or a thesaurus
+- The output is purely mechanical and your oversight is complete
+
+**Default: when in doubt, disclose.** It's almost always safer than being caught undisclosed. Many organizations are writing explicit policies — read yours, and if there isn't one, ask.
+
+How to disclose clearly: "Drafted with AI assistance; reviewed, verified, and edited for accuracy." Or more specifically: "Used Claude to summarize the source interviews; all quotes verified against the original transcripts; themes validated by me." Specificity signals competence — you're showing that AI was a tool in a careful process, not a replacement for one.
+
+### 2. Privacy
+
+This is the diligence failure I see most often in professional settings. People paste things into AI that they should not.
+
+Before you put any data into an AI tool, ask:
+
+- **Is this data mine to share?** Customer information, employee PII, proprietary code, confidential documents — many of these require specific agreements before they're shared with external services.
+- **What's the tool's policy?** Does the provider use your inputs for training? How long is the conversation retained? Is it accessible to support staff? Is there a business/enterprise tier with stronger guarantees?
+- **Does my organization allow it?** Many companies have explicit policies about AI tool use. Know yours. If you don't know, ask before pasting.
+- **Can I redact?** If the specific names and numbers aren't needed for the task, remove them. "Customer 1 in a subscription tier for $X/month" is often sufficient.
+
+For Claude specifically, [Anthropic publishes policies on data usage](https://www.anthropic.com/legal) — and consumer vs enterprise (Team, Enterprise, API via AWS/GCP) have different terms. Read them for the tier you're using.
+
+A rule to live by: **if a leak of this data would embarrass you or harm someone, treat it as a "don't paste" by default, and only share it in a tool where the terms of service allow it explicitly.**
+
+### 3. IP and Licensing
+
+AI-generated output exists in a legally evolving space, and the rules depend on jurisdiction, use case, and the specific tool. A few practical points:
+
+- **Ownership of outputs varies.** Most AI providers, including Anthropic, allow you commercial use of outputs you create. Read the specific terms for the tool you use.
+- **Training data matters.** If you're creating something that resembles protected work (song lyrics, distinctive art styles, trademarked content), be aware that AI can inadvertently reproduce copyrighted or trademarked material. Verify that what you're using is not a near-copy of something protected.
+- **Attribution to third parties.** If AI cites or quotes a source, check whether you need additional permission to use that content in your work — the AI doesn't handle clearance for you.
+- **Code licensing.** AI-generated code may resemble snippets from training data. For sensitive contexts (proprietary products, patent applications), consult legal guidance.
+
+Diligence here is: know the terms, verify outputs aren't replicating protected work, and when in doubt, get legal guidance for professional contexts.
+
+### 4. Bias and Fairness
+
+AI models inherit biases from their training data. If you use AI to make or inform decisions about people — hiring, lending, tenancy, healthcare, legal outcomes — those biases become your biases.
+
+This is not a theoretical concern. Examples:
+
+- Language models associate certain names or dialects with lower-quality writing
+- Image models have produced biased depictions of professions by gender and race
+- Summarization can amplify or erase perspectives depending on what's represented in training data
+
+Diligence in decisions involving people:
+
+- **Don't delegate the judgment.** Use AI for drafting, organizing information, surfacing candidates for review — not for final decisions about individuals.
+- **Audit outputs for patterns.** If you're using AI at scale, look for disparate impact across groups.
+- **Be cautious with demographic signals.** If the AI is weighing names, ZIP codes, language, or other proxies for protected attributes, you may be reproducing discrimination.
+- **Document.** Know what the AI did and didn't contribute, so you can audit and correct if patterns emerge.
+
+### 5. Verification
+
+This is the one you'll do most often. You ship it, you own it — so verify before shipping.
+
+Verification is a spectrum based on stakes:
+
+- **Low stakes:** a quick read-through and gut-check.
+- **Medium stakes:** targeted fact-checking, especially on specific claims, numbers, names, dates.
+- **High stakes:** systematic verification of every factual claim, expert review of technical content, testing of code, legal review of legal text.
+
+The verification effort should match the cost of being wrong. Spending 5 minutes fact-checking a blog post is overkill; spending 5 minutes fact-checking a regulatory filing is reckless.
+
+## The "Explain It Back" Test
+
+Here's a personal discipline worth adopting:
+
+> **Before you ship, ask yourself: could I explain, in my own words, WHY this answer is correct — without the AI's help?**
+
+If yes: you understand the output, you can defend it, you can debug it if something goes wrong downstream. Ship.
+
+If no: you've been accepting answers you don't understand. This is where trouble starts. It's the difference between doing work and stamping work.
+
+The explain-it-back test doesn't mean you have to re-derive everything from scratch. It means you should understand enough about the answer that you're not purely trusting Claude. For code, can you walk someone through what each part does? For analysis, can you explain why the conclusion follows from the data? For strategic advice, can you articulate the reasoning?
+
+If the answer is "I have no idea, Claude just said this is right" — pause. Ask Claude to explain its reasoning step by step. Verify that the reasoning is sound. Then you've earned the right to ship.
+
+## Professional Contexts Need Heightened Diligence
+
+Regulated and accountability-heavy domains are different. The default diligence level is higher. These include:
+
+- **Legal** — contracts, filings, advice, anything a court might read
+- **Medical** — diagnosis, treatment, medication, anything touching patient outcomes
+- **Financial** — investment advice, tax filings, audit-relevant work
+- **Academic** — research, published work, student assignments under honor codes
+- **Safety-critical engineering** — aviation, medical devices, infrastructure
+
+In these domains:
+
+- **AI is an assistant, not an author.** A qualified human — lawyer, doctor, CPA, researcher, engineer — is the accountable party.
+- **Every specific claim is verified** against authoritative sources.
+- **Final output has expert sign-off** before it's used.
+- **AI use is documented** so it can be audited later if needed.
+- **Institutional policies are followed** — many regulated bodies now have explicit AI-use rules.
+
+A failed filing, a wrong diagnosis, a misstated audit — the consequences are real and the "AI helped" defense is not accepted. Be honest with yourself about when you're in one of these contexts.
+
+## Diligence as a Habit
+
+None of this is meant to feel like a heavy compliance burden. For most tasks, diligence is a 60-second discipline:
+
+1. Read the output once more, deliberately.
+2. Source-check the specific claims that matter.
+3. Ask: could I defend this if challenged?
+4. Confirm no sensitive data was handled inappropriately.
+5. Ship — or iterate.
+
+For most work, that's enough. For high-stakes work, it expands — but the expansion is proportional to the stakes, which is how it should be.
+
+What fluent users don't do: ship on autopilot. They don't copy-paste AI output and send it without a pause. They don't let the speed of AI tempt them into skipping the last mile of review. The speed you gain from using AI should be reinvested in doing the review properly, not in shipping more, faster, with less care.
+
+## A Quick Diligence Checklist
+
+For any AI-assisted work you're about to ship, run through this:
+
+- [ ] I can explain why this is correct without the AI
+- [ ] I've verified the specific factual claims (names, numbers, quotes, dates)
+- [ ] I haven't put sensitive data somewhere it shouldn't be
+- [ ] If disclosure is appropriate, I've disclosed clearly
+- [ ] I've considered bias and who's affected
+- [ ] For regulated/high-stakes work: an expert has reviewed and signed off
+- [ ] I'd be comfortable defending this output if someone challenged it
+
+If any box is unchecked, you're not done. Go back.
+
+## Common Diligence Failures (and How to Avoid Them)
+
+Patterns I see repeatedly in people who are still building the habit:
+
+**Failure 1: "I read it over."** Reading is not verifying. You can read a paragraph three times and never notice that one of the statistics in it is fabricated. Verification means actively checking a specific claim against a specific source.
+
+**Failure 2: "It sounded right."** Sounding right is what AI is best at. That's the trap. Discernment and diligence exist precisely because plausibility is not evidence.
+
+**Failure 3: "I'll check later."** Later rarely happens. The moment to verify is before the output leaves your hands. If you ship with a "I'll double-check this later" attitude, the error is already in the world.
+
+**Failure 4: "Claude probably knows this better than I do."** In domains where you have genuine expertise, trust your judgment over Claude's. Claude knows a lot in general; you know more in your specific area of depth. When your instinct and Claude disagree, investigate — don't automatically defer.
+
+**Failure 5: "It's fine for this context."** Sometimes it is. But the test isn't whether you feel it's fine — it's whether you could defend the decision if challenged. "I decided it was fine" isn't a defense if the output turns out to be harmful.
+
+None of these failures are moral — they're habits that form when people are rushed or unfamiliar with the practice. Naming them makes them easier to spot in yourself.
+
+## The Payoff
+
+There's a reason diligence matters even when no one's checking. Over time, people who cut corners with AI build up a history of small failures — a wrong fact here, a leaked detail there, a bias unchallenged, a decision that didn't hold up. Eventually someone notices. Trust, once lost, is hard to rebuild.
+
+People who practice diligence build the opposite reputation: their AI-assisted work is trustworthy. Colleagues and managers start treating them as the person who uses AI *well*, not the person who uses it *recklessly*. That reputation is worth more than the hour you save by skipping a fact-check.
+
+Diligence is the quiet, invisible 4th D. But it's the one that separates AI users you can trust from AI users you can't.
+
+## Diligence Is Also Self-Protection
+
+One more angle, because it's worth being blunt about it: diligence protects **you**.
+
+When AI-assisted work goes wrong, the blast radius lands on the person who shipped it, not on the AI. The person whose name is on the contract, the filing, the code, the report — that's who absorbs the consequences. Courts don't care that Claude wrote the first draft. Regulators don't care about the prompt. Your manager doesn't care which model generated the wrong number.
+
+So when you practice diligence, you're not just being ethical — you're protecting your career, your reputation, and sometimes your legal standing. The hour you spend verifying claims before shipping is insurance against the week you'd otherwise spend cleaning up a public mistake.
+
+This is how to hold the frame: AI makes your work faster and broader; diligence makes that faster/broader work still yours, still defensible, still something you're proud to put your name on. You need both.
+
+## Wrapping Up the 4Ds
+
+With diligence, we've now covered the full 4D framework. Each D plays a different role:
+
+- **Delegation** decides whether and how to engage AI at all.
+- **Description** shapes what you get back.
+- **Discernment** evaluates whether what you got is any good.
+- **Diligence** ensures that what you ship is yours, responsible, and defensible.
+
+In the next lesson, we'll see how they work together on an actual workflow — not in the abstract, but step by step on a real task. That's where the framework moves from theory into muscle memory.
+
+## Key Takeaway
+
+Diligence is about ownership: you are the author of what you ship, and the output is your output. That means practicing responsibility across attribution, privacy, IP, bias, and verification — matched to the stakes of the work. Use the explain-it-back test: if you can't explain WHY an AI output is correct without the AI's help, you haven't done diligence. In regulated or high-stakes professional contexts, heighten every step — verify every claim, document your process, and ensure a qualified human signs off. Diligence is invisible when you get it right and devastating when you get it wrong.

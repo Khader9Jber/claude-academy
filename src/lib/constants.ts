@@ -20,7 +20,7 @@ export const ARC_DEFINITIONS: ArcDefinition[] = [
     color: "#5cb870",
     description:
       "Build your base. Learn what Claude is, how to write effective prompts, and get comfortable with Claude Code's core features.",
-    range: "Modules 1-4",
+    range: "Modules 1-4, 26",
   },
   {
     id: "practitioner",
@@ -82,6 +82,7 @@ export const MODULE_ORDER: string[] = [
   "claude-data-science",
   "claude-mobile",
   "claude-databases",
+  "ai-fluency",
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [

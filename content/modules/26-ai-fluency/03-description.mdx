@@ -1,0 +1,302 @@
+---
+title: "Description: Telling AI What You Actually Need"
+slug: "description"
+order: 3
+difficulty: "beginner"
+duration: 22
+tags: ["fluency", "description", "prompting"]
+objectives:
+  - "Structure a strong description using goal, context, constraints, success criteria, and format"
+  - "Turn vague prompts into precise ones and understand why specificity dramatically changes output"
+  - "Iterate on descriptions rather than accepting the first attempt as final"
+  - "Recognize when MORE context helps and when it adds noise"
+quiz:
+  - id: "description-1"
+    question: "Which of these is the strongest structure for describing a task to Claude?"
+    type: "multiple-choice"
+    options:
+      - "Goal + friendly greeting + thanks"
+      - "Goal + context + constraints + success criteria + format"
+      - "Just the goal, clearly stated"
+      - "As many details as possible, in any order"
+    correct: 1
+    explanation: "A strong description has five components: the goal (what you want), context (what Claude needs to know about your situation), constraints (what it must or must not do), success criteria (how you'll judge the output), and format (how the output should look). Skip any of these and the output drifts. Order matters less than inclusion."
+  - id: "description-2"
+    question: "Why is 'write me a marketing email' a weak description?"
+    type: "multiple-choice"
+    options:
+      - "It's too polite"
+      - "It's missing the goal (what the email is for), context (audience, product, brand voice), constraints (length, tone, must-includes), and format"
+      - "Claude can't write marketing emails"
+      - "It doesn't use enough technical vocabulary"
+    correct: 1
+    explanation: "'Write me a marketing email' is a goal fragment with no context or constraints. Claude will produce a generic template because that's literally all the information it has. A strong version specifies the audience, the offer, the tone, the length, the required elements, and the format."
+  - id: "description-3"
+    question: "Your first prompt gave you a draft that's 70% right but off-tone. What's the fluent move?"
+    type: "multiple-choice"
+    options:
+      - "Start over with a brand new prompt in a fresh conversation"
+      - "Accept the output and manually fix the tone yourself"
+      - "Iterate — tell Claude what's off about the tone with specifics, and ask for a revision"
+      - "Switch to a different AI model"
+    correct: 2
+    explanation: "Iteration is the superpower. Your first description is a draft; the AI's response shows you what was missing or misread. Telling Claude specifically what's off (e.g., 'too formal, we want something warmer — match the voice of this example') produces a much better second pass. Starting over loses the context you just built."
+  - id: "description-4"
+    question: "When does MORE context HURT a prompt rather than help it?"
+    type: "multiple-choice"
+    options:
+      - "Context always helps; more is always better"
+      - "When the extra context is irrelevant to the task, outdated, or contradicts your actual goal — it dilutes focus and the AI tries to satisfy everything at once"
+      - "When the context is in English"
+      - "Only when you exceed the token limit"
+    correct: 1
+    explanation: "Context helps when it shapes the output toward your goal. It hurts when it's irrelevant (pulling Claude off-topic), outdated (the AI weights it equally to current info), or contradictory (forcing Claude to pick a direction). Signal, not volume — include what matters, omit what doesn't."
+---
+
+## From Vague to Precise
+
+The most common reason AI output disappoints isn't that the AI is bad. It's that the description was vague. Garbage in, garbage out is a cliché for a reason.
+
+**Description**, the second D, is the skill of articulating your goal in a way AI can act on. It's often called "prompting," but fluent description is more disciplined than just typing a sentence and hitting enter. It's a structure you apply consistently so that what you want is unambiguous on the other side.
+
+Here's the move in one image. Watch the difference:
+
+**Bad description:**
+```
+Write me a marketing email
+```
+
+**Strong description:**
+```
+Write a marketing email announcing our Black Friday sale to existing
+SaaS customers who have been on our starter plan for 3+ months.
+
+Context: We're an email automation platform. Our tone is professional
+but warm — think "helpful senior peer," not "used car salesman."
+
+Constraints:
+- Under 150 words
+- Must include: 30% discount on annual upgrade, offer ends Nov 30,
+  CTA to billing page URL
+- No exclamation points, no "hurry!" urgency language
+- Mention their loyalty (3+ months on the platform)
+
+Success criteria: A customer would read the whole thing, understand
+the offer immediately, and click the CTA without feeling pressured.
+
+Format: Subject line, then plain-text body. No HTML, no emojis.
+
+Voice reference: match the voice in this past email: [paste example]
+```
+
+Same task. Totally different outputs. The second version gets you something you can ship or lightly edit; the first gets you something generic that needs a full rewrite.
+
+## The Anatomy of a Strong Description
+
+A strong description has five components. You don't have to include all five for every task, but you should pause and ask: *which of these am I leaving out, and will that hurt?*
+
+### 1. Goal — What Do You Want?
+
+State the outcome, not the activity. "Help me" and "work on" are activity words; "produce," "summarize," "identify," "compare," "rewrite" are outcome words. The clearer the outcome, the more focused the output.
+
+**Vague goal:** "Help with my API docs."
+**Clear goal:** "Rewrite this API documentation section so that a new developer can understand how to authenticate within five minutes."
+
+### 2. Context — What Does the AI Need to Know?
+
+Claude doesn't know your project, your audience, your past conversations, or your constraints — unless you tell it. Context bridges that gap.
+
+Useful context to include when relevant:
+
+- **Who the output is for** — audience, level of expertise, what they already know
+- **Why it's needed** — the business or personal reason behind the task
+- **What's come before** — relevant history, previous attempts, past decisions
+- **What materials matter** — documents, examples, data to consider
+
+A good test: if a colleague walked in and you asked them to do this task, what would you need to tell them? Tell Claude the same things.
+
+### 3. Constraints — What Must or Must Not Happen?
+
+Constraints are the guardrails. They're where you prevent the output from going in directions you don't want.
+
+Common constraints:
+
+- Length limits ("under 200 words," "maximum 5 bullet points")
+- Tone ("professional but warm," "no marketing speak")
+- Inclusions ("must mention X, Y, Z")
+- Exclusions ("don't reference competitors, don't use exclamation points")
+- Technical constraints ("must use Python 3.11+," "compatible with our existing schema")
+
+Constraints feel restrictive, but they actually help the AI. A task with clear constraints has a smaller, more focused solution space, and the output converges faster on what you want.
+
+### 4. Success Criteria — How Will You Judge the Output?
+
+This is the most-skipped component, and it's one of the most valuable. If you can articulate what "good" looks like, Claude can aim for it.
+
+Examples:
+
+- "A successful output reads like it was written by someone on our team."
+- "Success is a junior developer being able to run this code without modification."
+- "The summary is correct if a manager could brief their exec from it in under 2 minutes."
+
+Success criteria aren't just for you — they sharpen Claude's target. When you tell Claude what "done" looks like, its output calibrates toward that.
+
+### 5. Format — How Should the Output Look?
+
+"Give me a list" and "give me a table" and "give me a JSON object" and "give me a one-paragraph summary" all produce different outputs. If you don't specify, Claude guesses — and guessing is where mismatches happen.
+
+Good format hints:
+
+- "Output as a markdown table with columns: Name, Status, Priority, Owner"
+- "JSON object with fields: `title`, `summary`, `tags` (array of strings)"
+- "Plain text, one sentence per line"
+- "A short paragraph followed by a bulleted list of 3-5 items"
+
+Be as specific as the situation requires. For creative work, format may be loose. For structured outputs you'll feed into another system, format should be precise.
+
+## Iteration Is a Superpower
+
+Here's a shift in mindset that separates new users from fluent ones:
+
+**The first description is always a draft.**
+
+Nobody — no one — writes a perfect description on the first try for every task. Fluent users expect to iterate. They treat the first response as diagnostic: it tells them what was missing from their description.
+
+The iteration loop looks like this:
+
+1. Write the best description you can in under a minute.
+2. Send it. Read the output.
+3. Notice: where did Claude miss? What did it assume that was wrong? What did it not know that it should have?
+4. Send a short follow-up: *"Good start. Two adjustments: [X] and [Y]. Keep the structure you used."*
+5. Repeat once or twice more if needed.
+
+Most tasks converge in 2-3 iterations. Refusing to iterate — treating the first output as the final answer — wastes the tool.
+
+An example exchange:
+
+> **You:** Write a summary of the attached meeting notes, under 200 words, focusing on decisions made.
+>
+> **Claude:** [produces a 180-word summary that lists all topics discussed, not just decisions]
+>
+> **You:** Good length, but I need only the decisions. The topics discussed list isn't useful. Rewrite focusing purely on what was decided and who owns the next step.
+>
+> **Claude:** [produces a tighter, decision-focused summary]
+>
+> **You:** Perfect. One last tweak — add a one-line intro saying what meeting this was and when.
+
+Three messages. Clean output. Each iteration fills in a gap the previous one revealed.
+
+## When MORE Context Helps vs Hurts
+
+There's a common assumption that "more context is always better." It's not. Context is signal, and signal can be diluted.
+
+**Context helps when it:**
+- Shapes the output toward your specific situation
+- Provides the material Claude needs to reason over (docs, data, examples)
+- Disambiguates between plausible interpretations of your goal
+- Demonstrates the tone or style you want (via an example)
+
+**Context hurts when it:**
+- Is **irrelevant** — pulling Claude's attention toward things that don't matter for this task
+- Is **outdated** — Claude weights it equally to current info, creating confusion
+- **Contradicts** your actual goal — forcing the AI to try to satisfy opposing requirements
+- Is **so long** it buries the actual goal
+
+A specific failure mode: dumping an entire 50-page document when only three paragraphs are relevant. Claude will try to honor all of it. Better: extract the relevant passages and include them, labeled clearly.
+
+Rule of thumb: **include context that shapes the output; omit context that just decorates the prompt.**
+
+## Common Description Mistakes
+
+Patterns that reliably produce weak output:
+
+### Mistake 1: Vague goals
+
+"Help me with this email." What does "help" mean? Review it? Rewrite it? Shorten it? Explain what's wrong with it? Make a version for a different audience? State the outcome.
+
+### Mistake 2: Missing the audience
+
+"Explain how OAuth works" produces very different output for a junior developer vs a security engineer vs a product manager. Specify.
+
+### Mistake 3: Assuming shared context
+
+"Write a response to the customer email" — but you never pasted the email. Claude can't read your screen or your mind. Either paste it or describe it precisely.
+
+### Mistake 4: No constraints
+
+A blank-canvas prompt invites a blank-canvas response. Even one constraint ("under 150 words," "casual tone") dramatically sharpens the output.
+
+### Mistake 5: Asking for too many things at once
+
+"Write the marketing copy, design the landing page layout, and propose the social media campaign" — three distinct tasks. Claude will produce shallow versions of all three. Break it into separate descriptions, one at a time.
+
+### Mistake 6: Format-shaped by accident
+
+If you don't specify format, Claude guesses based on the feel of your prompt. A conversational prompt gets a conversational answer. A clipped technical prompt gets a clipped technical answer. If you want JSON but wrote in paragraphs, say so explicitly.
+
+## A Description Template You Can Reuse
+
+When you're starting out, having a structure to fall back on is useful. Here's one that works across most tasks:
+
+```
+Goal: [what I want produced]
+
+Context:
+- Audience: [who reads/uses this]
+- Background: [what's relevant about my situation]
+- Materials: [attached documents or pasted content]
+
+Constraints:
+- [length]
+- [tone]
+- [must include / must not include]
+
+Success criteria: [what "done" looks like]
+
+Format: [structure of the output]
+```
+
+You won't always use all of it. Sometimes the goal is obvious and constraints don't matter. But when the task is important or the output is going to someone who matters, walk through the template.
+
+Over time, you'll internalize the shape and stop needing the scaffolding. Your prompts will hit all five components by instinct.
+
+## A Worked Rewrite
+
+Watch this transformation.
+
+**Original (1.2 out of 10):**
+```
+Write a blog post about remote work.
+```
+
+**After one pass of the template (8 out of 10):**
+```
+Goal: Write a blog post arguing that remote work is most effective
+for teams that practice strong written communication.
+
+Context:
+- Audience: Engineering managers at mid-sized tech companies (50-500 employees)
+- We're a productivity software company; this is for our company blog
+- Readers are skeptical — many have had bad remote experiences
+- Our angle: remote isn't the variable; communication discipline is
+
+Constraints:
+- 900-1200 words
+- One concrete example or anecdote every 2-3 paragraphs
+- No generic advice ("communicate more!") — be specific about practices
+- Don't bash office work — our readers have hybrid teams
+- Include one pull quote or callout that could be shared on LinkedIn
+
+Success criteria: An engineering manager reads it and thinks "okay, this
+is someone who has actually thought about this, not just a content-marketing
+take." Nods more than they roll their eyes.
+
+Format: Markdown. Title, intro, 3-4 main sections with H2s, conclusion.
+No exclamation points.
+```
+
+The second prompt might take 90 seconds to write. It will save you 30 minutes of rewriting.
+
+## Key Takeaway
+
+Description is the skill of telling AI what you actually need — clearly, specifically, with enough structure that the output can only go in the direction you want. Strong descriptions have goal, context, constraints, success criteria, and format. Iteration is not a fallback; it's the default mode — your first description is a draft, and each round sharpens the output. Watch for diminishing returns on context: more isn't always better. The best prompters are not the ones who memorize templates — they're the ones who pause for 60 seconds before typing and ask, "what does Claude need to know to do this right?"

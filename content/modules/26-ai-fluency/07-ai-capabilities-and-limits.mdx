@@ -1,0 +1,269 @@
+---
+title: "AI Capabilities and Limitations"
+slug: "ai-capabilities-and-limits"
+order: 7
+difficulty: "beginner"
+duration: 22
+tags: ["fluency", "limitations", "capabilities", "honest-assessment"]
+objectives:
+  - "Map what Claude is genuinely strong at vs weak at without hype or dismissal"
+  - "Understand the real limitations: hallucination, knowledge cutoff, no memory, probabilistic outputs, context windows"
+  - "Distinguish today's stable capabilities from emerging ones still in flux"
+  - "Use this map to make better delegation decisions in Lesson 2's framework"
+quiz:
+  - id: "ai-capabilities-1"
+    question: "Which of these is a reliable, strong capability for Claude today?"
+    type: "multiple-choice"
+    options:
+      - "Precise arithmetic on large numbers"
+      - "Real-time stock prices and news"
+      - "Summarizing, translating, and restructuring text"
+      - "Remembering what you told it in last week's conversation"
+    correct: 2
+    explanation: "Language tasks — summarizing, translating, rephrasing, restructuring — are among Claude's most reliable capabilities. Precise arithmetic (use a calculator), real-time data (requires tools), and cross-session memory (doesn't exist by default) are all weak spots. Knowing which bucket a task falls into is core to delegation."
+  - id: "ai-capabilities-2"
+    question: "What is a 'hallucination' in AI output?"
+    type: "multiple-choice"
+    options:
+      - "A visual glitch in the output"
+      - "Confidently stated information that is false — fabricated facts, quotes, citations, or details that sound plausible but aren't real"
+      - "A deliberate lie by the AI"
+      - "An output that's too creative"
+    correct: 1
+    explanation: "A hallucination is the AI producing false information with the same confidence as true information — a fake citation, an invented quote, a wrong API signature, a fabricated historical event. It's not lying (no intent) and not a visual effect — it's a failure mode of how language models generate text, and it's why discernment is so important."
+  - id: "ai-capabilities-3"
+    question: "What does 'knowledge cutoff' mean, and why does it matter?"
+    type: "multiple-choice"
+    options:
+      - "The maximum length of a prompt"
+      - "The date after which the AI's training data ends — it doesn't know about events, releases, or changes that happened after that date unless provided in the prompt or retrieved with tools"
+      - "A tool that cuts off Claude mid-response"
+      - "The moment a user stops paying for the service"
+    correct: 1
+    explanation: "Knowledge cutoff is the date after which the AI's training data ends. Claude has no knowledge of events, software releases, API changes, or published research after that cutoff unless you give it the information directly (via the prompt) or through tools like web search. Asking for 'the latest version of X' without providing it usually yields outdated information."
+  - id: "ai-capabilities-4"
+    question: "Why do AI outputs sometimes vary when you send the same prompt twice?"
+    type: "multiple-choice"
+    options:
+      - "The AI is broken"
+      - "AI outputs are probabilistic — the model samples from a distribution of plausible continuations, so identical prompts can produce different (and sometimes differently correct) outputs"
+      - "The prompt was different in some invisible way"
+      - "Only a different model would give a different answer"
+    correct: 1
+    explanation: "AI outputs are probabilistic. The model isn't deterministically choosing 'the answer' — it's sampling from a distribution of plausible next tokens, and two runs can diverge. This is not a bug; it's fundamental to how language models work. Practical implication: if an answer is important, running it twice (or asking Claude to re-check) can surface where the output was less certain."
+---
+
+## An Honest Map
+
+Let's end this module with something AI content often avoids: a straightforward, non-hype view of what Claude (and LLMs in general) can actually do today, what they do poorly, and what's genuinely changing fast.
+
+You cannot make good delegation decisions without this map. If you believe AI is magic, you'll over-delegate and ship bad work. If you believe AI is useless, you'll under-delegate and waste a tool that could double your output on half your tasks. The truth is in the middle, and it's specific.
+
+We're going to walk through strong capabilities, weak capabilities, the specific limitations that cause the most trouble, and the capabilities that are moving quickly enough that any static claim about them will be wrong by next quarter.
+
+## What Claude (and Similar LLMs) Do Well
+
+These are capabilities you can generally rely on today. They're the natural habitat of large language models.
+
+### Language Tasks
+
+This is the bread and butter. Claude is strong at:
+
+- **Summarization** — reducing long text to key points, adjusting for audience and length
+- **Translation** — across widely-used languages, with reasonable fidelity
+- **Rewriting** — changing tone, reformatting, adjusting for audience, simplifying complex text
+- **Restructuring** — turning paragraphs into bullets, bullets into tables, prose into outlines
+- **Text analysis** — identifying themes, sentiment, structure across documents
+
+If your task is fundamentally "take text, produce different text," Claude is in its strongest zone.
+
+### Code Generation and Analysis
+
+For well-understood programming tasks, Claude is excellent:
+
+- Writing functions and small modules from clear specifications
+- Explaining existing code in plain language
+- Finding bugs when given symptoms and context
+- Writing tests for specified behavior
+- Translating between languages (Python to TypeScript, SQL to pandas)
+- Adding documentation comments
+- Suggesting refactors
+
+The quality is highest when the task is similar to things widely represented in training data. Novel algorithms, obscure frameworks, or cutting-edge APIs often require you to provide documentation in the prompt.
+
+### Reasoning on Well-Defined Problems
+
+Claude can reason through multi-step problems when the premises are clear and present:
+
+- Logic puzzles and analysis tasks
+- Planning a sequence of steps
+- Diagnosing issues given symptoms and system descriptions
+- Comparing options with stated criteria
+- Extracting structure from unstructured information
+
+It's especially strong when you give it space to think — asking for explicit reasoning step by step, or in longer form, typically produces better results than asking for a final answer directly.
+
+### Structured Data Transformation
+
+If you hand Claude a messy spreadsheet, a log file, or an HTML dump and ask for a clean JSON structure, it'll usually produce exactly what you want. This is one of the highest-ROI use cases in professional work.
+
+### Pattern Recognition in Text
+
+Across many documents — reviews, tickets, interviews, reports — Claude can find themes, outliers, and patterns that would take a human hours to surface. This is why the customer feedback scenario in Lesson 6 works so well.
+
+### Explaining Concepts and Teaching
+
+Claude is generally a patient, flexible explainer. It can adjust difficulty level, swap analogies, and reframe concepts until something clicks. This makes it a strong learning companion across most domains.
+
+## What Claude Does Poorly
+
+Equally important, here's where Claude is weak. Match tasks in these categories to other tools.
+
+### Precise Math
+
+Large language models are not calculators. They can produce correct arithmetic some of the time, especially for small numbers, but they will also confidently produce wrong answers for math problems that look harder than they are. Rule:
+
+> If math matters, use a calculator, a spreadsheet, or have Claude write code that does the math (e.g., Python).
+
+Claude writing Python to compute something → reliable. Claude computing it directly in its head → unreliable. This matters most for financial calculations, statistics, unit conversions, and anything where precision matters.
+
+### Real-Time Information
+
+Claude has no native access to live data. No web, no news, no stock prices, no weather, no recent events — unless:
+
+- You paste the relevant information into the prompt, or
+- You use a tool that gives Claude browsing/retrieval capabilities (e.g., Claude Code with web tools, MCP integrations, Claude.ai with web search on)
+
+Asking "what's the latest version of Django?" without any tool will get you information from before the knowledge cutoff — which may be months or years old.
+
+### Deep Domain Expertise Without Material
+
+Claude has broad knowledge, but for specialized domains — your company's internal systems, a specific legal regime, a niche scientific field, a proprietary codebase — its knowledge is limited to what's publicly represented in its training data. It can sound expert on anything; it's not actually expert on everything.
+
+For specialized work: bring the material. Paste the docs. Attach the code. Provide the specs. Then Claude reasons on top of your actual source of truth.
+
+### Genuinely Novel Creative Work
+
+Claude's creativity is averaged across what it's seen. For novel-enough creative work — truly original fiction, unprecedented product concepts, groundbreaking research — it can brainstorm and assist, but the "wow, that's new" spark is rarer. It's strongest in creative work that blends known styles in interesting ways, not in work that demands a new style.
+
+### Long Chains of Strict Logical Deduction
+
+Reasoning is strong up to a point, but long chains where one error cascades — complex mathematical proofs, formal verification, multi-hundred-step logic problems — can compound small errors. For these tasks, break them into smaller verified pieces or use domain-specific tools (theorem provers, solvers).
+
+## The Specific Limitations to Know
+
+Beyond the "good at" / "not good at" split, these are specific technical limitations that cause problems if you don't know about them.
+
+### Limitation 1: Hallucination
+
+**What it is:** The AI generating false information with full confidence. Fabricated citations, invented quotes, wrong API signatures, nonexistent library functions, plausible-sounding but incorrect historical claims.
+
+**Why it happens:** Language models generate by predicting likely next words. When asked something they don't have solid grounding for, they produce something *plausible-sounding* rather than admitting uncertainty or refusing. Recent models have reduced this but not eliminated it.
+
+**What to do:**
+- Verify specific factual claims, especially names, numbers, dates, quotes, citations
+- Use tools (web search, document retrieval) for facts that require accuracy
+- When Claude is confident about something you can't verify, that's exactly when to verify
+
+### Limitation 2: Knowledge Cutoff
+
+**What it is:** Every model has a date after which its training data ends. Claude doesn't know about events, releases, or research after that date.
+
+**Why it matters:** Ask about a library, an API, a political event, or a research finding, and Claude may confidently answer with outdated information. A year-old API might have breaking changes; a library might have been deprecated; a finding might have been retracted.
+
+**What to do:**
+- Know the cutoff for the model you're using
+- For anything time-sensitive, provide current information in the prompt or use tools
+- Be suspicious of confident claims about "recent" or "latest" anything
+
+### Limitation 3: No Memory Between Sessions (By Default)
+
+**What it is:** Without explicit memory features (available in some tools or products), Claude starts every new conversation with a blank slate. What you told it yesterday is gone today.
+
+**Why it matters:** You can't build up context over time by default — you rebuild it each session. For projects, this means keeping relevant docs (like a `CLAUDE.md` file for Claude Code) or systematically re-introducing context.
+
+**What to do:**
+- Keep project context in a file Claude can load (a project brief, a config file)
+- For important context, save and reload rather than assume it persists
+- Some products (Claude.ai, with memory on) and platforms (Claude Code) have memory features — know what you have and how it works
+
+### Limitation 4: Probabilistic Outputs
+
+**What it is:** The same prompt can produce different outputs. Claude isn't deterministically picking "the answer"; it's sampling from a probability distribution.
+
+**Why it matters:** If you run a prompt twice, you may get two different (both plausible) answers. This is not a bug — it's how the system works. But it means outputs aren't repeatable the way a function call is.
+
+**What to do:**
+- For high-stakes work, running a prompt twice and comparing can surface uncertainty
+- Don't assume one successful run means the prompt is "solved" — run it a few times if the task will be repeated
+- For tasks needing repeatability (e.g., pipelines), consider evaluation frameworks, not one-shot checks
+
+### Limitation 5: Context Window Limits
+
+**What it is:** There's a maximum amount of text (roughly tokens, not exactly words) Claude can "see" at once. Huge, but not infinite.
+
+**Why it matters:** Paste too much and either Claude can't accept it, or older parts of the conversation fall out of its attention. This matters for very long documents, entire codebases, or long conversations.
+
+**What to do:**
+- For large inputs, summarize or chunk deliberately
+- In long conversations, remind Claude of context that matters ("as we established earlier...")
+- Use tools designed for large contexts (Claude Code navigates codebases this way) rather than pasting everything at once
+- Know the approximate limit of the model you're using
+
+### Limitation 6: Tool Dependence for Actions
+
+**What it is:** Out of the box, Claude produces text. It can't click, browse, run code, or send emails unless given tools that expose those capabilities.
+
+**Why it matters:** Many tasks require more than text output. If you want Claude to actually run a test, deploy code, or fetch live data, you need to be in an environment that provides those tools (Claude Code, API with tool use, MCP integrations, etc.).
+
+**What to do:**
+- Match the tool/environment to the task. Claude Code for coding, Claude API with tools for integrations, Claude.ai for general chat.
+- Don't expect text-only Claude to do action-requiring tasks.
+
+## What's Changing Fast
+
+Some capabilities are moving quickly enough that any specific claim about them will be out of date within months. These are worth knowing about in broad strokes rather than detail.
+
+- **Multimodal** — Claude can process images alongside text, and models are improving at video, audio, and beyond. Capability keeps expanding; the edges of what works well shift.
+- **Extended thinking and reasoning** — Models that can "think longer" before answering are getting better at complex problems. Available on some Claude models and rolling out further.
+- **Longer context windows** — What was 100K tokens a couple of years ago is now hundreds of thousands or more on some models. Documents that used to need chunking often fit now.
+- **Agent capabilities** — The ability to plan, act, and revise over multiple steps with tools is improving rapidly. Agents that were unreliable a year ago are production-capable for specific tasks now.
+- **Tool use and integrations** — The ecosystem around MCP and API-level tools is expanding. What requires custom engineering today often becomes a built-in tomorrow.
+
+The honest position on all of these: capable more than a year ago, not fully solved, worth experimenting with, don't bet production systems on the leading edge unless you've tested heavily.
+
+## The Capabilities Maturity Line
+
+A useful mental model: for any AI capability, ask where it falls on this maturity line.
+
+- **Stable and reliable** — use freely, standard discernment. (Summarization, code explanation, most language tasks, structured data transforms.)
+- **Working well, with caveats** — use thoughtfully, be aware of failure modes. (Code generation, theme extraction, reasoning on well-defined problems.)
+- **Emerging** — useful but unpredictable; test carefully before relying on it. (Long agent workflows, complex multi-step reasoning, cutting-edge multimodal tasks.)
+- **Unreliable today** — don't depend on it without heavy verification. (Precise math, factual recall without sources, deep domain expertise without material.)
+
+Your delegation decisions should match this line. Stable capabilities can be automated. Emerging ones need augmentation with verification. Unreliable ones should be done differently (use a calculator, pull in docs, bring in an expert).
+
+## Using This Map
+
+Go back to Lesson 2's delegation framework. "Can AI do this well?" is really a question about where your task lands on this map. With the map in hand:
+
+- A task in the strong zone → yes, delegate, keep discernment proportional to stakes.
+- A task in the weak zone → either provide the material AI needs (turning it into a strong-zone task), use a different tool, or do it yourself.
+- A task in the emerging zone → use AI as an assistant, verify heavily, don't ship on autopilot.
+
+Fluent users hold this map in their heads. They don't ask Claude to do arithmetic and then complain when it's wrong; they know arithmetic is the weak zone and they reach for the right tool. They don't ask for "the latest version" and trust the answer; they know knowledge cutoff is real and they provide current info. They build around the limitations.
+
+## The Honest Summary
+
+Claude today is:
+
+- Excellent at language, structure, summarization, explanation, code for well-known tasks, pattern recognition in text
+- Good at reasoning on well-defined problems, code generation with context, multi-step planning with guardrails
+- Weak at precise math, real-time info, deep domain expertise without material, genuinely novel creative work
+- Limited by hallucination, knowledge cutoff, lack of memory, probabilistic outputs, context windows, and tool dependence
+
+None of this is a reason to not use AI. All of it is a reason to use it **fluently** — matching tasks to capabilities, providing context where it's missing, verifying where hallucination lurks, and owning what you ship.
+
+## Key Takeaway
+
+A clear view of what AI can and can't do is the foundation of good delegation. Claude is strong at language tasks, code, structured transforms, and reasoning on well-defined problems — weak at precise math, real-time info, and deep domain expertise without material. Know the six specific limitations (hallucination, knowledge cutoff, no memory, probabilistic outputs, context limits, tool dependence) and work around them deliberately. Capabilities at the frontier move fast; the core map doesn't change much month-to-month. Use the map to decide what to delegate, how to describe, what to discern, and how hard to hold the line on diligence — that's AI fluency in practice.

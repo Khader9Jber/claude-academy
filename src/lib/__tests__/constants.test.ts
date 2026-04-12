@@ -43,13 +43,13 @@ describe('ARC_DEFINITIONS', () => {
 })
 
 describe('MODULE_ORDER', () => {
-  it('has 25 modules', () => {
-    expect(MODULE_ORDER).toHaveLength(25)
+  it('has 26 modules', () => {
+    expect(MODULE_ORDER).toHaveLength(26)
   })
 
-  it('starts with claude-fundamentals and ends with claude-databases', () => {
+  it('starts with claude-fundamentals and ends with ai-fluency', () => {
     expect(MODULE_ORDER[0]).toBe('claude-fundamentals')
-    expect(MODULE_ORDER[MODULE_ORDER.length - 1]).toBe('claude-databases')
+    expect(MODULE_ORDER[MODULE_ORDER.length - 1]).toBe('ai-fluency')
   })
 
   it('all entries are non-empty strings', () => {

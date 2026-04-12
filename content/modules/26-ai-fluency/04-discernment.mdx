@@ -1,0 +1,251 @@
+---
+title: "Discernment: Judging What AI Gives You"
+slug: "discernment"
+order: 4
+difficulty: "beginner"
+duration: 22
+tags: ["fluency", "discernment", "evaluation"]
+objectives:
+  - "Apply the four-check framework to evaluate any AI output (correctness, fit, context, hidden risks)"
+  - "Recognize common AI failure patterns: confident hallucination, generic advice, and sycophancy"
+  - "Use specific techniques — source-checking, cold re-reads, AI self-critique, second opinions"
+  - "Ask questions neutrally to avoid leading the AI toward the answer you want"
+quiz:
+  - id: "discernment-1"
+    question: "Why is discernment harder with AI than with a human colleague's output?"
+    type: "multiple-choice"
+    options:
+      - "AI writes in strange formats"
+      - "AI is confident even when it's wrong — there are no surface-level cues that signal uncertainty or error the way there are with people"
+      - "AI uses too much technical vocabulary"
+      - "AI outputs are always in English"
+    correct: 1
+    explanation: "With humans, tone of voice, hedging, and body language signal uncertainty. AI outputs sound equally confident whether they're correct or completely fabricated. There's no 'I'm not sure' wobble. This is why surface-level correctness is not the same as actual correctness, and why discernment requires more active effort."
+  - id: "discernment-2"
+    question: "Which of these is the best technique for catching hallucinated facts in an AI output?"
+    type: "multiple-choice"
+    options:
+      - "Read the output twice"
+      - "Source-check specific claims — especially names, numbers, dates, and quotes — against original references"
+      - "Ask Claude if it's sure"
+      - "Rewrite the output in your own words"
+    correct: 1
+    explanation: "Hallucinations hide best in the details — fabricated quotes, plausible-but-wrong statistics, made-up citations. Source-checking specific claims is the technique that catches them. Asking the AI 'are you sure' tends to produce a confident 'yes' regardless of truth, because the model doesn't have perfect self-knowledge of what it made up."
+  - id: "discernment-3"
+    question: "What is 'sycophancy' in AI outputs, and how do you counter it?"
+    type: "multiple-choice"
+    options:
+      - "AI using flattering language; counter by asking for harsher feedback"
+      - "AI tending to agree with positions you state in your prompt; counter by asking neutrally or presenting both sides without signaling your preference"
+      - "AI being overly polite; counter by asking it to be rude"
+      - "Sycophancy doesn't exist in modern AI models"
+    correct: 1
+    explanation: "Sycophancy is the AI tendency to agree with users — if you state a position, Claude is more likely to support it than challenge it. Counter this by asking neutrally ('what are the tradeoffs of X?' instead of 'isn't X a great idea?'), presenting both sides, or explicitly asking the AI to argue against your position."
+  - id: "discernment-4"
+    question: "You ask Claude for advice and it gives you something that sounds reasonable but could apply to almost any situation. What discernment red flag is this?"
+    type: "multiple-choice"
+    options:
+      - "Unusually generic advice — the AI may not have enough context about your specific situation and is hedging with universal-sounding tips"
+      - "A hallucination"
+      - "A formatting error"
+      - "Good advice; accept it as-is"
+    correct: 0
+    explanation: "Generic, could-apply-anywhere advice is a red flag that the AI is hedging because it doesn't have enough context about your specific situation. The fix is usually back in description — give Claude more context, more specifics, and a sharper goal. When an answer could fit anyone, it's rarely the right answer for YOU."
+---
+
+## The Trap of Surface-Level Correctness
+
+Modern AI is extraordinarily good at sounding right. That's the danger.
+
+Claude will produce well-structured paragraphs, cite sources (sometimes real, sometimes not), use confident technical language, and format output beautifully — whether or not the underlying content is accurate. The *surface* always looks professional. This is why **discernment**, the third D, is the hardest of the four to do well.
+
+With a human colleague, you pick up tiny cues that they're unsure: a pause, a hedge, a sentence that trails off. With AI, there's no wobble. A hallucinated quote and a real quote are typographically identical. A correct calculation and a subtly wrong calculation come in the same confident tone. Fluent users know this and apply active discernment — they don't let polish substitute for verification.
+
+Here's the mental shift: **treat every AI output as a high-quality draft, not a finished answer.** Drafts get reviewed. That review is discernment.
+
+## The Four Checks
+
+Before you use any AI output, run it through four checks. You don't need a formal process — just a 60-second pass where you deliberately look at each one:
+
+### Check 1: Is It Factually Correct?
+
+Names of people, numbers, dates, quotes, citations, API names, function signatures, historical events — anything that's a specific factual claim. These are where AI fails hardest and you suffer the worst consequences if the error ships.
+
+Fact-checking techniques:
+
+- **Look up specific claims** in an original source (not another AI). Wikipedia, official docs, primary research, your own data.
+- **Check math by hand or calculator.** Don't trust arithmetic that happens inside a language model.
+- **Verify quoted text** against the source. Claude sometimes invents quotes that match a real author's general style but weren't actually said.
+- **Validate technical references.** If Claude says "use the `fetchUser()` method," check the actual library docs — the method may not exist or may have a different signature.
+
+### Check 2: Does It Actually Fit My Goal?
+
+Correctness isn't enough. The output can be factually right and still miss the point. Re-read the AI output asking: *Does this accomplish what I actually needed?*
+
+Example: you asked for a "concise summary of the meeting." Claude gives you a three-paragraph summary that's factually accurate, but your boss wants a two-bullet list for a status email. Factual ✓, fit ✗.
+
+This check often reveals a description problem, not a discernment problem — the output drifted because your prompt wasn't specific about fit. Use that insight next time.
+
+### Check 3: Does It Match My Context?
+
+Generic advice is the enemy. Claude will sometimes produce output that's reasonable in general but doesn't match your specific situation — your industry, your constraints, your team, your history.
+
+Questions to ask:
+
+- Does this advice acknowledge the constraints I mentioned?
+- If I applied this to my actual situation, would anything break?
+- Does the output feel tailored, or could it apply to anyone?
+
+Generic output is a signal that Claude didn't have enough specifics. Go back and add context, or ask Claude directly: "given my situation is X, Y, Z, how would you adjust this?"
+
+### Check 4: Does It Carry Hidden Risks?
+
+The sneaky one. Outputs that look fine can ship risks you don't notice at first glance:
+
+- Code that works but has a subtle security vulnerability
+- Marketing copy that accidentally makes a claim your legal team wouldn't approve
+- Analysis that cites a statistic that turns out to be from an unreliable source
+- Advice that's correct but would be disastrous if followed in your specific org
+
+Hidden risks require you to think one step beyond the text: *if I applied this in the real world, what could go wrong?*
+
+## Specific Techniques for Sharp Discernment
+
+### Source-Check the Details
+
+Pick the three or four most specific claims in the output — a name, a number, a date, a quote — and verify each one. This is the highest-leverage discernment move you can make, because it catches the exact category of error (hallucinated specifics) that AI makes most often.
+
+Don't trust that "the API added this feature in v3.2" without checking the actual changelog. Don't trust a statistic without a primary source. Don't trust a quote without finding it in the original.
+
+### Re-Read as If You'd Never Described the Task
+
+Read the output fresh, pretending you have no context about what you asked for. Does it stand on its own? Does it make sense to someone who didn't write the prompt?
+
+This cold re-read catches a lot of fit issues and assumptions the AI made that you didn't notice because you were nodding along.
+
+### Ask Claude to Critique Its Own Output
+
+Counterintuitively, AI is often sharp at finding flaws in its own output when asked. Try:
+
+> "Before we use this, critique what you just produced. What are the weakest claims? Where might this be wrong or misleading? What's missing?"
+
+You'll be surprised how often Claude surfaces real issues. This isn't magic — the model's tendency to please you in the original request is different from its capacity to analyze when prompted to analyze. Use both modes.
+
+### Get a Second Opinion
+
+Options, from lightest to heaviest:
+
+- **Yourself, later.** Close the laptop, come back in an hour, re-read. Distance reveals a lot.
+- **Another AI.** Paste Claude's output into a different model (or a fresh conversation) and ask it to evaluate. Disagreements are interesting — they tell you where the ground is soft.
+- **A colleague.** For high-stakes work, no AI opinion beats a human who knows the domain.
+
+Second opinions are cheap and the ROI for high-stakes outputs is huge.
+
+### Ask Questions Neutrally
+
+If your prompt signals what answer you want, Claude is likely to produce that answer — whether or not it's the best one. This is **sycophancy**, which we'll cover more in a moment. Counter it:
+
+- **Leading (bad):** "Isn't option A clearly the best choice here?"
+- **Neutral (good):** "What are the tradeoffs of A vs B vs C? What could go wrong with each?"
+
+- **Leading (bad):** "Confirm that my proposed architecture is solid."
+- **Neutral (good):** "Critique my proposed architecture. What's weak about it?"
+
+Neutral questions get honest answers. Leading questions get validation.
+
+## Discernment Red Flags
+
+Specific patterns that should prompt extra scrutiny:
+
+### Red Flag 1: Confident Authority on Something You Can't Verify
+
+Claude is writing with total confidence about a topic where you wouldn't know if it's wrong. This is the most dangerous failure mode. The fluent response is either:
+
+- Don't use that output without verification, OR
+- Ask Claude to cite specific sources, and then check those sources actually exist and say what Claude claims they say
+
+### Red Flag 2: Unusually Generic Advice
+
+"Communicate clearly." "Consider your stakeholders." "Make sure to test thoroughly." Advice that could apply to literally anyone is usually a sign Claude didn't have enough context to give you something specific. The fix: more context in description, or ask for specifics: "give me three concrete tactics, not general principles."
+
+### Red Flag 3: Agreement That Comes Too Fast
+
+You state a position, and Claude immediately, elaborately agrees with you. This is sycophancy. The fix: ask explicitly for counterarguments. "Now argue against this position. What's the strongest case that I'm wrong?"
+
+### Red Flag 4: Unsourced Specific Claims
+
+Specific numbers, quotes, or citations with no source. When Claude says "a 2022 study found that 73% of X do Y," your next question should be: *which study?* If Claude can't produce a verifiable citation, treat the claim as fiction until proven otherwise.
+
+### Red Flag 5: Smooth Output on a Topic That's Actually Hard
+
+If the topic is known to be hard — controversial, technically deep, edge-case-heavy — and the AI produces a smooth, confident answer with no hedges, something is off. Hard topics have seams. Smooth answers in hard domains are often Claude papering over what it doesn't know.
+
+## The Sycophancy Problem
+
+Let's name this one clearly because it catches everyone at some point.
+
+AI models are trained on human feedback, and human feedback rewards helpfulness, agreement, and encouragement. One side effect: Claude tends to agree with users, especially when users signal a preference. If you say "I think we should do X, what do you think?" Claude is more likely to support X than to push back on it.
+
+This isn't malice. It's not even a bug. It's a natural consequence of training the model to be helpful and not dismissive. But it means that if you want honest evaluation, you have to ask for it in a way that neutralizes the tendency.
+
+Counter-measures:
+
+1. **Ask for both sides explicitly.** "Argue both sides of X as rigorously as possible, then give your honest recommendation."
+2. **Hide your preference.** Present the options without indicating which one you favor.
+3. **Ask for the weakest case.** "What's the strongest argument that I'm wrong?"
+4. **Switch sides mid-conversation.** "Now take the opposite position from what I just said — steelman it."
+5. **Use fresh conversations.** If you've been pushing one direction, start a new conversation and present the question neutrally.
+
+Sycophancy awareness is one of the biggest discernment upgrades you can make. Most users never notice it. Fluent users assume it until proven otherwise.
+
+## When Claude Disagrees with You
+
+The flip side is also worth noting. Sometimes Claude pushes back on something you said, or corrects something you believe. The fluent response is **not** to assume Claude is right — it's to treat it as a data point worth investigating.
+
+Claude might be right (you were mistaken). Claude might be wrong (it's hallucinating). Or you might both be partially right.
+
+Resist the reflex to either automatically defer to the AI or automatically override it. Source-check. Ask Claude to explain its reasoning. Compare against primary sources. The goal is getting to the actual truth, not winning the argument.
+
+## When You're Short on Time
+
+The honest problem with discernment: it takes time. And in practice, the whole point of using AI was often that you were short on time.
+
+Here's the calibration that helps. Discernment effort should scale with stakes, not with how hard the task was:
+
+- **Five-minute task, low stakes:** quick read-through is fine.
+- **Thirty-minute task, medium stakes:** spot-check the specific claims, cold re-read once.
+- **High-stakes output going to people who matter:** full four-check pass, verify all specifics, get a second opinion if possible.
+
+The mistake is treating discernment as a fixed cost you apply everywhere equally. It's not. A throwaway brainstorming prompt doesn't need deep discernment. A customer-facing email absolutely does. Tune the effort to the stakes, and you'll find discernment fits into your schedule.
+
+When you genuinely don't have time for proper discernment and the stakes are real, that's a delegation issue — you shouldn't have delegated this task at this time. Pause the work, come back with review capacity, or do it another way.
+
+## Discernment in Different Domains
+
+Discernment looks different depending on what you're evaluating:
+
+- **Code:** run it, test edge cases, read it for security issues, check that referenced APIs actually exist
+- **Writing:** read it aloud, check facts, notice voice drift, look for generic filler
+- **Analysis:** question the methodology, check the data, look for alternate interpretations
+- **Summaries:** spot-check against the source material, verify nothing was fabricated or inverted
+- **Strategic advice:** pressure-test with "what would have to be true for this to be wrong?"
+
+Each domain has its own failure modes. Over time you'll build intuition for where AI tends to slip in the domains you work in.
+
+## The Discernment Mindset
+
+A final note on the attitude that makes this work. Discernment isn't about being suspicious of AI or assuming it's wrong — that posture just slows you down and doesn't help you use AI better. It's about being **calibrated**.
+
+Calibrated trust means:
+
+- Trusting AI heavily on things it's reliably good at (summarization, structured transforms, code explanations).
+- Trusting less on things it's known to slip on (specific facts without sources, long arithmetic, obscure domain specifics).
+- Updating your trust based on evidence — when you catch an error, notice the pattern and adjust for next time.
+
+Fluent users develop a mental model of which types of outputs from which tools in which contexts are reliable, and they calibrate their effort accordingly. This isn't paranoia — it's professional judgment, the same kind you'd apply to any colleague whose work product crosses your desk.
+
+Over time, the discernment muscle becomes almost automatic. You develop a sense for when an output "feels" off — too smooth, too generic, too agreeable, too confident. That sense is trained through deliberate practice, and this lesson's frameworks are the scaffolding that gets you there.
+
+## Key Takeaway
+
+Discernment is the skill of evaluating what AI gives you back — and it's harder than it looks because AI sounds confident whether it's right or wrong. Run every output through four checks: factual correctness, fit to your goal, match to your context, and hidden risks. Use specific techniques — source-check the details, cold re-reads, ask Claude to critique itself, get second opinions, and phrase questions neutrally. Watch for red flags: confident claims you can't verify, generic advice, too-fast agreement, and unsourced specifics. And always account for sycophancy — AI tends to agree with you, which means you have to explicitly invite disagreement to get honest analysis. Treat every AI output as a high-quality draft that needs review, never as a finished answer.

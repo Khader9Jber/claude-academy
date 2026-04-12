@@ -1,0 +1,253 @@
+---
+title: "Delegation: Choosing What to Hand Off"
+slug: "delegation"
+order: 2
+difficulty: "beginner"
+duration: 22
+tags: ["fluency", "delegation", "decisions"]
+objectives:
+  - "Apply the three delegation questions before engaging AI on any task"
+  - "Match tasks to the right modality (automation, agency, or augmentation)"
+  - "Recognize red flags that signal you should NOT delegate a task to AI"
+  - "Weigh the real costs of delegation: time saved vs quality risk vs review burden"
+quiz:
+  - id: "delegation-1"
+    question: "What are the three questions a fluent user asks before delegating a task to AI?"
+    type: "multiple-choice"
+    options:
+      - "What model should I use? How much will it cost? How long will it take?"
+      - "Can AI actually do this well? Is the stakes level appropriate? What's my review capacity?"
+      - "Is it legal? Is it ethical? Is it documented?"
+      - "Has someone else tried this? What's the prompt? What's the format?"
+    correct: 1
+    explanation: "Fluent delegation starts with three questions: (1) Can AI actually do this well? — a capability check; (2) Is the stakes level appropriate? — what happens if the output is wrong? and (3) What's my review capacity? — can you meaningfully evaluate the output? If any answer is weak, you should either change the approach or not delegate."
+  - id: "delegation-2"
+    question: "You need to sign a regulatory compliance filing that will be audited next quarter. Your instinct is to have Claude draft the whole thing. What's the right move?"
+    type: "multiple-choice"
+    options:
+      - "Go ahead — Claude is excellent at writing"
+      - "Use Claude as an agent and let it file the paperwork autonomously"
+      - "Don't delegate the whole thing. You can use Claude for augmentation (drafting, explaining regulations, checking clarity) but you remain accountable for the final filing and must verify every claim"
+      - "Delegate to Claude but attribute it clearly so regulators know AI wrote it"
+    correct: 2
+    explanation: "Regulatory work is a textbook case for careful delegation. The stakes are high, the review burden is real, and you're accountable regardless of what AI helped with. Use augmentation — let AI help you draft, explain, and check — but keep the authoring and verification in your hands. Never delegate the accountable act of filing itself."
+  - id: "delegation-3"
+    question: "Which of the following is a RED FLAG that you should NOT delegate a task to AI?"
+    type: "multiple-choice"
+    options:
+      - "The task is large and repetitive"
+      - "You can't verify the output because you lack domain expertise"
+      - "The task is creative but low-stakes"
+      - "You need the answer quickly"
+    correct: 1
+    explanation: "If you can't verify the output, you can't catch AI mistakes — and AI will produce confident, wrong-sounding answers in domains it doesn't fully understand. 'I can't check it' is a red flag. Large repetitive tasks are often GREAT for delegation. Creative low-stakes work is fine. Urgency alone isn't a blocker — it's a reason to use AI well, not an excuse to skip verification."
+  - id: "delegation-4"
+    question: "What does 'review capacity' mean in the delegation decision?"
+    type: "multiple-choice"
+    options:
+      - "How many tokens your subscription allows"
+      - "Whether you have the time, knowledge, and attention to meaningfully evaluate what AI gives back"
+      - "How fast your model runs"
+      - "Whether you have a second AI to double-check the first"
+    correct: 1
+    explanation: "Review capacity is your ability to actually evaluate the output — do you have the time, the domain knowledge, and the attention needed? If you're rushed, underqualified, or mentally checked out, your review will be shallow, which is when bad AI output ships. Low review capacity should lower the stakes you're willing to delegate at."
+---
+
+## The First Decision Is Always Delegation
+
+Before you write a prompt, before you open Claude, before you do anything — there's a decision to make: **should AI be involved in this at all, and if so, how much?**
+
+This is **delegation**, the first of the 4Ds. It's the most-skipped step in AI fluency, and skipping it is why most people's AI use is mediocre. They reach for Claude reflexively, the way they'd reach for Google, and then they're surprised when the output is off, or wastes their time, or creates more work than it saves.
+
+Fluent users pause. They ask three questions before they engage. That pause is worth minutes in exchange for hours.
+
+## The Three Questions
+
+### Question 1: "Can AI actually do this well?"
+
+This is a capability check. AI is impressively good at some things and embarrassingly bad at others, and the shape of those two categories is not intuitive.
+
+**AI is strong at:**
+- Language tasks: summarizing, translating, rephrasing, adjusting tone
+- Structured transformations: data in one format → data in another
+- Pattern recognition in text: finding themes across many documents
+- Generating drafts, variations, outlines, checklists
+- Code for well-understood tasks (CRUD endpoints, test scaffolds, common algorithms)
+- Explaining concepts and teaching
+
+**AI is weak at:**
+- Precise math (use a calculator or Python)
+- Real-time information (it can't see the live web unless given tools)
+- Deep domain expertise you haven't given it context for
+- Genuinely novel creative work in domains it hasn't seen
+- Long chains of strict logical deduction where one error cascades
+- Anything requiring access to data it doesn't have
+
+If your task is in the first list, AI is a strong candidate. If it's in the second, either give AI the context it needs (e.g., attach the document it needs to reference) or do the task yourself.
+
+### Question 2: "Is the stakes level appropriate?"
+
+Not every task lives at the same altitude. A Slack message to a coworker and a contract sent to a client are both "writing tasks," but the consequences of an error are not remotely comparable.
+
+Use a rough scale:
+
+- **Low stakes** — personal notes, first drafts, brainstorming, internal exploration. If this is wrong, nobody gets hurt and no trust is damaged.
+- **Medium stakes** — public-facing content, team communications, customer emails. A bad output is embarrassing or slightly costly, but recoverable.
+- **High stakes** — legal filings, financial reports, medical advice, code shipped to production, anything that affects real people's lives or money.
+
+Delegation is safest at low stakes, requires caution at medium stakes, and at high stakes should shift toward augmentation rather than automation or agency. At high stakes, AI helps YOU do the work; it doesn't do the work instead of you.
+
+### Question 3: "What's my review capacity?"
+
+You're going to get output back. Can you actually evaluate it?
+
+Three factors feed into review capacity:
+
+- **Time** — do you have the minutes needed to read carefully and fact-check?
+- **Knowledge** — do you know enough to spot when the AI is wrong?
+- **Attention** — are you focused, or are you rushed and distracted?
+
+If any of these are low, you shouldn't delegate tasks where review matters. Shallow review is when hallucinations slip through, biased outputs ship, and "AI said so" becomes an excuse. Fluent users notice when their review capacity is compromised and adjust.
+
+## What to Delegate vs Keep In-House
+
+These aren't rigid rules, but they're good defaults:
+
+### Delegate generously when...
+
+- The task is **drafting** — starting points, first cuts, scaffolds. Your edit will catch issues.
+- The task is **bulk and mechanical** — rename 50 variables, reformat 200 entries, generate 100 test cases.
+- The task is **exploratory** — "what are 10 ways to approach this?" — where you're looking to widen your thinking, not finalize an answer.
+- The task is **explanatory** — explain this concept, summarize this document, translate this email. You can sanity-check the result.
+
+### Delegate carefully when...
+
+- The task involves **regulated domains** — legal, medical, financial, academic integrity contexts. Use augmentation with heavy verification.
+- The task involves **customer-facing work** — external emails, marketing copy, support responses. Low tolerance for errors.
+- The task involves **decisions with real consequences** — firing, hiring, investment, safety-critical code.
+
+### Don't delegate (or delegate minimally) when...
+
+- You **can't verify** the output. If you don't know enough to check, AI will exploit that gap.
+- The task is **genuinely novel creative work** where the point is your voice. AI averages; it doesn't invent like a human.
+- The action is **irreversible** and AI would be making calls you can't preview — e.g., letting an agent delete files, send emails autonomously, or make financial transfers without approval.
+
+## Choose the Modality Deliberately
+
+Once you've decided to delegate, the next question is: **which modality?** Go back to the three modalities from Lesson 1 and make a conscious choice.
+
+**Automation** — "I want AI to do the whole task, I'll review the aggregate." Good for high-volume, low-per-item stakes work. Example: "tag 500 support tickets with a category from this list."
+
+**Agency** — "I want AI to make judgment calls inside guardrails I set." Good for complex multi-step work you'd otherwise have to supervise closely. Example: "research this competitor and produce a one-page briefing." Requires clear scope and strong evaluation.
+
+**Augmentation** — "I want AI alongside me as I work." Best for skilled work where your judgment is the point. Example: "help me debug this function" — you're still the one writing and committing.
+
+The same underlying task can fit different modalities depending on stakes and review capacity. A "write a customer email" task is:
+
+- **Automation** — if it's a rote response to a common question and the AI has a template.
+- **Agency** — if the AI picks the tone and approach based on the customer's history.
+- **Augmentation** — if you're writing a delicate response to a high-value client and want drafting help.
+
+Fluent users don't just reach for "write my email" — they notice which version of the task they're actually doing and pick the matching modality.
+
+## The Cost Equation
+
+Delegation isn't free, even though people treat it like it is. There are three costs to weigh:
+
+1. **Time saved** — the obvious upside. You didn't have to do the task from scratch.
+2. **Quality risk** — the output might be wrong, off-tone, or subtly miss the mark.
+3. **Review burden** — you now have to evaluate something you didn't write, which uses a different, often slower, mental muscle.
+
+There's a specific failure mode people underestimate: tasks where delegation *feels* fast but review costs more than doing it yourself. For example, writing a short, specific Slack message. You know what you want to say in 30 seconds. Asking Claude to draft it, reading the draft, editing the tone to match your actual voice, and sending it can take 2 minutes. You delegated a 30-second task and paid a 90-second tax. This is common. Notice when it's happening.
+
+A rule of thumb: **time saved should clearly exceed time spent in review, AND quality risk should be acceptable for the stakes.** If either side of that inequality flips, reconsider.
+
+## Red Flags: When NOT to Delegate
+
+Some signals should stop you cold. If you see any of these, pause:
+
+- **You can't verify the output.** No domain expertise, no source to check against. Fluent users don't ship AI output they can't evaluate.
+- **The action is irreversible AND you can't preview.** Letting an agent send emails, delete data, or make purchases autonomously without any review step. One hallucination becomes a real-world mistake.
+- **Regulated/accountable work without oversight.** Regulatory filings, medical advice, legal documents where you personally are signing off. Use AI for drafting only; keep the sign-off human.
+- **You're tired, rushed, and can't review carefully.** Low review capacity + delegation = low-quality work shipped with false confidence.
+- **The task depends on information the AI doesn't have.** If Claude doesn't know your internal policies, your customer history, or your specific data, its output is going to be generic at best, wrong at worst. Either give it the context (best) or don't delegate.
+- **You're using AI to avoid thinking.** Not always a red flag — but notice when it is. If you're reaching for Claude because you don't want to engage with the problem, AI will paper over your lack of thought, not replace it. The output will feel hollow.
+
+## A Worked Example
+
+You're a product manager. You have three things on your plate today:
+
+**Task A:** Write a one-line commit message for a small bug fix.
+
+- *Can AI do this well?* Yes, trivially.
+- *Stakes?* Low.
+- *Review capacity?* Fine — it's one line.
+- *Modality?* Either. But honestly — you could type it yourself in 10 seconds. Don't delegate just because you can.
+
+**Task B:** Summarize 200 user interview transcripts to identify top 5 pain points.
+
+- *Can AI do this well?* Yes, this is a strong use case.
+- *Stakes?* Medium — you'll use these to shape product decisions.
+- *Review capacity?* You can read the top-5 output carefully, but you can't re-read all 200 transcripts. You'll need to spot-check.
+- *Modality?* Automation or augmentation. Give AI a clear schema, have it output themes with example quotes. Verify 10-15 quotes against the originals. This is delegation done well.
+
+**Task C:** Draft the email to investors announcing a delay in your product launch.
+
+- *Can AI do this well?* Yes at the language level. No at the strategy level — it doesn't know the relationship, history, or what to downplay vs highlight.
+- *Stakes?* High. This affects investor trust.
+- *Review capacity?* High — you'll read every word carefully.
+- *Modality?* Augmentation, heavily. Sketch the points yourself; ask Claude to help with tone and structure; rewrite in your voice. Don't let Claude author the email.
+
+Three tasks, three different delegation answers. That's what fluent delegation looks like.
+
+## A Common Failure: The "Why Not?" Delegation
+
+One pattern worth naming separately, because it catches a lot of people.
+
+You have a task. You're not sure whether AI would help. Your instinct is "why not try?" You open Claude, type a half-formed prompt, and see what comes out. The output is okay-ish. You accept it.
+
+This feels like delegation, but it's actually drift. You didn't decide to delegate — you defaulted to it because AI was available. You didn't scope the task. You didn't set success criteria. You just asked and shrugged.
+
+The "why not?" mode is fine for low-stakes exploration. It's not fine for real work. It's how you end up using AI in places where it's not the best tool, producing outputs that are mediocre by default, and then concluding that AI isn't that useful. The real issue was: you delegated without deciding to delegate.
+
+The fix is small: before you engage AI on anything that matters, spend 30 seconds on the three questions. Even the act of asking them forces you out of drift and into deliberate choice.
+
+## Delegation for Teams
+
+One more layer. When you're working on a team, delegation decisions aren't purely yours — they intersect with what your team or organization allows.
+
+Some teams have explicit AI-use policies: tools you can/can't use, data you can/can't share, disclosure expectations, review requirements for AI-assisted output. Some teams have nothing written down but strong norms. Some teams have neither and are figuring it out in real time.
+
+Fluent delegation includes knowing the rules of your environment:
+
+- Is there an approved tool list? Am I using approved tools?
+- Are there data types I can't send to external AI (customer PII, proprietary source code, confidential strategy docs)?
+- Does the output need disclosure? Does it need review by a specific role before shipping?
+- If I'm uncertain, who's the right person to ask?
+
+Working around team policy is a fast way to damage trust. Working within it while still getting the benefits of AI is a skill — it sometimes means doing extra work (redacting, using internal tools, asking for approval) but it keeps you on the right side of the line.
+
+## Delegation and Your Energy
+
+Here's a nuance that doesn't get talked about enough. Delegation decisions aren't purely analytical — they're also about your energy and cognitive state throughout the day.
+
+Early in the day, when you're fresh, your review capacity is highest. You can delegate medium-stakes work with confidence because your review will actually be sharp. Late in the day, when you're tired, your review capacity drops. The same task that was safe to delegate at 9am might not be safe at 5pm.
+
+Fluent users notice this and sequence their AI use accordingly: higher-stakes delegation in peak-energy windows, lower-stakes or more mechanical work when energy is lower. It's not a rigid rule — just awareness that you're not the same reviewer all day.
+
+## The Delegation Habit
+
+The goal isn't to ask these questions explicitly every time — after a while, it becomes instinct. But when you're new to AI fluency, and especially when the stakes are real, make the pause deliberate:
+
+1. *Pause.* Before you open Claude.
+2. *Can AI do this well?*
+3. *What are the stakes?*
+4. *What's my review capacity right now?*
+5. *Which modality fits?*
+6. *Any red flags?*
+
+Thirty seconds of thinking upfront saves an hour of reworking on the other end.
+
+## Key Takeaway
+
+Delegation is the first D because it sets the ceiling on everything else. The three questions — can AI do this well, are the stakes appropriate, and what's my review capacity — help you decide whether and how to engage. Match the modality deliberately: automation for volume, agency within guardrails, augmentation when your judgment is the point. Watch for red flags, especially "I can't verify this" and "the action is irreversible." Good delegation isn't about using AI more; it's about using it in the right places, at the right depth, for the right reasons.

@@ -1,0 +1,12 @@
+{
+  "title": "AI Fluency: The 4D Framework",
+  "slug": "ai-fluency",
+  "description": "Anthropic's flagship framework for working effectively, efficiently, ethically, and safely with AI. Master Delegation, Description, Discernment, and Diligence — the foundation for everything else you'll do with Claude.",
+  "arc": "foundation",
+  "order": 26,
+  "icon": "Compass",
+  "color": "#5cb870",
+  "estimatedHours": 4,
+  "prerequisites": [],
+  "lessonCount": 7
+}

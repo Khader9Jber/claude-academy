@@ -1,0 +1,255 @@
+---
+title: "The 4Ds in Practice: A Real Workflow"
+slug: "four-ds-in-practice"
+order: 6
+difficulty: "beginner"
+duration: 22
+tags: ["fluency", "workflow", "practical"]
+objectives:
+  - "Walk through a complete task applying all 4Ds in sequence"
+  - "See how better delegation leads to sharper description, cleaner discernment, and lighter diligence"
+  - "Apply the framework to both analytical and coding tasks"
+  - "Develop instincts for when to loop back through the Ds rather than pushing forward"
+quiz:
+  - id: "four-ds-in-practice-1"
+    question: "You're analyzing 500 customer reviews for themes. Which modality is most appropriate for this task?"
+    type: "multiple-choice"
+    options:
+      - "Automation — let the AI produce the final themes without review"
+      - "Agency — let the AI decide on the methodology and deliverable"
+      - "Augmentation — the AI does the heavy lifting but you verify the themes against actual reviews and make the final call on what goes in the report"
+      - "None — this should be done entirely by hand"
+    correct: 2
+    explanation: "Augmentation is the right call here. The task benefits from AI's ability to process volume (you can't read 500 reviews by lunch), but the stakes are real — these themes will shape product decisions — so you verify before you ship. You remain the decision-maker; AI just expands what you can cover."
+  - id: "four-ds-in-practice-2"
+    question: "In the customer reviews example, what's the key discernment check specific to this task?"
+    type: "multiple-choice"
+    options:
+      - "Checking that the AI produced the right number of themes"
+      - "Verifying quotes attributed to specific customers against the originals, and checking that the AI's summary preserved — rather than sanitized — the actual complaints"
+      - "Making sure the output is in the right format"
+      - "Asking Claude if it's sure about the themes"
+    correct: 1
+    explanation: "The specific risks with customer feedback analysis are hallucinated quotes (attributed to customers who didn't say them) and sanitized summaries (the AI softens strong complaints into polite feedback). Verifying quotes against originals and checking that the emotional tone is preserved catches both. Generic checks like 'right number of themes' miss the real risks."
+  - id: "four-ds-in-practice-3"
+    question: "How do the 4Ds 'compound' in a well-executed workflow?"
+    type: "multiple-choice"
+    options:
+      - "Each D takes longer than the last"
+      - "Better delegation leads to a sharper description, which produces better outputs, which makes discernment easier, which makes diligence lighter"
+      - "You have to do each D twice"
+      - "The Ds compound interest on token spend"
+    correct: 1
+    explanation: "The 4Ds work as a loop where each step sets up the next. Good delegation — picking the right modality and scope — lets you write a sharper description. A sharper description produces output closer to what you need. Cleaner output makes discernment faster. And strong discernment reduces the diligence burden because the output is already mostly trustworthy."
+  - id: "four-ds-in-practice-4"
+    question: "When you get unexpected or weak output, what's the fluent response?"
+    type: "multiple-choice"
+    options:
+      - "Accept it and move on"
+      - "Loop back through the Ds — was the delegation right? Was the description specific enough? What's the output actually missing? — rather than just trying another prompt"
+      - "Switch to a different AI model"
+      - "Give up on the task"
+    correct: 1
+    explanation: "Weak output is diagnostic, not a dead end. Fluent users loop back: Was this the right task for AI (Delegation)? Did my description capture what I actually needed (Description)? What specifically is the output missing or getting wrong (Discernment)? The answer is usually a description upgrade — more context, tighter constraints, clearer success criteria."
+---
+
+## Putting It All Together
+
+You've seen the 4Ds one at a time. Now let's walk through what they look like in a real workflow, end-to-end, on a task you might actually face.
+
+The point of this lesson isn't to memorize steps. It's to watch the framework play out so you can recognize the moves when you make them yourself.
+
+## Scenario 1: Customer Feedback Analysis
+
+**The task:** You need to analyze 500 customer reviews from the last quarter to identify the top themes — pain points, praises, feature requests. The output will be a short report for the product team to inform next quarter's roadmap.
+
+Let's walk through all four Ds.
+
+### Delegation — Should AI Be Involved?
+
+Apply the three questions.
+
+**Can AI do this well?** Yes. Theme extraction across text is a strong AI use case — language tasks, pattern recognition, summarization. This is the kind of thing Claude does well.
+
+**Is the stakes level appropriate?** Medium. The output will influence roadmap decisions, which affect engineering time and customer outcomes. If the themes are wrong, product bets are misinformed. Wrong-but-recoverable.
+
+**What's my review capacity?** You have time this afternoon. You know the product well enough to recognize when a theme sounds off. You can't re-read 500 reviews yourself, but you can spot-check 10-20.
+
+**Verdict:** Delegate. **Modality:** Augmentation — AI does the heavy lift, you verify and make the final call on what goes into the report. Don't let the AI write the report directly for the product team; you're the one who knows how to present it.
+
+**Red flags?** One thing to note: customer reviews may contain personally identifiable info (names, account IDs). Before pasting, redact or use a tool/tier with appropriate data handling. That's diligence, but it starts here.
+
+### Description — Write the Prompt
+
+A sharp description for this task looks like:
+
+```
+Goal: Analyze 500 customer reviews and identify the top themes —
+pain points, praises, and feature requests — for a product roadmap
+discussion.
+
+Context:
+- Product: [product name, one-line description]
+- Reviews are from Q3 2026, collected from our in-app feedback tool
+- Team has seen raw reviews but needs pattern-level insight
+- Audience is the product team, who will use these to prioritize
+
+Constraints:
+- Identify 5-8 themes per category (pain points, praises, feature requests)
+- For each theme: a short label, a 1-2 sentence description, and
+  3-5 representative verbatim quotes (do not paraphrase or sanitize)
+- Preserve the emotional tone — if customers are angry, show the anger
+- Do NOT invent or modify quotes; only use exact text from the reviews
+- Flag any ambiguous reviews you weren't sure how to categorize
+
+Success criteria: A product manager reading this can immediately
+understand what customers are actually saying — specific enough to act on,
+honest enough to preserve critique, grounded in verbatim evidence.
+
+Format:
+- Markdown
+- Three sections: Pain Points, Praises, Feature Requests
+- Under each: theme label (H3), description, quote list
+- Final section: "Ambiguous / uncategorized" with any outliers
+
+Input: [paste 500 reviews or attach file]
+```
+
+Notice how much the constraints do the heavy lifting here. "Preserve emotional tone" and "do not invent or modify quotes" are guardrails against specific failure modes you're worried about. "Flag ambiguous reviews" invites the AI to admit uncertainty instead of forcing everything into a clean bucket.
+
+### Discernment — Evaluate What Comes Back
+
+Claude produces the report. Before you do anything else, run the four checks.
+
+**Is it factually correct?** The factual claims here are the quotes. Pick 8-10 quotes at random and verify them against the original reviews. Are they actually there? Word-for-word? Attributed correctly?
+
+This is the single most important check for this task. Hallucinated quotes from real customers, attributed by account, would be a serious problem if they ended up in a product doc.
+
+**Does it fit my goal?** Re-read the themes. Do they actually surface what customers are saying, or are they overly smooth, marketing-friendly summaries? Red flag: if every theme sounds like "customers value feature X" and "customers would like more of Y," the AI may have sanitized angry feedback into polite feedback. Check the raw reviews again and look at the tone.
+
+**Does it match my context?** Do the themes feel specific to this product, or could they apply to any SaaS tool ("users want better onboarding" is everyone's theme)? Generic themes mean the AI didn't engage with the specifics — ask for more specificity.
+
+**Hidden risks?** Are there themes that might be statistically tiny (two reviewers mention X, Claude reports it as a theme)? Is the AI overweighting loud reviews (very angry vs average)? Does the ambiguous section actually have content, or did Claude force everything into categories?
+
+Any issues, iterate. A sample follow-up:
+
+> "Good structure. Two adjustments: (1) In the Pain Points section, theme 3 ('improved notifications') sounds sanitized — the original reviews are much angrier about this. Rewrite to preserve the frustration. (2) Theme 6 in Feature Requests seems to be based on only two reviews — verify it appears in at least five reviews before including it."
+
+### Diligence — Ship Responsibly
+
+Before this report goes to the product team:
+
+- **Explain-it-back test.** Could you, without the AI, explain why each theme is valid and why the evidence supports it? If there's a theme you don't fully understand, dig back in.
+- **Verification.** Every quote cited: verified against originals. Every theme: supported by the review evidence.
+- **Privacy.** Is any personally identifiable info in the quotes that shouldn't be in the report? Redact customer names, account IDs, emails.
+- **Attribution.** Does this report need a note that AI was used? Often yes — a line like "Themes extracted with Claude's assistance; quotes verified; final analysis by [you]" is good practice. It tells the product team what was mechanical and what was human.
+- **Bias check.** Did the analysis underweight or overlook any group's feedback? (E.g., enterprise customers vs self-serve, English vs non-English reviews if applicable.)
+
+Now you ship. The report is trustworthy and you can defend every claim in it.
+
+### The Compounding Effect
+
+Notice how each D made the next one easier:
+
+- Good delegation (choosing augmentation, keeping review capacity honest) meant you knew exactly what you were going to do with the output.
+- A sharp description (specific quotes, preserve tone, flag ambiguity) produced an output that didn't drift into generic summaries.
+- Clean discernment caught issues early and iterated fast.
+- Diligence was manageable because the output was already mostly trustworthy — you weren't scrambling to patch a bad report at the end.
+
+When people complain that "AI didn't work" for their task, it's almost always a failure in one of the first two Ds that bloated the last two into a nightmare.
+
+## Scenario 2: Debugging with Claude Code
+
+A faster walkthrough on a different kind of task.
+
+**The task:** Your test suite is failing on one test, and you don't know why. The error message is cryptic. You have 20 minutes before a deploy.
+
+### Delegation (30 seconds)
+
+- Can AI do this well? Yes — code analysis is a strong use case, especially with the code in front of it.
+- Stakes? Medium-high. You're about to deploy. A wrong "fix" could ship a new bug.
+- Review capacity? You know the code. You can verify the fix. You have 20 minutes.
+- Modality? **Augmentation** — Claude helps you analyze and suggest; you apply the fix.
+- Red flags? No — this is exactly the situation Claude Code is built for.
+
+### Description (60 seconds)
+
+```
+The test `should reject expired tokens` in @src/auth/__tests__/jwt.test.ts
+is failing with: "Expected 401, received 500".
+
+The test hasn't changed. I touched @src/auth/jwt.ts this morning to add
+refresh token support.
+
+Read both files, find the regression, and explain what broke and why.
+Don't fix it yet — I want to understand first.
+```
+
+Notice the "don't fix it yet" — you want Claude to reason first. That's diligence baked into the description. You'll apply the fix yourself, with understanding.
+
+### Discernment (iterative)
+
+Claude explains: "The new refresh-token path throws an error when `exp` is missing, which bubbles to a 500 instead of the expected 401 from the old path."
+
+You check: does this match what you'd expect given your changes? Yes — it does. You remember adding that logic. The explanation fits.
+
+Then: "Okay, suggest a fix that keeps the 401 behavior for expired tokens while preserving the new refresh handling."
+
+Claude proposes a fix. You read it. You understand it. You could write this fix yourself now that the issue is identified. Apply.
+
+### Diligence (final step)
+
+- Run the test. Does it pass?
+- Run the full test suite. Did anything else break?
+- Explain-it-back test: if your team lead asked you what broke and how you fixed it, could you tell them without pulling up Claude? Yes.
+- Commit. Ship.
+
+Total time: under 15 minutes. The 4Ds ran in the background — you didn't even think about them by name, but you applied each one.
+
+## When You Get Weak Output — Loop Back
+
+Here's a failure mode fluent users avoid: trying to power through bad output with more prompts.
+
+If the output is clearly off, don't just send another prompt hoping it'll improve. **Loop back through the Ds and find where the break is.**
+
+- Is the task right for AI at all? (Delegation)
+- Did I describe what I actually needed? (Description)
+- Is there a specific thing about the output I can point to as wrong? (Discernment)
+- Am I about to ship something I couldn't defend? (Diligence)
+
+Usually, the answer is in Description — you left out a constraint, didn't give enough context, or assumed shared knowledge Claude didn't have. Fix the description; try again. If the description is fine but output is still weak, the task might not be a good fit for AI — back to Delegation.
+
+The loop saves you from the "20 prompts later and it's still wrong" trap.
+
+## Two Habits That Separate Fluent Users
+
+From watching people use these frameworks in practice, two habits stand out:
+
+### Habit 1: The 60-Second Pause
+
+Before typing anything into Claude, fluent users pause for up to a minute. They think about delegation, sketch the description in their head, and anticipate what they'll need to discern. This pause is invisible but it's the highest-leverage part of the whole workflow.
+
+New users skip the pause and hit enter on a thin prompt, then spend 10 minutes fixing the output. Fluent users spend 60 seconds upfront and the output is mostly right on the first try.
+
+### Habit 2: The Last-Minute Check
+
+Before shipping, fluent users always pause again. Even if they're confident. Even if the output looks clean. They run the explain-it-back test and verify at least one specific claim. This pause catches the 1-in-20 case where something subtle is wrong.
+
+Both pauses together add maybe 2-3 minutes per significant task. They save hours, and occasionally save careers.
+
+## A Practice Exercise
+
+Pick a task you'd otherwise use AI for today. Before you do it, write out — on paper or in your head:
+
+1. **Delegation:** Should AI be involved? What modality? Any red flags?
+2. **Description:** The full prompt, with goal, context, constraints, success criteria, format.
+3. **Discernment:** What specifically will you check? Which facts will you verify?
+4. **Diligence:** Any privacy concerns? Disclosure needed? Who's the accountable party?
+
+Then do the task. Notice how it feels different. Notice where the framework caught something your normal workflow would have missed.
+
+Do this two or three times and the 4Ds become instinct. You'll stop naming them and just start doing them.
+
+## Key Takeaway
+
+The 4Ds are not a checklist — they're a loop that shapes how you engage with AI from start to finish. Good delegation sets the modality and scope; sharp description gives Claude a clear target; active discernment catches errors before they ship; rigorous diligence makes the output trustworthy and defensible. When output is weak, loop back and find which D broke — it's usually description. The 60-second pause before and the last-minute check at the end are the two habits that separate fluent users from everyone else using the same tool.

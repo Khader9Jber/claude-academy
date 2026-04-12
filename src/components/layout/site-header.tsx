@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/cheatsheet", label: "Cheatsheet", testId: "nav-cheatsheet" },
   { href: "/templates", label: "Templates", testId: "nav-templates" },
   { href: "/guides", label: "Guides", testId: "nav-guides" },
+  { href: "/glossary", label: "Glossary", testId: "nav-glossary" },
   { href: "/updates", label: "Updates", testId: "nav-updates" },
   { href: "/leaderboard", label: "Leaderboard", testId: "nav-leaderboard" },
 ];

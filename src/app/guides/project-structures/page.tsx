@@ -15,6 +15,7 @@ import {
   Lightbulb,
   CheckCircle2,
   XCircle,
+  Puzzle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +31,8 @@ type StructureCategory =
   | "CLI Tool"
   | "Python Project"
   | "Monorepo"
-  | "Library/Package";
+  | "Library/Package"
+  | "Browser Extension";
 
 interface ProjectStructure {
   id: string;
@@ -62,6 +64,10 @@ const CATEGORY_META: Record<
     icon: <Database className="h-4 w-4" />,
     color: "#e06c75",
   },
+  "Browser Extension": {
+    icon: <Puzzle className="h-4 w-4" />,
+    color: "#d65e5e",
+  },
 };
 
 const ALL_CATEGORIES: StructureCategory[] = [
@@ -73,6 +79,7 @@ const ALL_CATEGORIES: StructureCategory[] = [
   "Python Project",
   "Monorepo",
   "Library/Package",
+  "Browser Extension",
 ];
 
 /* ── Data: Project Structures ───────────────────────────────────────── */
@@ -764,6 +771,664 @@ const STRUCTURES: ProjectStructure[] = [
       "Don't create apps outside `apps/` — keeps imports consistent",
       "Don't put model methods with business logic — use services",
       "Don't skip migrations — always run makemigrations after model changes",
+    ],
+  },
+  {
+    id: "go-rest-service",
+    title: "Go REST API Service",
+    category: "Backend API",
+    description:
+      "Production Go service using the golang-standards layout. cmd/internal/pkg split, domain-based internal packages, and clear API boundaries. Based on the widely-adopted golang-standards/project-layout.",
+    stack: ["Go 1.22+", "net/http or chi", "sqlc", "golang-migrate", "testify"],
+    tree: `my-go-service/
+├── CLAUDE.md
+├── go.mod
+├── go.sum
+├── Makefile
+├── cmd/                         # Entry points (one dir per binary)
+│   ├── api/
+│   │   └── main.go              # HTTP API server
+│   └── worker/
+│       └── main.go              # Background worker
+├── internal/                    # Private app code (cannot be imported)
+│   ├── user/                    # Domain package: user
+│   │   ├── handler.go           # HTTP handlers
+│   │   ├── service.go           # Business logic
+│   │   ├── repository.go        # DB access
+│   │   ├── model.go             # Domain types
+│   │   └── service_test.go
+│   ├── order/                   # Domain package: order
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   └── repository.go
+│   ├── payment/
+│   ├── auth/
+│   │   ├── middleware.go
+│   │   └── jwt.go
+│   └── platform/                # Cross-cutting concerns
+│       ├── database/
+│       ├── logger/
+│       └── config/
+├── pkg/                         # Public, reusable libraries
+│   └── httpx/                   # Shared HTTP helpers
+├── api/                         # API definitions
+│   ├── openapi.yaml
+│   └── proto/
+├── migrations/                  # SQL migration files
+│   ├── 001_init.up.sql
+│   └── 001_init.down.sql
+├── configs/                     # Config files per env
+│   ├── dev.yaml
+│   └── prod.yaml
+├── scripts/                     # Build & deploy scripts
+├── test/                        # Integration tests
+│   └── integration/
+└── docs/                        # ADRs, architecture notes`,
+    whyItWorks: [
+      "Domain-based `internal/` packages (user/, order/, payment/) — Claude edits related files together instead of hunting across technical layers",
+      "`cmd/` for binaries, `internal/` for private code, `pkg/` for reusable libs — Go's standard separation gives Claude unambiguous boundaries",
+      "`internal/` is enforced by the Go compiler — nothing outside the module can import it, so Claude can't accidentally create leaky abstractions",
+      "Shallow hierarchy (one or two levels deep) — Go convention means Claude navigates fast without deep recursion",
+    ],
+    claudeMdTips: `## Project: Go REST API Service
+
+## Build & Run
+- \`make dev\` — run API with air hot reload
+- \`go run ./cmd/api\` — run the API binary
+- \`go run ./cmd/worker\` — run the worker
+- \`go test ./...\` — all tests
+- \`go test ./internal/user -v\` — specific package
+- \`make migrate-up\` — apply migrations
+- \`make lint\` — golangci-lint
+
+## Architecture
+- Domain packages in \`internal/<domain>/\` own their handler, service, repository
+- \`internal/platform/\` has cross-cutting concerns only (db, logger, config)
+- \`pkg/\` is for code that could be exported as a library later
+- No circular imports — domains can depend on platform, not on each other
+- Use interfaces at package boundaries for testability
+
+## Conventions
+- One domain = one package = one folder in internal/
+- Files named by role: \`handler.go\`, \`service.go\`, \`repository.go\`, \`model.go\`
+- Test files as \`*_test.go\` next to the code they test
+- Use sqlc for type-safe DB queries (see \`internal/platform/database/queries/\`)
+- Error wrapping with \`fmt.Errorf("...%w", err)\` for the error chain
+
+## When Adding a Domain
+1. Create \`internal/<domain>/\` with handler.go, service.go, repository.go, model.go
+2. Define the public interface in the package (only capitalized exports)
+3. Wire handlers in \`cmd/api/main.go\` routes
+4. Add migrations to \`migrations/\`
+5. Add tests in the same package`,
+    pitfalls: [
+      "Don't organize `internal/` by technical layer (handlers/, services/, repositories/) — group by domain instead",
+      "Don't over-nest: Go idiom is flat packages, deep hierarchies hurt readability",
+      "Don't put code in `pkg/` unless it's truly reusable across multiple projects",
+    ],
+  },
+  {
+    id: "rust-cargo-workspace",
+    title: "Rust Cargo Workspace",
+    category: "Monorepo",
+    description:
+      "Multi-crate Rust workspace with shared Cargo.lock, workspace dependencies, and logical separation by concern. Optimized for fast incremental compilation.",
+    stack: ["Rust 1.80+", "Cargo workspaces", "resolver v3", "tokio"],
+    tree: `my-rust-workspace/
+├── CLAUDE.md
+├── Cargo.toml                   # Workspace root manifest
+├── Cargo.lock                   # Shared across all crates
+├── rust-toolchain.toml
+├── crates/
+│   ├── foo-core/                # Business logic, no I/O
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── lib.rs
+│   ├── foo-api/                 # HTTP API binary
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       ├── main.rs
+│   │       └── routes/
+│   ├── foo-cli/                 # Command-line tool binary
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── main.rs
+│   ├── foo-db/                  # Database layer
+│   │   ├── Cargo.toml
+│   │   └── src/
+│   │       └── lib.rs
+│   └── foo-types/               # Shared types
+│       ├── Cargo.toml
+│       └── src/
+│           └── lib.rs
+├── xtask/                       # Custom build tasks
+│   ├── Cargo.toml
+│   └── src/
+│       └── main.rs
+├── examples/
+├── tests/                       # Workspace-level integration tests
+├── benches/                     # Criterion benchmarks
+└── docs/`,
+    whyItWorks: [
+      "Project-name prefix on all crates (\`foo-core\`, \`foo-api\`, \`foo-cli\`) — Claude knows which workspace a crate belongs to from the name alone",
+      "Shared \`Cargo.lock\` means consistent dependency versions across crates — Claude won't accidentally introduce version mismatches",
+      "Workspace-level dependency declaration (\`[workspace.dependencies]\`) lets you bump a dep once — Claude updates one file instead of many",
+      "Logical separation: types → db → core → api/cli — dependency direction is one-way, Claude respects the flow",
+    ],
+    claudeMdTips: `## Project: Rust Cargo Workspace
+
+## Build & Run
+- \`cargo build\` — build everything
+- \`cargo build -p foo-api\` — build specific crate
+- \`cargo run -p foo-api\` — run the API
+- \`cargo run -p foo-cli -- --help\` — run the CLI
+- \`cargo test\` — all tests
+- \`cargo test -p foo-core\` — specific crate
+- \`cargo bench\` — run benchmarks
+- \`cargo xtask ci\` — run full CI locally
+- \`cargo fmt && cargo clippy --workspace -- -D warnings\` — lint
+
+## Workspace Layout
+- All crates prefixed with \`foo-\` (replace with your project name)
+- \`foo-core\` — business logic, NO I/O, pure functions
+- \`foo-types\` — shared types (used by core, db, api)
+- \`foo-db\` — database layer (depends on types, not core)
+- \`foo-api\` — HTTP API binary (depends on core, db, types)
+- \`foo-cli\` — CLI binary (depends on core, types)
+
+## Dependency Rules
+- Declare common deps in root \`Cargo.toml\` under \`[workspace.dependencies]\`
+- Crates reference them with \`tokio = { workspace = true }\`
+- One-way dep flow: types → db → core → api/cli
+- NEVER make core depend on api or db
+
+## Adding a Crate
+1. Create \`crates/foo-newthing/\` with Cargo.toml and src/lib.rs
+2. Add to root Cargo.toml \`[workspace.members]\`
+3. Add inter-crate deps with \`path = "../foo-core"\`
+4. Use \`resolver = "3"\` (already set at workspace root)`,
+    pitfalls: [
+      "Don't let `core` depend on `api` or `db` — breaks separation and hurts testability",
+      "Don't duplicate versions — use `[workspace.dependencies]` and `workspace = true`",
+      "Don't skip the crate prefix — two workspaces with same-name crates cause dependency conflicts",
+    ],
+  },
+  {
+    id: "nuxt3-app",
+    title: "Nuxt 3 App",
+    category: "Full-Stack",
+    description:
+      "Nuxt 3 project with opinionated directory structure, auto-imports, content collections, and server routes. Nuxt's conventions let Claude generate code that fits without friction.",
+    stack: ["Nuxt 3", "Vue 3", "TypeScript", "Tailwind", "Pinia"],
+    tree: `my-nuxt-app/
+├── CLAUDE.md
+├── nuxt.config.ts
+├── package.json
+├── tsconfig.json
+├── app.vue                      # Root component
+├── pages/                       # File-based routes
+│   ├── index.vue
+│   ├── about.vue
+│   └── dashboard/
+│       ├── index.vue
+│       └── [id].vue             # Dynamic route
+├── layouts/                     # Layouts (auto-applied)
+│   ├── default.vue
+│   └── admin.vue
+├── components/                  # Auto-imported components
+│   ├── AppHeader.vue
+│   ├── AppFooter.vue
+│   └── ui/                      # Prefix: Ui (e.g., UiButton.vue)
+│       ├── UiButton.vue
+│       └── UiCard.vue
+├── composables/                 # Auto-imported composables
+│   ├── useAuth.ts
+│   └── useApi.ts
+├── stores/                      # Pinia stores (auto-imported)
+│   └── user.ts
+├── middleware/                  # Route middleware
+│   ├── auth.ts
+│   └── admin.global.ts
+├── plugins/                     # Nuxt plugins
+│   └── api.client.ts            # .client = client-only
+├── server/                      # Server-side code
+│   ├── api/
+│   │   ├── users.get.ts         # GET /api/users
+│   │   ├── users.post.ts
+│   │   └── users/[id].get.ts
+│   ├── middleware/
+│   └── utils/
+├── content/                     # Content collection
+│   └── blog/
+│       └── post.md
+├── assets/                      # Processed assets (CSS, fonts)
+├── public/                      # Static files (unprocessed)
+├── types/                       # Central type definitions
+└── tests/`,
+    whyItWorks: [
+      "Auto-import directories (components/, composables/, stores/) — Claude writes import-less code and it just works, cutting boilerplate",
+      "File-based routing in pages/ and server/api/ — Claude adds a route by creating a file, no router config",
+      "Server routes named by method (\`users.get.ts\`, \`users.post.ts\`) — Claude infers HTTP verb from filename",
+      "Central \`types/\` directory — Claude doesn't need to hunt for type locations",
+    ],
+    claudeMdTips: `## Project: Nuxt 3 App
+
+## Build & Run
+- \`npm run dev\` — dev server on :3000
+- \`npm run build\` — production build
+- \`npm run preview\` — preview build locally
+- \`npm run generate\` — static site generation
+- \`npm test\` — Vitest unit tests
+- \`npm run lint\` — ESLint + Vue rules
+
+## Nuxt Auto-Imports
+- Components: anything in \`components/\` is globally available
+- Composables: anything in \`composables/\` is auto-imported (e.g., \`useAuth()\`)
+- Pinia stores: auto-imported via \`useStoreName()\`
+- Nuxt utilities: \`useFetch\`, \`useAsyncData\`, \`useState\`, \`useRoute\` etc.
+- You do NOT need \`import\` statements for any of the above
+
+## File Conventions
+- Pages: \`pages/dashboard/[id].vue\` → \`/dashboard/:id\`
+- Server routes: \`server/api/users.get.ts\` → \`GET /api/users\`
+- Layouts: set per-page with \`definePageMeta({ layout: 'admin' })\`
+- Middleware: \`.global.ts\` suffix runs on every route, else opt-in via meta
+- Plugins: \`.client.ts\` or \`.server.ts\` suffix controls where it runs
+
+## Rules
+- SSR by default — use \`.client.ts\`/\`.server.ts\` suffixes for platform-specific code
+- Use \`useFetch\` for data, NOT direct fetch calls (handles SSR/hydration)
+- State goes in Pinia stores, not Vuex
+- Types in \`types/\` — Claude imports via \`~/types\` alias`,
+    pitfalls: [
+      "Don't use `<script>` without `setup` — Nuxt 3 is Composition API first",
+      "Don't manually import from auto-import dirs — it works without it and breaks tree-shaking if you do",
+      "Don't confuse `pages/` (client routes) with `server/api/` (server routes)",
+    ],
+  },
+  {
+    id: "rails-8-api",
+    title: "Ruby on Rails 8 API",
+    category: "Backend API",
+    description:
+      "Modern Rails 8 API-only app with Zeitwerk autoloading, Vite Ruby for assets, and thin-controllers/smart-models architecture. The boring, battle-tested choice.",
+    stack: ["Ruby 3.3+", "Rails 8", "PostgreSQL", "Sidekiq", "RSpec"],
+    tree: `my-rails-api/
+├── CLAUDE.md
+├── Gemfile
+├── Gemfile.lock
+├── config.ru
+├── bin/
+│   ├── rails
+│   ├── setup
+│   └── dev
+├── app/
+│   ├── controllers/
+│   │   ├── application_controller.rb
+│   │   ├── concerns/            # Shared controller logic
+│   │   └── api/
+│   │       └── v1/
+│   │           ├── users_controller.rb
+│   │           └── orders_controller.rb
+│   ├── models/
+│   │   ├── application_record.rb
+│   │   ├── user.rb
+│   │   ├── order.rb
+│   │   └── concerns/            # Shared model logic
+│   ├── services/                # Domain services
+│   │   ├── payment_processor.rb
+│   │   └── order_fulfillment.rb
+│   ├── jobs/                    # Sidekiq jobs
+│   │   └── send_email_job.rb
+│   ├── serializers/             # JSON serializers
+│   │   └── user_serializer.rb
+│   ├── policies/                # Pundit authorization
+│   │   └── order_policy.rb
+│   └── mailers/
+├── config/
+│   ├── application.rb
+│   ├── routes.rb
+│   ├── database.yml
+│   ├── credentials.yml.enc      # Encrypted secrets
+│   └── environments/
+├── db/
+│   ├── migrate/
+│   ├── schema.rb
+│   └── seeds.rb
+├── lib/
+│   └── tasks/                   # Rake tasks
+├── spec/                        # RSpec tests
+│   ├── models/
+│   ├── requests/                # API endpoint tests
+│   ├── services/
+│   └── factories/               # FactoryBot
+└── docs/`,
+    whyItWorks: [
+      "Zeitwerk autoloading — Claude adds a file and Rails finds it, no manual \`require\` anywhere",
+      "Convention over configuration means Claude KNOWS where things go without asking — controllers, models, jobs all have canonical homes",
+      "Versioned API folders (\`api/v1/\`) support upgrades without breaking clients",
+      "\`services/\` folder keeps business logic out of controllers and models — Claude respects the thin-controller/smart-model pattern",
+    ],
+    claudeMdTips: `## Project: Rails 8 API
+
+## Build & Run
+- \`bin/dev\` — dev server (includes Sidekiq, Redis)
+- \`rails s\` — server only
+- \`rails c\` — console (REPL)
+- \`rails db:migrate\` — apply migrations
+- \`rails db:seed\` — seed data
+- \`bundle exec rspec\` — run all tests
+- \`bundle exec rspec spec/requests\` — API tests only
+- \`bundle exec rubocop\` — lint
+
+## Rails Conventions
+- Controllers in \`app/controllers/api/v1/\`, named \`<resource>_controller.rb\`
+- Models in \`app/models/\`, singular names (\`user.rb\`, not \`users.rb\`)
+- Services in \`app/services/\`, one public method (\`#call\`)
+- Background jobs in \`app/jobs/\`, end in \`_job.rb\`
+- Tests in \`spec/\` mirror the app/ structure
+
+## Architecture Rules
+- Thin controllers: handle params, call a service, return response
+- Smart models: validations, associations, scopes
+- Business logic that doesn't fit in a single model → service object
+- Authorization → Pundit policies in \`app/policies/\`
+- Serialization → ActiveModel::Serializer in \`app/serializers/\`
+
+## When Adding an Endpoint
+1. Add route in \`config/routes.rb\`
+2. Create controller action in \`app/controllers/api/v1/\`
+3. Add/modify model if needed (\`rails g model\`)
+4. Create service if logic is non-trivial
+5. Add serializer for the response shape
+6. Add request spec in \`spec/requests/\`
+7. Run \`rails db:migrate\` if schema changed`,
+    pitfalls: [
+      "Don't put business logic in controllers — extract to a service object",
+      "Don't skip request specs — model specs alone miss integration bugs",
+      "Don't use `find_or_create_by` in controllers — race conditions; use a service with locking",
+    ],
+  },
+  {
+    id: "chrome-extension-mv3",
+    title: "Chrome Extension (Manifest V3)",
+    category: "Browser Extension",
+    description:
+      "Modern browser extension using Manifest V3 with service worker background, TypeScript, and Vite bundling. Works in Chrome, Edge, Brave, and most Chromium browsers.",
+    stack: ["Manifest V3", "TypeScript", "Vite", "React (optional)"],
+    tree: `my-extension/
+├── CLAUDE.md
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── manifest.json                # REQUIRED at root
+├── src/
+│   ├── background/
+│   │   └── service-worker.ts    # Background service worker (MV3)
+│   ├── content-scripts/
+│   │   ├── main.ts              # Injected into web pages
+│   │   └── styles.css
+│   ├── popup/                   # Toolbar icon popup
+│   │   ├── index.html
+│   │   ├── main.tsx
+│   │   └── Popup.tsx
+│   ├── options/                 # Extension options page
+│   │   ├── index.html
+│   │   ├── main.tsx
+│   │   └── Options.tsx
+│   ├── devtools/                # DevTools panel (optional)
+│   │   └── panel.ts
+│   ├── lib/
+│   │   ├── messaging.ts         # Cross-script messaging
+│   │   ├── storage.ts           # chrome.storage wrapper
+│   │   └── permissions.ts
+│   ├── types/
+│   │   └── index.ts
+│   └── assets/
+│       └── icons/               # 16x16, 32x32, 48x48, 128x128
+├── public/
+│   └── _locales/                # i18n files
+│       └── en/
+│           └── messages.json
+├── dist/                        # Build output (load unpacked from here)
+└── tests/`,
+    whyItWorks: [
+      "Manifest V3 forces the service worker pattern — `background/service-worker.ts` is the standard location Claude expects",
+      "Clear separation between UI contexts (popup, options, devtools) — Claude knows each runs in its own process and uses messaging between them",
+      "Icons at standard sizes (16, 32, 48, 128) in one folder — Claude generates the manifest.json icon block correctly",
+      "`src/lib/messaging.ts` abstraction — every new feature that needs cross-context communication goes through this helper",
+    ],
+    claudeMdTips: `## Project: Chrome Extension (Manifest V3)
+
+## Build & Run
+- \`npm run dev\` — watch mode, output to dist/
+- \`npm run build\` — production build to dist/
+- \`npm run package\` — create .zip for Chrome Web Store
+- \`npm test\` — unit tests
+
+## Load in Chrome
+1. chrome://extensions
+2. Toggle "Developer mode" on
+3. Click "Load unpacked"
+4. Select the \`dist/\` folder
+5. Click the reload icon after rebuilds
+
+## Manifest V3 Key Points
+- NO persistent background pages — use service workers only
+- Service workers go idle; use chrome.alarms for scheduled tasks
+- NO remote code execution — all JS must be bundled into the extension
+- Permissions are granular: \`storage\`, \`tabs\`, \`activeTab\`, \`scripting\`, \`notifications\`
+- Host permissions (\`host_permissions\` array) separate from API permissions
+
+## Script Contexts (Isolated Processes)
+- **service-worker**: background, no DOM, has chrome.* APIs
+- **content-script**: runs IN the page, has DOM, limited chrome.* APIs
+- **popup**: UI when icon clicked, DOM + chrome.* APIs
+- **options**: settings page, DOM + chrome.* APIs
+- Use \`chrome.runtime.sendMessage\` + \`chrome.runtime.onMessage\` to communicate
+
+## When Adding a Feature
+1. Decide which context(s) it runs in
+2. Declare required permissions in \`manifest.json\`
+3. Use \`src/lib/messaging.ts\` for cross-context calls
+4. Use \`src/lib/storage.ts\` for persistent state (chrome.storage.local/sync)
+5. Test reloading the extension after every manifest change`,
+    pitfalls: [
+      "Don't use `eval` or inline scripts — MV3 Content Security Policy blocks them",
+      "Don't store secrets in `manifest.json` or content scripts — anything shipped can be read by users",
+      "Don't forget to add permissions to manifest — Chrome silently fails on API calls without the right permission",
+      "Service workers become INACTIVE — don't rely on global state persisting; use chrome.storage",
+    ],
+  },
+  {
+    id: "astro-content-site",
+    title: "Astro Content Site",
+    category: "Web Frontend",
+    description:
+      "Astro project optimized for content-heavy sites (blogs, docs, marketing). Uses Content Collections for schema-validated Markdown/MDX with zero client JS by default.",
+    stack: ["Astro 5", "TypeScript", "MDX", "Content Collections"],
+    tree: `my-astro-site/
+├── CLAUDE.md
+├── astro.config.mjs
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── pages/                   # File-based routes (REQUIRED name)
+│   │   ├── index.astro
+│   │   ├── about.astro
+│   │   ├── blog/
+│   │   │   ├── index.astro      # Blog listing
+│   │   │   └── [...slug].astro  # Dynamic blog post route
+│   │   └── rss.xml.ts           # RSS feed generator
+│   ├── content/                 # Content Collections (REQUIRED name)
+│   │   ├── config.ts            # Schema definitions with Zod
+│   │   ├── blog/
+│   │   │   ├── first-post.md
+│   │   │   └── second-post.mdx
+│   │   ├── docs/
+│   │   │   └── getting-started.md
+│   │   └── authors/
+│   │       └── jane.json
+│   ├── components/
+│   │   ├── BaseHead.astro
+│   │   ├── Header.astro
+│   │   └── PostCard.astro
+│   ├── layouts/
+│   │   ├── BaseLayout.astro
+│   │   └── BlogPost.astro
+│   ├── styles/
+│   │   └── global.css
+│   └── utils/
+├── public/                      # Static files, unprocessed
+│   ├── favicon.svg
+│   └── images/
+└── dist/                        # Build output`,
+    whyItWorks: [
+      "`src/content/config.ts` with Zod schemas — Claude generates content with the correct frontmatter every time, types are enforced at build",
+      "`src/content/<collection>/` is a reserved location — Claude knows blog posts go in `src/content/blog/`, never elsewhere",
+      "`src/pages/` is the ONLY Astro-reserved directory — everything else can be renamed, giving Claude flexibility",
+      "`.astro` for components, `.md` for text content, `.mdx` for content with components — file extension communicates purpose to Claude",
+    ],
+    claudeMdTips: `## Project: Astro Content Site
+
+## Build & Run
+- \`npm run dev\` — dev server on :4321
+- \`npm run build\` — build to \`dist/\`
+- \`npm run preview\` — preview built site
+- \`npm run astro check\` — type check content + Astro files
+
+## Content Collections
+- Defined in \`src/content/config.ts\` with Zod schemas
+- Each subfolder under \`src/content/\` is a collection
+- Content MUST have frontmatter matching the schema
+- Query with \`getCollection('blog')\` or \`getEntry('blog', 'slug')\`
+
+## File Formats
+- \`.astro\` — components and dynamic routes (supports JSX-like syntax)
+- \`.md\` — plain Markdown content (no components)
+- \`.mdx\` — Markdown with Astro/React/Vue components embedded
+- \`.json\` — structured list data (authors, categories, etc.)
+
+## Routing
+- \`src/pages/about.astro\` → \`/about\`
+- \`src/pages/blog/[...slug].astro\` → dynamic blog post routes
+- Use \`getStaticPaths()\` to pre-render dynamic routes at build time
+
+## Rules
+- Zero client JS by default — components are static HTML unless you add \`client:*\` directives
+- Use \`client:load\`, \`client:visible\`, \`client:idle\` for interactive islands
+- Images in \`src/assets/\` get optimized; images in \`public/\` are passed through raw
+- Content schema changes require \`npm run astro sync\` to regenerate types
+
+## When Adding Content
+1. Write Markdown/MDX file in \`src/content/<collection>/\`
+2. Ensure frontmatter matches schema in \`src/content/config.ts\`
+3. If new collection, add schema in \`config.ts\` FIRST
+4. Content renders at the route defined in \`src/pages/<collection>/[...slug].astro\``,
+    pitfalls: [
+      "Don't put content files outside `src/content/` — they won't be part of collections",
+      "Don't skip the Zod schema — without it, frontmatter errors only surface at render time",
+      "Don't add `client:*` directives without reason — you lose Astro's zero-JS advantage",
+      "Don't put `_components` or `_utils` folders in `src/pages/` — underscore-prefixed folders inside pages/ are treated as private",
+    ],
+  },
+  {
+    id: "nestjs-clean-architecture",
+    title: "NestJS Clean Architecture",
+    category: "Backend API",
+    description:
+      "NestJS project organized with Clean Architecture: modules own their domain, use case, and infrastructure layers. Scales from 10 to 500 endpoints without collapsing.",
+    stack: ["NestJS 10+", "TypeScript", "TypeORM/Prisma", "Jest", "Passport"],
+    tree: `my-nest-app/
+├── CLAUDE.md
+├── nest-cli.json
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── main.ts                  # Entry point
+│   ├── app.module.ts            # Root module
+│   ├── modules/                 # Business features
+│   │   ├── users/
+│   │   │   ├── domain/          # Entities, value objects, domain services
+│   │   │   │   ├── user.entity.ts
+│   │   │   │   └── user.repository.ts   # Interface only
+│   │   │   ├── application/     # Use cases / commands / queries
+│   │   │   │   ├── create-user.use-case.ts
+│   │   │   │   └── find-user.use-case.ts
+│   │   │   ├── infrastructure/  # Concrete implementations
+│   │   │   │   ├── user.typeorm.repository.ts
+│   │   │   │   └── user.controller.ts
+│   │   │   ├── dto/
+│   │   │   │   ├── create-user.dto.ts
+│   │   │   │   └── user-response.dto.ts
+│   │   │   └── users.module.ts
+│   │   ├── orders/
+│   │   └── auth/
+│   ├── core/                    # Shared framework-level infra
+│   │   ├── database/
+│   │   ├── guards/
+│   │   ├── interceptors/
+│   │   └── filters/
+│   ├── common/                  # Lightweight shared utils
+│   │   ├── decorators/
+│   │   ├── pipes/
+│   │   └── utils/
+│   ├── integrations/            # External API clients
+│   │   └── stripe/
+│   └── events/                  # Event-driven infrastructure
+├── test/                        # E2E tests
+│   └── users.e2e-spec.ts
+└── docs/`,
+    whyItWorks: [
+      "Each module OWNS its domain/application/infrastructure layers — Claude edits a feature without crossing into unrelated areas",
+      "Repository interfaces in \`domain/\`, implementations in \`infrastructure/\` — dependency inversion lets Claude swap Prisma for TypeORM without touching business logic",
+      "\`modules/\`, \`core/\`, \`common/\`, \`integrations/\` split — Claude knows module code stays in modules, cross-cutting goes in core",
+      "Singular domain folder names (\`users/\`), plural for reusable code (\`pipes/\`) — naming convention tells Claude what kind of code it's touching",
+    ],
+    claudeMdTips: `## Project: NestJS Clean Architecture
+
+## Build & Run
+- \`npm run start:dev\` — dev server with hot reload
+- \`npm run start:prod\` — production
+- \`npm run build\` — compile to dist/
+- \`npm test\` — Jest unit tests
+- \`npm run test:e2e\` — E2E tests
+- \`npm run lint\` — ESLint
+
+## Module Structure
+Each module under \`src/modules/<feature>/\` has four layers:
+1. **domain/** — entities + repository interfaces. NO NestJS decorators here.
+2. **application/** — use cases. One class per operation (\`CreateUserUseCase\`, \`FindUserUseCase\`).
+3. **infrastructure/** — controllers (HTTP), repository implementations (DB), external calls.
+4. **dto/** — class-validator DTOs for request/response.
+
+## Naming
+- Files: \`name.layer.ts\` (e.g., \`user.service.ts\`, \`user.entity.ts\`)
+- Modules: \`name.module.ts\`
+- DTOs: \`[action]-[entity].dto.ts\` (e.g., \`create-user.dto.ts\`)
+- Singular: domain folders (\`user/\`, \`order/\`)
+- Plural: reusable folders (\`pipes/\`, \`utils/\`)
+
+## Module Rules
+- Each module owns and manages its own providers
+- Don't define a provider in one module that belongs to another — import the module instead
+- Controllers handle HTTP ONLY — delegate to use cases
+- Use cases orchestrate — don't touch HTTP or DB directly
+- Repositories are behind interfaces — domain layer defines the interface, infrastructure implements it
+
+## When Adding a Feature
+1. Create \`src/modules/<feature>/\` with the 4 layer folders
+2. Define entity + repo interface in domain/
+3. Write use case in application/ (input → output)
+4. Implement controller + repo in infrastructure/
+5. Wire everything in \`<feature>.module.ts\`
+6. Import into \`app.module.ts\`
+7. Add tests (unit in each layer, e2e in \`test/\`)`,
+    pitfalls: [
+      "Don't put NestJS decorators in domain/ — that couples your domain to the framework",
+      "Don't inject repositories directly in controllers — go through use cases",
+      "Don't create a module just to share one provider — import and export properly instead",
+      "Don't mix pluralization — `pipes/` (plural, reusable), `user/` (singular, domain)",
     ],
   },
 ];

@@ -22,15 +22,15 @@ quiz:
     correct: 1
     explanation: "opusplan is a hybrid strategy where Opus handles the high-level planning, architecture, and design decisions, then Claude automatically switches to Sonnet for the actual code implementation. This gives you Opus-quality thinking with Sonnet-speed execution."
   - id: "switch-2"
-    question: "How much more of your usage budget does Opus consume compared to Sonnet?"
+    question: "How does Opus 4.6 pricing compare to Sonnet 4.6 per token?"
     type: "multiple-choice"
     options:
-      - "The same amount"
-      - "About 1.7x more"
-      - "About 5x more"
-      - "About 10x more"
+      - "The same"
+      - "Opus is roughly 5x more expensive per token (~$15/M input vs ~$3/M)"
+      - "Opus is cheaper"
+      - "Only Opus has a token cost"
     correct: 1
-    explanation: "Opus consumes approximately 1.7x the tokens compared to Sonnet for the same task, due to its deeper reasoning process. This means a session on Opus drains your rolling 5-hour budget roughly 1.7x faster than the same session on Sonnet."
+    explanation: "Approximate API pricing: Opus 4.6 is around $15 per million input tokens and $75 per million output, while Sonnet 4.6 is roughly $3/$15. Opus also tends to produce more reasoning tokens at higher effort, so a session on Opus drains your rolling budget noticeably faster. See current pricing at console.anthropic.com."
   - id: "switch-3"
     question: "Which model would you choose for generating boilerplate CRUD endpoints?"
     type: "multiple-choice"
@@ -53,7 +53,7 @@ quiz:
     explanation: "Switching models preserves your entire conversation history. The switch only affects which model processes your next message. This means you can have Opus analyze a problem and then switch to Sonnet for implementation — Sonnet inherits all of Opus's analysis."
 ---
 
-## Model Switching Is Your Superpower
+## Pick the Right Model for the Task
 
 Most Claude Code users pick a model once and stick with it. That's like owning a toolbox but only using the hammer. The developers who get the most value from Claude Code switch models strategically throughout their sessions — matching the model's strengths to the task at hand.
 
@@ -64,13 +64,15 @@ This isn't about being cheap (though it does save budget). It's about getting **
 Switching is instant. Type `/model` followed by the model name:
 
 ```bash
-/model opus      # Switch to Opus
-/model sonnet    # Switch to Sonnet (default)
-/model haiku     # Switch to Haiku
+/model opus      # Switch to Opus 4.6 (claude-opus-4-6)
+/model sonnet    # Switch to Sonnet 4.6 (claude-sonnet-4-6) — default
+/model haiku     # Switch to Haiku 4.5 (claude-haiku-4-5-20251001)
 /model opusplan  # Hybrid: Opus plans, Sonnet implements
 ```
 
 The switch takes effect on your next message. Your conversation history is preserved — the new model inherits all the context from the previous one.
+
+**Context windows by model:** Opus 4.6 has a 1M context window. Sonnet 4.6 and Haiku 4.5 both have 200K. If you're running out of context on Sonnet, `/model opus` gives you 5x more room at the cost of higher per-token pricing.
 
 You can also see a model picker UI with the effort level slider by just typing:
 
@@ -82,7 +84,7 @@ This opens an interactive picker where you can select the model and adjust the e
 
 ## When to Use Each Model
 
-### Opus: The Deep Thinker
+### Opus 4.6: The Deep Thinker
 
 Switch to Opus when the task requires:
 
@@ -103,7 +105,7 @@ to find the root cause."
 
 Opus will take longer to respond but will consider timeout cascades, connection pool exhaustion, circuit breaker absence, and other subtle issues that Sonnet might miss.
 
-### Sonnet: The Daily Driver
+### Sonnet 4.6: The Daily Driver
 
 Stay on Sonnet (the default) for:
 
@@ -122,7 +124,7 @@ in @src/api/users.ts"
 
 Sonnet handles 70-80% of daily coding tasks at a good quality level and responds in seconds.
 
-### Haiku: The Speed Runner
+### Haiku 4.5: The Speed Runner
 
 Drop to Haiku for:
 
@@ -186,22 +188,17 @@ For most complex features, opusplan is the right default. Only manually switch w
 
 Model choice directly affects how fast you burn through your usage budget.
 
-Relative token consumption for the same task:
+Approximate API pricing (see current rates at [console.anthropic.com](https://console.anthropic.com)):
 
-| Model | Relative Cost | Relative Speed |
-|-------|--------------|---------------|
-| Haiku | 1x (baseline) | Fastest |
-| Sonnet | ~3x | Fast |
-| Opus | ~5x (and uses ~1.7x more tokens due to deeper reasoning) | Slowest |
+| Model | Input (per M tokens) | Output (per M tokens) | Relative Speed |
+|-------|---------------------|----------------------|----------------|
+| Haiku 4.5 | ~$1 | ~$5 | Fastest |
+| Sonnet 4.6 | ~$3 | ~$15 | Fast |
+| Opus 4.6 | ~$15 | ~$75 | Slowest |
 
-On a Max 5x plan (~225 Sonnet-equivalent messages per 5 hours), model choice means:
+Opus also tends to produce more reasoning tokens at higher effort, so a session on Opus drains your rolling plan budget substantially faster than the same session on Sonnet.
 
-- **All Sonnet:** ~225 messages
-- **All Opus:** ~75-90 messages (Opus is more expensive AND generates more reasoning tokens)
-- **All Haiku:** ~675+ messages
-- **Smart switching (70% Sonnet, 20% Haiku, 10% Opus):** ~250-280 effective messages
-
-Smart switching actually gives you **more** total messages than sticking with Sonnet for everything, because the Haiku messages are so cheap they offset the expensive Opus ones.
+**Smart switching** (Sonnet for most work, Haiku for mechanical edits, Opus for architecture and deep debugging) typically gets you more total throughput than staying on a single model — Haiku messages are cheap enough to offset the expensive Opus ones, and Sonnet handles the bulk well.
 
 ## A Real Session: Model Switching in Practice
 

@@ -12,7 +12,7 @@ objectives:
   - "Run headless queries for quick answers"
 quiz:
   - id: "commands-1"
-    question: "What does 'claude -c' do?"
+    question: "What does 'claude --continue' (or 'claude -c') do?"
     type: "multiple-choice"
     options:
       - "Clears the terminal"
@@ -20,7 +20,7 @@ quiz:
       - "Continues the most recent Claude Code session"
       - "Checks for updates"
     correct: 2
-    explanation: "The -c flag continues your most recent session. If you exited Claude Code and want to pick up where you left off, 'claude -c' restores the conversation history and context."
+    explanation: "The --continue (-c) flag continues your most recent session. If you exited Claude Code and want to pick up where you left off, 'claude --continue' restores the conversation history and context."
   - id: "commands-2"
     question: "What is the difference between 'claude -p' and 'claude' with a prompt?"
     type: "multiple-choice"
@@ -74,12 +74,15 @@ claude "explain @src/auth/middleware.ts"
 
 **When to use:** Every time you want to start working with Claude Code. Navigate to your project directory first.
 
-## 2. `claude -c` — Continue Last Session
+## 2. `claude --continue` — Continue Last Session
 
 Resume your most recent session with full conversation history:
 
 ```bash
 # Continue where you left off
+claude --continue
+
+# Short form also works
 claude -c
 ```
 
@@ -87,16 +90,16 @@ This restores the entire conversation — everything you discussed, every file C
 
 **When to use:** You closed the terminal, went to lunch, or got pulled into a meeting, and now you want to pick up exactly where you left off. This is different from starting a new session because Claude retains all the context from your previous conversation.
 
-## 3. `claude -r` — Resume a Specific Session
+## 3. `claude --resume` — Resume a Specific Session
 
 When you have multiple sessions and want to resume a specific one:
 
 ```bash
 # Open the interactive session picker
-claude -r
+claude --resume
 
 # Resume a session by ID (shown in session picker)
-claude -r session_abc123
+claude --resume session_abc123
 ```
 
 The session picker shows your recent sessions with timestamps, the first message, and the project directory. Navigate with arrow keys, press Enter to resume.
@@ -139,13 +142,13 @@ git diff HEAD~1 | claude -p "write a commit message for this diff"
 
 **When to use:** Quick one-off questions, scripting, CI/CD pipelines, or any time you want an answer without an interactive session. This is Claude as a Unix tool — it reads stdin, processes, and writes to stdout.
 
-## 6. `claude -w name` — Worktree Session
+## 6. `claude --worktree name` — Worktree Session
 
 Start a session in a git worktree for isolated, parallel work:
 
 ```bash
 # Start Claude in a worktree (creates the worktree if needed)
-claude -w feature-auth
+claude --worktree feature-auth
 
 # Claude works in a separate copy of the codebase
 # Your main working directory is untouched
@@ -221,25 +224,27 @@ Here's the cheat sheet:
 
 ```bash
 # Starting sessions
-claude                       # New interactive session
-claude "prompt"              # New session with initial prompt
-claude -c                    # Continue last session
-claude -r                    # Resume specific session (picker)
-claude -n "name"             # Named session
-claude -w branch-name        # Worktree session (isolated)
+claude                           # New interactive session
+claude "prompt"                  # New session with initial prompt
+claude --continue                # Continue last session (-c)
+claude --resume                  # Resume specific session (picker)
+claude -n "name"                 # Named session
+claude --worktree branch-name    # Worktree session (isolated)
 
 # One-off queries
-claude -p "question"         # Headless mode (no REPL)
-cat file | claude -p "task"  # Pipe mode
+claude -p "question"             # Headless mode (no REPL)
+cat file | claude -p "task"      # Pipe mode
+claude -p --output-format json "task"   # Structured JSON output
+claude --permission-mode plan    # Start in plan mode (editable plan first)
 
 # Maintenance
-claude update                # Update to latest version
-claude doctor                # Run diagnostics
-claude --version             # Check version
+claude update                    # Update to latest version
+claude doctor                    # Run diagnostics
+claude --version                 # Check version
 
 # Integrations
-claude --from-pr 42          # Start with PR context
-claude mcp list              # List MCP servers
+claude --from-pr 42              # Start with PR context
+claude mcp list                  # List MCP servers
 ```
 
 ## Combining Flags
@@ -250,13 +255,16 @@ Some flags combine naturally:
 # Named session with initial prompt
 claude -n "auth-fix" "debug the JWT refresh flow"
 
-# Headless with specific model
-claude -p --model opus "design a caching strategy for @src/api/"
+# Headless with a specific model and JSON output
+claude -p --model claude-opus-4-6 --output-format json "design a caching strategy for @src/api/"
 
-# Continue with worktree
-claude -c -w feature-branch
+# Continue in a worktree
+claude --continue --worktree feature-branch
+
+# Plan mode with a starting task (review plan before execution)
+claude --permission-mode plan "migrate our Redis client to ioredis"
 ```
 
 ## Key Takeaway
 
-These 10 commands cover 95% of daily Claude Code usage: `claude` to start, `-c` to continue, `-r` to resume, `-n` for named sessions, `-p` for headless queries, `-w` for worktrees, `update` and `doctor` for maintenance, `mcp list` for tooling, and `--from-pr` for pull request reviews. Memorize these and you'll navigate Claude Code like a pro.
+These 10 commands cover 95% of daily Claude Code usage: `claude` to start, `--continue` to pick up where you left off, `--resume` for a session picker, `-n` for named sessions, `-p` for headless queries (pair with `--output-format json` in scripts), `--worktree` for isolated branches, `update` and `doctor` for maintenance, `mcp list` for tooling, and `--from-pr` for pull request reviews. Add `--permission-mode plan` or `--permission-mode auto` when you want to control how aggressively Claude acts. Memorize these and you'll navigate Claude Code like a pro.

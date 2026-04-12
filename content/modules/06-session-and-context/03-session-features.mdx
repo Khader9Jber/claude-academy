@@ -157,7 +157,7 @@ This is useful when you asked the wrong question or went down the wrong path ent
 # If full rewind: Start fresh, as if you never asked
 ```
 
-Rewind is non-destructive — your git history isn't affected. It only reverts in-memory changes Claude made during the session.
+Rewind is non-destructive with respect to git — your committed history isn't affected. It uses Claude Code's automatic checkpoints (created before each action during the session) to restore files and/or the conversation.
 
 ## Resuming Sessions
 

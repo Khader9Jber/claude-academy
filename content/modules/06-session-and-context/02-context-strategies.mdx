@@ -236,14 +236,28 @@ docs/features/order-cancellation.md"
 "Write the decision to use a state machine for order status transitions 
 to CLAUDE.md"
 
-# 5. Compact with a hint
+# 5. Drop a mid-session note with /btw (auto-memory) for things
+#    that are true for you but not worth committing to CLAUDE.md
+/btw always use the project logger from src/lib/logger.ts, never console.log
+
+# 6. Compact with a hint
 /compact preserve the order cancellation state machine design
 
-# 6. Continue working with refreshed context
+# 7. Continue working with refreshed context
 # ... finishing touches ...
 
-# 7. End the session. Start fresh for the next task.
+# 8. End the session. Start fresh for the next task.
 ```
+
+### Quick recap of the context commands
+
+| Command | Effect |
+|---|---|
+| `/context` | Inspect current token usage |
+| `/compact [hint]` | Summarize history, preserve hinted details |
+| `/clear` | Wipe conversation history in-place |
+| `/rewind` (or Esc Esc) | Jump back to an earlier checkpoint |
+| `/btw` | Write a quick note to auto-memory without interrupting flow |
 
 ## Anti-Patterns to Avoid
 

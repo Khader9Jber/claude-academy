@@ -99,15 +99,17 @@ This saves **thousands of tokens per session** and makes Claude dramatically fas
 export MAX_THINKING_TOKENS=12000
 ```
 
-When extended thinking is enabled (Alt+T), Claude spends tokens on internal reasoning before producing a visible response. By default, Claude decides how much to think based on the problem's complexity.
+Claude 4.6 models use **adaptive thinking** — Claude spends tokens on internal reasoning before producing a visible response, scaling depth to problem complexity. Effort level (`/effort low|medium|high|max` or `--effort`) is the primary control.
 
-Setting `MAX_THINKING_TOKENS` puts a ceiling on this:
+`MAX_THINKING_TOKENS` puts a hard ceiling on those thinking tokens per turn, regardless of effort:
 
 - **10,000-15,000**: Good default — enough for complex reasoning without runaway costs
 - **5,000**: For moderately complex tasks where you want some thinking but not unlimited
 - **25,000+**: For very complex problems where deep reasoning is worth the token investment
 
-If you don't set this, Claude might spend 30,000+ tokens thinking about a problem that only needed 5,000 tokens of reasoning. The cap keeps costs predictable.
+If you don't set this, Claude might spend 30,000+ tokens thinking at `high` effort when 5,000 would have been enough. The cap keeps costs predictable.
+
+(The older `thinking: { type: "enabled", budget_tokens: N }` API pattern is deprecated on 4.6; use `thinking: { type: "adaptive" }` with `output_config: { effort: "high" }` instead.)
 
 ## Effort Level: CLAUDE_CODE_EFFORT_LEVEL
 

@@ -36,21 +36,21 @@ quiz:
     type: "multiple-choice"
     options:
       - "Type 'quit'"
-      - "Press Ctrl+D or type /exit"
+      - "Press Ctrl+D at an empty prompt"
       - "Close the terminal window"
       - "Press Ctrl+Alt+Delete"
     correct: 1
-    explanation: "Ctrl+D (end of input) or the /exit command cleanly exits a Claude Code session. Closing the terminal works too, but Ctrl+D is the standard way."
+    explanation: "Ctrl+D (end of input) at an empty prompt cleanly exits a Claude Code session. Closing the terminal works too, but Ctrl+D is the standard way."
   - id: "repl-4"
-    question: "What does Ctrl+C do during a Claude Code response?"
+    question: "What key stops Claude mid-response so you can redirect?"
     type: "multiple-choice"
     options:
-      - "Exits the session"
+      - "Ctrl+Alt+Delete"
       - "Copies text to clipboard"
-      - "Interrupts the current response — Claude stops generating"
+      - "Esc — interrupts the current response so Claude stops generating"
       - "Clears the screen"
     correct: 2
-    explanation: "Ctrl+C interrupts Claude's current response. If Claude is mid-generation and you realize you need to redirect, press Ctrl+C to stop it. Your session continues — you can send a new message."
+    explanation: "Esc interrupts Claude's current response. If Claude is mid-generation and you realize you need to redirect, press Esc to stop it. Your session continues — you can send a new message. Press Esc twice (or use /rewind) to open the rewind menu and roll back further."
 ---
 
 ## What Is the REPL?
@@ -126,17 +126,16 @@ Claude wants to run: npm test -- --testPathPattern=auth
 [Allow] [Deny] [Allow all commands]
 ```
 
-### Cycling Permission Modes with Tab
+### Cycling Permission Modes with Shift+Tab
 
-The `Tab` key cycles through permission modes:
+`Shift+Tab` cycles through permission modes:
 
 1. **Ask mode** (default) — Claude asks permission for everything
-2. **Auto-accept reads** — Claude reads files freely, asks for writes and commands
-3. **Auto-accept all** — Claude has free rein (use in trusted, sandboxed environments)
+2. **Auto-accept edits** — Claude reads and edits files freely, still asks before running commands
+3. **Plan mode** — Claude produces an editable plan first (via `--permission-mode plan` or Shift+Tab), and nothing touches the filesystem until you approve
+4. **Auto mode** — Claude has free rein (start with `claude --permission-mode auto` in trusted, sandboxed environments)
 
-Most developers settle on "auto-accept reads" during active development. Claude needs to read files constantly to understand your code, and approving each read gets tedious fast. For writes and commands, keeping the approval step is usually worth the safety.
-
-You can also use `Shift+Tab` to toggle auto-accept on or off.
+Most developers settle on "auto-accept edits" during active development. For high-stakes changes, Plan mode lets you review the full plan in your editor (`Ctrl+G`) before Claude executes.
 
 ## Anatomy of a Response
 
@@ -176,7 +175,7 @@ Claude shows which tools it uses (Read, Write, Edit, Bash) as it works. This tra
 
 Sometimes Claude starts going down the wrong path. You have several options:
 
-### Ctrl+C — Stop the Current Response
+### Esc — Stop the Current Response
 ```
 Claude: Let me start by analyzing every file in the project...
   [Read] src/index.ts
@@ -184,20 +183,20 @@ Claude: Let me start by analyzing every file in the project...
   [Read] src/config/...
 
 # You realize this is going to take forever
-[Ctrl+C]
+[Esc]
 
 You: "Stop. Just look at the auth directory — the bug is there."
 ```
 
-Ctrl+C stops Claude mid-response. Your session continues, and Claude retains the conversation context up to the point where you interrupted.
+`Esc` stops Claude mid-response. Your session continues, and Claude retains the conversation context up to the point where you interrupted.
 
-### Esc Esc — Rewind
+### Esc Esc or /rewind — Rewind
 
-Double-press `Esc` to open the rewind menu. This lets you go back to a previous point in the conversation, as if the messages after that point never happened. Useful when Claude made changes you want to undo entirely.
+Double-press `Esc` (or run `/rewind`) to open the rewind menu. Claude Code automatically creates a checkpoint before each action, so you can jump back to any previous point in the conversation. Useful when Claude made changes you want to undo.
 
 ### Ctrl+D — Exit the Session
 
-When you're done, `Ctrl+D` exits cleanly. You can also type `/exit`.
+When you're done, `Ctrl+D` at an empty prompt exits cleanly.
 
 ## Claude Code vs. claude.ai
 

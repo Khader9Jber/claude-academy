@@ -6,9 +6,10 @@ difficulty: "beginner"
 duration: 16
 tags: ["prompt-engineering", "advanced", "meta-prompting", "techniques"]
 objectives:
-  - "Learn 6 advanced prompt patterns that compose with basic techniques"
+  - "Learn 7 advanced prompt patterns that compose with basic techniques"
   - "Apply meta-prompting to generate better prompts automatically"
   - "Use self-verification to catch Claude's own mistakes"
+  - "Structure long-context prompts with XML tags"
   - "Combine multiple patterns for expert-level prompt engineering"
 quiz:
   - id: "advanced-1"
@@ -266,6 +267,51 @@ Then try to break it:
 Fix any weaknesses you find.
 ```
 
+## Pattern 7: XML Tags for Structure
+
+**What it is:** Wrapping distinct pieces of your prompt in XML tags so Claude can unambiguously distinguish inputs, instructions, examples, and context.
+
+Claude is specifically trained to pay attention to XML tag structure. When your prompt has multiple parts — a document to analyze, a set of rules, a few-shot example block, the actual task — tags eliminate the risk of Claude conflating them.
+
+```
+<rules>
+- Output only valid TypeScript.
+- Do NOT include explanatory prose.
+- Preserve all existing JSDoc comments.
+</rules>
+
+<existing_code>
+[paste the current file contents]
+</existing_code>
+
+<task>
+Refactor the function in <existing_code> to use async/await.
+Follow the <rules>.
+</task>
+```
+
+Tags are especially powerful for long-context prompts. When you paste a 200-line document plus instructions, wrapping the document in `<document>...</document>` and the instructions in `<task>...</task>` makes the structure unambiguous.
+
+### Long-context best practices
+
+When you're including large reference material (specs, transcripts, long files) in a prompt:
+
+1. **Put the longform data at the TOP** of the prompt, before the instructions. Claude follows instructions more reliably when the data comes first. This alone improves accuracy by a noticeable margin on retrieval-heavy tasks.
+2. **Wrap each document in XML tags** with a clear name: `<spec>`, `<transcript>`, `<codebase>`.
+3. **Ground responses in quotes.** Ask Claude to quote the relevant passages before answering: "Before answering, quote the 2-3 passages from `<spec>` that are most relevant."
+
+```
+<spec>
+[large API specification]
+</spec>
+
+<existing_implementation>
+[current code]
+</existing_implementation>
+
+Using the <spec> above, identify every behavior the <existing_implementation> violates. For each violation, quote the exact line from <spec> that defines the required behavior.
+```
+
 ## Composing Patterns
 
 These patterns become most powerful when combined. Here's an example that uses three patterns together:
@@ -297,4 +343,4 @@ Three patterns, one prompt, and you get an output that would take a junior engin
 
 ## Key Takeaway
 
-Advanced prompt patterns are force multipliers on top of the fundamentals. Meta-prompting lets Claude write better prompts for you. Self-verification catches errors before they reach you. Constraint chaining handles complex requirements systematically. Role stacking provides multi-perspective analysis. Output structuring gives you machine-ready results. Adversarial self-testing hardens security-critical code. The real power comes from combining these patterns for specific use cases.
+Advanced prompt patterns are force multipliers on top of the fundamentals. Meta-prompting lets Claude write better prompts for you. Self-verification catches errors before they reach you. Constraint chaining handles complex requirements systematically. Role stacking provides multi-perspective analysis. Output structuring gives you machine-ready results. Adversarial self-testing hardens security-critical code. XML tags and long-context best practices (data at top, wrap in tags, ground in quotes) keep Claude on track when your prompt mixes documents, instructions, and examples. The real power comes from combining these patterns for specific use cases.

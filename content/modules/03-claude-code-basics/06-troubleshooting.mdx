@@ -65,9 +65,24 @@ This lesson is your troubleshooting reference. Bookmark it. When something break
 
 You installed Claude Code but your terminal doesn't recognize the command.
 
-**Diagnosis:** npm's global bin directory isn't in your PATH.
+**Diagnosis:** The install script's bin directory (or npm's global bin) isn't in your PATH.
 
-**Fix:**
+**Fix (recommended — use the official installer):**
+
+```bash
+# macOS / Linux
+curl -fsSL https://claude.ai/install.sh | bash
+
+# macOS (Homebrew)
+brew install --cask claude-code
+
+# Windows (winget)
+winget install Anthropic.ClaudeCode
+```
+
+The installer places `claude` in `~/.local/bin` (or equivalent) and prints the exact PATH line to add.
+
+**Fix (npm install):**
 
 ```bash
 # Find where npm installs global binaries
@@ -227,7 +242,7 @@ Claude has been "thinking" for over a minute with no output.
 
 **Fix:**
 
-1. **Wait 30 more seconds** — Opus responses with extended thinking can legitimately take 60+ seconds
+1. **Wait 30 more seconds** — Opus responses at high effort (adaptive thinking) can legitimately take 60+ seconds
 2. **Press Escape** to cancel the current operation
 3. **Check your network** — run `ping api.anthropic.com` in another terminal
 4. **Start a new session** — if Claude is stuck in a loop, `/clear` or start fresh
@@ -247,7 +262,7 @@ Warning: Context is getting large. Some earlier messages may be summarized.
 - Use `/compact` to compress the conversation history
 - Split your task into smaller conversations
 
-**Pro tip:** If you're on a Pro plan with 200K context, you'll hit this much sooner than on Max with 1M context. For large codebase work, Max is worth it for the context window alone.
+**Pro tip:** Sonnet 4.6 and Haiku 4.5 have a 200K context window. Opus 4.6 has a 1M context window — useful for large-codebase work where context exhaustion is the bottleneck. Switch models with `/model` if you need more room.
 
 ### Command Execution Failures
 
@@ -276,11 +291,13 @@ Claude wants to run: npm test
 }
 ```
 
-3. **Use trust mode** for development (not recommended for production):
+3. **Use auto mode** for trusted, sandboxed work:
 
 ```bash
-claude --dangerously-skip-permissions
+claude --permission-mode auto
 ```
+
+Only do this in a container, VM, or worktree you're willing to trash. For risky production-adjacent work, prefer `--permission-mode plan` so Claude produces an editable plan first (review with `Ctrl+G`) before touching anything.
 
 ### "Module not found" After Installation
 
@@ -315,6 +332,8 @@ If every response takes 15-30 seconds when it used to take 3-5:
 2. **Check your context size** — if you've been in the same session for hours and referenced many files, context is huge. Start fresh.
 3. **Check your plan usage** — when you're near your limit, responses may throttle.
 4. **Check your network** — latency to Anthropic's servers matters. Try `curl -o /dev/null -s -w "%{time_total}" https://api.anthropic.com/v1/messages`
+
+See current pricing and plan limits at [console.anthropic.com](https://console.anthropic.com).
 
 ### High Token Burn Rate
 

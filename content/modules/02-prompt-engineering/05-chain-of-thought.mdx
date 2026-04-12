@@ -206,20 +206,22 @@ For these tasks, CoT just pads the response with unnecessary "Let me think about
 
 **The rule of thumb:** If the task requires deduction, analysis, or evaluation, use CoT. If the task is mechanical or the answer is a known fact, skip it.
 
-## CoT + Extended Thinking
+## CoT + Adaptive Thinking
 
-Claude Code has a built-in feature called **extended thinking** (toggled with `Alt+T`) that's essentially automatic CoT. When enabled, Claude allocates tokens for internal reasoning before generating its response.
+Claude 4.6 models use **adaptive thinking** — Claude decides how much internal reasoning a problem needs and scales accordingly. In Claude Code, you can nudge this with the `/effort` command or `--effort` flag (`low`, `medium`, `high`, `max`). Higher effort budgets give Claude more room to reason before answering.
 
-The difference between manual CoT and extended thinking:
+The difference between manual CoT and adaptive thinking:
 
-| Feature | Manual CoT ("think step by step") | Extended Thinking (Alt+T) |
+| Feature | Manual CoT ("think step by step") | Adaptive Thinking (effort levels) |
 |---------|----------------------------------|--------------------------|
 | Visibility | Claude's reasoning is in the response | Reasoning happens internally (you see a thinking indicator) |
 | Token cost | Reasoning tokens are part of the output | Thinking tokens are separate from the output |
-| Control | You define the steps | Claude decides its own reasoning process |
+| Control | You define the steps | Claude decides its own reasoning depth |
 | Best for | When you want to see/guide the reasoning | When you trust Claude to reason on its own |
 
-You can combine both: enable extended thinking AND use structured CoT. Claude will think internally first, then follow your structured steps in the visible response. This is the maximum reasoning power — use it for the hardest problems.
+You can combine both: set `/effort high` AND use structured CoT. Claude thinks internally first, then follows your structured steps in the visible response. This is the maximum reasoning power — use it for the hardest problems.
+
+Note: The older `budget_tokens` extended thinking pattern (and the `Alt+T` toggle associated with it) is deprecated on 4.6 models. Use adaptive thinking via effort levels instead.
 
 ## Real-World Example: Full Debug Session
 
@@ -248,4 +250,4 @@ Claude will methodically work through each step, and by step 3, it'll likely fin
 
 ## Key Takeaway
 
-Chain of thought prompting forces Claude to reason sequentially, dramatically improving accuracy on complex problems. Use "think step by step" for a quick boost, or define explicit reasoning steps for maximum control. Apply CoT to debugging, multi-step analysis, and tradeoff evaluations. Skip it for mechanical tasks where reasoning adds no value. For the hardest problems, combine structured CoT with Claude's extended thinking feature.
+Chain of thought prompting forces Claude to reason sequentially, dramatically improving accuracy on complex problems. Use "think step by step" for a quick boost, or define explicit reasoning steps for maximum control. Apply CoT to debugging, multi-step analysis, and tradeoff evaluations. Skip it for mechanical tasks where reasoning adds no value. For the hardest problems, combine structured CoT with higher effort levels (`/effort high` or `/effort max`) so Claude gets both your explicit steps and deeper adaptive thinking.

@@ -12,15 +12,15 @@ objectives:
   - "Know the relationship between conversation length and token consumption"
 quiz:
   - id: "context-1"
-    question: "What is Claude's maximum context window size?"
+    question: "Which 4.6-family model has a 1M-token context window?"
     type: "multiple-choice"
     options:
-      - "128K tokens (~96K words)"
-      - "200K tokens (~150K words)"
-      - "1M tokens (~750K words)"
-      - "Unlimited"
+      - "Haiku 4.5"
+      - "Sonnet 4.6"
+      - "Opus 4.6"
+      - "All three"
     correct: 2
-    explanation: "Claude's context window is approximately 1 million tokens, which translates to roughly 750,000 words. This is massive — enough for entire codebases — but it's not infinite, and knowing how it fills up is crucial for effective usage."
+    explanation: "Opus 4.6 has a 1M-token context window — roughly 750,000 words. Sonnet 4.6 and Haiku 4.5 both cap at 200K tokens. If you need more room mid-session, switch to Opus with /model opus."
   - id: "context-2"
     question: "Why do long conversations consume tokens exponentially?"
     type: "multiple-choice"
@@ -53,11 +53,11 @@ quiz:
     explanation: "Research mode (deep research) can use 5-10x the tokens of a normal query because it performs multiple web searches, reads multiple pages, and synthesizes information from various sources. Use it when you genuinely need deep research, not for quick lookups."
 ---
 
-## The 1M Token Reality
+## The Context Window Reality
 
-Claude Code gives you access to approximately **1 million tokens** of context — roughly 750,000 words. That's enormous. You could fit an entire novel, or several hundred source files, into a single context window.
+Claude Code's context window depends on the model you pick. **Opus 4.6** gives you about **1 million tokens** (roughly 750,000 words — enough for several hundred source files). **Sonnet 4.6** and **Haiku 4.5** cap at **200K tokens**. That's still large, but it fills up faster than you'd think.
 
-But here's what most users don't understand: the context window isn't just a bucket you fill up. It's a conveyor belt. Every message you send, every file you reference, every tool output — they all ride the belt. And the belt carries everything from the start of the conversation.
+The context window isn't just a bucket you fill up. It's a conveyor belt. Every message you send, every file you reference, every tool output — they all ride the belt. And the belt carries everything from the start of the conversation.
 
 Understanding how this belt works is the difference between someone who uses Claude Code casually and someone who uses it efficiently.
 
@@ -117,11 +117,13 @@ Message 45: "Now check @src/services/auth.ts for the bug"
 # File only in context for messages 45-50
 ```
 
-### 3. Extended Thinking
+### 3. Adaptive Thinking
 
-When extended thinking is enabled (Alt+T), Claude spends tokens on internal reasoning before producing the visible response. These thinking tokens count toward your usage. A complex problem might use 5,000-15,000 thinking tokens per message.
+Claude 4.6 models use **adaptive thinking** — Claude spends tokens on internal reasoning before producing the visible response, and the amount scales with problem complexity. You can steer it with `/effort low|medium|high|max` (or the `--effort` launch flag). A complex problem at `high` effort might use 5,000-15,000 thinking tokens per message.
 
-This is usually worth it for complex tasks — the quality improvement justifies the cost. But leaving thinking enabled for simple tasks like renaming variables wastes tokens with no benefit.
+This is usually worth it for complex tasks — the quality improvement justifies the cost. Drop to `/effort low` for simple tasks like renaming variables where reasoning adds nothing.
+
+(The older `budget_tokens` / Alt+T pattern from pre-4.6 models is deprecated and will be removed.)
 
 ### 4. MCP Tool Definitions
 
@@ -177,7 +179,7 @@ Base conversation:     ~50,000 tokens
 File references (3 files, all 50 messages):  ~45,000 tokens
 CLAUDE.md (loaded every message):            ~1,200 tokens
 MCP tools (GitHub + DB):                     ~175,000 tokens
-Extended thinking (10 complex messages):     ~80,000 tokens
+Adaptive thinking (10 high-effort messages):  ~80,000 tokens
 Tool outputs (git, tests, reads):            ~30,000 tokens
 ─────────────────────────────────────────
 Total:                                       ~381,200 tokens
@@ -187,7 +189,7 @@ Of those 381K tokens, the MCP tools and file references contribute over 200K —
 
 ## Practical Token Math
 
-Claude's context window is approximately 1M tokens. Here's what that means in practice:
+Opus 4.6's context window is approximately 1M tokens; Sonnet 4.6 / Haiku 4.5 are 200K. Here's what that means in practice:
 
 | Content | Approximate Token Cost |
 |---|---|
@@ -212,4 +214,4 @@ This is why manual compaction at 80% is better than waiting for the 95% auto-com
 
 ## Key Takeaway
 
-The context window is approximately 1M tokens, but it fills up faster than you think. The biggest costs are long conversations (every message re-processes all history), file references (re-sent every message), MCP tool definitions (loaded every message), and extended thinking. Use `/context` to monitor usage and be deliberate about what enters your context. The most impactful optimization is keeping sessions short and focused — one task, one session.
+Opus 4.6 gives you ~1M tokens of context; Sonnet 4.6 and Haiku 4.5 give you 200K. Either way, context fills up faster than you think. The biggest costs are long conversations (every message re-processes all history), file references (re-sent every message), MCP tool definitions (loaded every message), and adaptive thinking at higher effort. Use `/context` to monitor usage and be deliberate about what enters your context. The most impactful optimization is keeping sessions short and focused — one task, one session.

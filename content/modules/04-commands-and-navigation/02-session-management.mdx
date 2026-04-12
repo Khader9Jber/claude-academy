@@ -185,26 +185,27 @@ You: "Implement cursor-based pagination"
 # claude -r → pick the original → try offset-based instead
 ```
 
-### 5. /rewind — Undo Messages
+### 5. /rewind — Jump Back to a Checkpoint
 
-`/rewind` lets you go back to a previous point in the conversation, effectively undoing everything after that point.
+Claude Code automatically creates a checkpoint **before each action** (file edit, command run, significant tool call). `/rewind` (or the Esc Esc shortcut) lets you jump back to any of those checkpoints.
 
 ```
 /rewind
 ```
 
 **What happens:**
-- Opens a picker showing conversation checkpoints
-- You select a checkpoint to return to
-- All messages after that checkpoint are removed
-- File changes made after that checkpoint are **NOT automatically reverted** (the files on disk still have the changes)
+- A picker opens showing recent checkpoints
+- Pick a checkpoint and choose what to roll back:
+  - **Conversation only** — messages after the checkpoint disappear; files on disk stay as-is
+  - **Code only** — files revert to the checkpoint state; conversation stays (Claude keeps the context of what it tried)
+  - **Both** — conversation and files both return to the checkpoint state
 
 **When to use /rewind:**
-- Claude went in the wrong direction and you want to redirect
-- You asked the wrong question and want to re-ask
-- Claude made changes you don't like and you want to "undo" the conversation (but remember to manually revert file changes if needed)
+- Claude went in the wrong direction and you want to redirect (conversation-only, then guide it with what you learned)
+- An edit broke something and you want the files reverted (code-only, then keep discussing)
+- You want a full do-over of the last exchange (both)
 
-**Important:** /rewind undoes the *conversation* history, not the *file* changes. If Claude edited 5 files before you rewound, those files still have the edits on disk. Use `git checkout -- .` or `git stash` if you also want to revert file changes.
+Because checkpoints are automatic, you don't have to remember to `git stash` before risky changes — rewind is the native undo.
 
 ## The Survival Table
 
@@ -216,9 +217,9 @@ This table shows what survives each operation:
 | **/compact** | Compressed | Preserved | Preserved | Preserved | Same |
 | **New Session** | Gone | Preserved | Loaded fresh | Reconnected | New |
 | **/fork** | Copied to fork | Preserved | Preserved | Preserved | New (fork) |
-| **/rewind** | Rolled back | **Still on disk** | Preserved | Preserved | Same |
+| **/rewind** | Rolls back (configurable) | **Rolls back (configurable)** | Preserved | Preserved | Same |
 
-The critical row to internalize: **File edits always survive**. Claude writes to your actual filesystem. No session operation undoes file changes — only git can do that.
+Of these, only `/rewind` can actually revert on-disk file changes — and only because Claude Code snapshots files automatically before each action. `/clear`, `/compact`, new sessions, and `/fork` never touch your filesystem.
 
 ## The Golden Rule
 
@@ -251,8 +252,9 @@ Context window filling up?
   ├── Want to try an experimental approach?
   │   └── /fork (preserves the original)
   │
-  └── Claude went in the wrong direction?
-      └── /rewind (undo conversation, manually revert files if needed)
+  └── Claude went in the wrong direction or broke something?
+      └── /rewind (Esc Esc) — pick a checkpoint and choose conversation,
+          code, or both
 ```
 
 ## Practical Session Workflows

@@ -216,7 +216,16 @@ You can directly tell Claude to remember or forget things:
 "Forget that the auth service is being rewritten — it's done now"
 ```
 
-The natural language interface makes it easy. No special commands or syntax needed.
+### /btw — Quick notes without breaking flow
+
+The `/btw` slash command drops a quick aside into auto-memory without sending it to Claude as a conversational message:
+
+```
+/btw the staging DB password rotates every Monday — always re-check it
+/btw when touching src/services/payment/, ping @alex first
+```
+
+`/btw` is ideal for the "oh, by the way" moments — observations you want Claude to remember next time, but don't need it to respond to right now. The natural language "remember that..." phrasing goes through the conversation; `/btw` writes to memory directly.
 
 ## How Memories Are Recalled
 

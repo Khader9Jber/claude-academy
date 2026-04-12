@@ -14,6 +14,9 @@ import {
   Coins,
   FlaskConical,
   GitPullRequest,
+  Award,
+  Sparkles,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -159,6 +162,39 @@ const GUIDES: Guide[] = [
     icon: <GitPullRequest className="h-5 w-5" />,
     color: "#e06c75",
     tags: ["ci-cd", "github-actions", "automation"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "anthropic-best-practices",
+    title: "The 20 Claude Code Best Practices from Anthropic",
+    description:
+      "The official Anthropic playbook for Claude Code — the patterns that work and the failure modes to avoid. Distilled from Anthropic's docs.",
+    readTime: "22 min",
+    icon: <Award className="h-5 w-5" />,
+    color: "#d4a053",
+    tags: ["official", "best-practices", "reference"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "advanced-prompting",
+    title: "Advanced Prompting Techniques from Anthropic's Docs",
+    description:
+      "Every official prompting technique — XML structure, long context tricks, adaptive thinking, and the migration path away from prefilled responses.",
+    readTime: "18 min",
+    icon: <Sparkles className="h-5 w-5" />,
+    color: "#5e9ed6",
+    tags: ["prompting", "official", "api"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "explore-plan-implement",
+    title: "Explore → Plan → Implement → Commit",
+    description:
+      "Anthropic's highest-leverage workflow for complex Claude Code tasks. When to use it, when to skip it, and how each phase compounds.",
+    readTime: "15 min",
+    icon: <Compass className="h-5 w-5" />,
+    color: "#a07ed6",
+    tags: ["workflow", "plan-mode", "official"],
     date: "2026-04-11",
   },
 ];

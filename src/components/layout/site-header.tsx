@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/prompt-lab", label: "Prompt Lab", testId: "nav-prompt-lab" },
   { href: "/cheatsheet", label: "Cheatsheet", testId: "nav-cheatsheet" },
   { href: "/templates", label: "Templates", testId: "nav-templates" },
+  { href: "/guides", label: "Guides", testId: "nav-guides" },
   { href: "/updates", label: "Updates", testId: "nav-updates" },
   { href: "/leaderboard", label: "Leaderboard", testId: "nav-leaderboard" },
 ];

@@ -12,15 +12,15 @@ objectives:
   - "Execute plans efficiently after the planning phase"
 quiz:
   - id: "plan-mode-1"
-    question: "What does plan mode (/plan) do differently from normal mode?"
+    question: "How do you enter plan mode in Claude Code, and what does it do differently from normal mode?"
     type: "multiple-choice"
     options:
       - "It makes Claude think faster"
-      - "It tells Claude to analyze, plan, and propose an approach WITHOUT making any changes to files"
+      - "Press Shift+Tab (or start with `--permission-mode plan`) — Claude reads, analyzes and proposes an approach WITHOUT making any changes to files"
       - "It creates a project plan document"
       - "It switches to a different model"
     correct: 1
-    explanation: "Plan mode instructs Claude to read, analyze, and think through the problem without modifying any files. Claude will explore your codebase, identify relevant files, consider approaches, and present a structured plan. You review the plan and then decide whether to proceed with implementation. This prevents premature changes that might need reverting."
+    explanation: "Plan mode is toggled with Shift+Tab inside a session, or launched with `claude --permission-mode plan`. Claude reads your codebase, identifies relevant files, considers approaches, and presents a structured plan. You review the plan (Ctrl+G to edit) and then decide whether to proceed with implementation. This prevents premature changes that might need reverting."
   - id: "plan-mode-2"
     question: "When is plan mode most valuable?"
     type: "multiple-choice"
@@ -63,14 +63,16 @@ If I had spent 5 minutes in plan mode first, Claude would have identified the ne
 
 ## Plan Mode: The Basics
 
-Activate plan mode by starting your prompt with `/plan` or by telling Claude to plan without making changes:
+Activate plan mode by pressing **Shift+Tab** inside a Claude Code session (it toggles through permission modes — plan is one of them), or start Claude in plan mode from the CLI:
 
 ```bash
-# Using the /plan command
-/plan Migrate our authentication from session-based to JWT
+# Start a session in plan mode
+claude --permission-mode plan
 
-# Or explicitly instructing Claude
-"Plan how to migrate our authentication from session-based to JWT.
+# Inside an existing session, press Shift+Tab until you see "plan mode" in the status bar
+
+# Then describe the task — Claude will analyze and propose, not edit
+"Migrate our authentication from session-based to JWT.
 Don't make any changes yet — just analyze the codebase and 
 propose an approach.
 
@@ -137,7 +139,8 @@ My rule of thumb: **if you would sketch it on a whiteboard before coding, use pl
 ### Scenario 1: Database Schema Redesign
 
 ```bash
-/plan "We need to add multi-tenancy to our database. 
+# (In plan mode — Shift+Tab)
+"We need to add multi-tenancy to our database. 
 Currently all data is in shared tables with no tenant isolation.
 
 Our tables: users, projects, tasks, comments, files
@@ -159,7 +162,8 @@ Plan mode explored all three options, identified that schema-per-tenant would br
 ### Scenario 2: Framework Upgrade
 
 ```bash
-/plan "Upgrade this Next.js 14 app to Next.js 15.
+# (In plan mode)
+"Upgrade this Next.js 15 app to Next.js 16.
 
 Analyze the codebase and identify:
 1. All breaking changes that affect us
@@ -177,7 +181,8 @@ The plan identified 8 breaking changes specific to our codebase, including a mid
 ### Scenario 3: Refactor Before Feature
 
 ```bash
-/plan "Before adding the notification system, I think we 
+# (In plan mode)
+"Before adding the notification system, I think we 
 need to refactor the event handling. Currently events are 
 handled inline in each API route.
 
@@ -190,16 +195,16 @@ Don't implement — just show me the proposed architecture."
 
 ## Ultra Plan Mode
 
-Ultra plan mode is plan mode with extended thinking. Claude thinks more deeply, considers more edge cases, and produces more thorough analysis.
+Ultra plan mode is plan mode combined with max-effort adaptive thinking. Claude thinks more deeply, considers more edge cases, and produces more thorough analysis.
 
 ```bash
-# Activate ultra plan mode
-"Use ultrathink to plan this migration."
-
-# Or be explicit
-"Think very deeply about this before proposing a plan.
+# In plan mode (Shift+Tab), bump the thinking effort:
+"Use max effort. Think very deeply about this before proposing a plan.
 Consider edge cases, failure modes, and alternative approaches.
 Take your time — thoroughness matters more than speed."
+
+# Or via the API:
+# output_config: { effort: "max" }, thinking: { type: "adaptive" }
 ```
 
 ### When Ultra Plan Mode Is Worth It
@@ -223,7 +228,7 @@ Skip ultra plan mode when:
 ### Ultra Plan Mode in Action
 
 ```bash
-"Use extended thinking to plan how we should implement 
+"Use max effort and plan how we should implement 
 real-time collaboration in our document editor.
 
 Current stack: Next.js, Supabase, Tiptap editor.
@@ -265,17 +270,17 @@ Once you have reviewed and approved the plan:
 The most effective workflow I have found:
 
 ```bash
-# Step 1: Plan (5 minutes)
-/plan "Add role-based access control to the API..."
+# Step 1: Plan (5 minutes) — press Shift+Tab to enter plan mode
+"Add role-based access control to the API..."
 
 # Step 2: Review the plan (2 minutes)
-# Read Claude's plan, check for gaps
+# Read Claude's plan, check for gaps (Ctrl+G to edit inline)
 
 # Step 3: Refine if needed (1 minute)
 "Good plan, but also consider: what happens when a user's 
 role changes while they have active sessions?"
 
-# Step 4: Execute (Claude implements)
+# Step 4: Exit plan mode (Shift+Tab again) and execute
 "Plan looks complete. Execute starting with Phase 1."
 
 # Step 5: Verify

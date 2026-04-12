@@ -130,15 +130,17 @@ When you use `@`, Claude reads the file on demand. When you paste, every charact
 Not every task needs Claude's deepest thinking.
 
 ```bash
-# Simple rename — use low effort
-claude --effort low "Rename the variable 'x' to 'userCount' in @src/utils/stats.ts"
+# Simple rename — set low effort in the session, then ask
+claude "Set thinking effort to low. Then rename the variable 'x' to 'userCount' in @src/utils/stats.ts"
 
-# Straightforward bug fix — use medium
-claude --effort medium "Fix the off-by-one error in the pagination logic in @src/lib/paginate.ts"
+# Straightforward bug fix — medium effort is fine
+claude "Use medium effort. Fix the off-by-one error in the pagination logic in @src/lib/paginate.ts"
 
-# Complex architecture decision — use max
-claude --effort max "Design the database schema for a multi-tenant SaaS with per-tenant encryption"
+# Complex architecture decision — use high or max
+claude "Think deeply (max effort). Design the database schema for a multi-tenant SaaS with per-tenant encryption"
 ```
+
+With the 4.6 models, effort levels (`low`, `medium`, `high`, `max`) are set via `output_config.effort` on the API, or by asking Claude to "use low/medium/high effort" in Claude Code. The older `budget_tokens` parameter is deprecated in favor of adaptive thinking.
 
 Token usage by effort level (approximate for a typical task):
 
@@ -381,11 +383,11 @@ By referencing the file and asking for changes only, you avoid Claude echoing ba
 Keep track of what is costing you the most:
 
 ```bash
-# Check your recent usage
-claude usage
+# Inspect per-session token usage with /context during a session
+/context
 
-# Set a budget alert in your settings
-# This warns you when approaching your daily limit
+# For API usage, check the Anthropic console at
+# https://console.anthropic.com/usage
 ```
 
 What I discovered from tracking my own usage:

@@ -250,17 +250,23 @@ Add proper null checks and loading states."
 
 Direct fix requests are faster and use fewer tokens than explain-then-fix.
 
-## Hack 11: Use --output for File Generation
+## Hack 11: Redirect Output for File Generation
+
+Headless mode writes to stdout, so you can pipe it straight into a file:
 
 ```bash
-# Generate a file directly
-claude -p "Generate a comprehensive .gitignore for a 
-Next.js + Supabase project" --output .gitignore
+# Generate a file directly with shell redirection
+claude -p --output-format text "Generate a comprehensive .gitignore 
+for a Next.js + Supabase project. Output the file contents only, 
+no markdown fences or explanation." > .gitignore
 
 # Generate config files
-claude -p "Generate a Playwright config for testing 
-a Next.js app on localhost:3000" --output playwright.config.ts
+claude -p --output-format text "Generate a Playwright config for 
+testing a Next.js app on localhost:3000. Output only the TS code." \
+  > playwright.config.ts
 ```
+
+Using `--output-format text` (or `json`/`stream-json` for structured output) keeps Claude's response clean so you can redirect it with `>`.
 
 ## Hack 12: Context Windows as Scratchpads
 
@@ -389,7 +395,7 @@ My daily Claude workflow, in order:
 Morning:
 1. /init (if new project) or review CLAUDE.md
 2. Check failing tests: cfix alias
-3. Plan the day's work: /plan "Today I need to..."
+3. Plan the day's work: Shift+Tab to enter plan mode, then "Today I need to..."
 
 During development:
 4. Headless mode for known tasks

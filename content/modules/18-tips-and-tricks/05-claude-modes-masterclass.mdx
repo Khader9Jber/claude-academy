@@ -111,12 +111,13 @@ claude -p "Generate a SQL migration for adding an 'email' column to users" > mig
 - Using it for tasks that need clarification (you cannot ask follow-up questions)
 - Prompts that are too vague for single-shot execution
 
-## Plan Mode (/plan)
+## Plan Mode (Shift+Tab)
 
-What it is: Claude analyzes and plans without making changes.
+What it is: Claude analyzes and plans without making changes. Toggle with Shift+Tab inside a session, or launch with `claude --permission-mode plan`.
 
 ```bash
-/plan "How should we add caching to our API layer? 
+# After Shift+Tab (plan mode banner appears):
+"How should we add caching to our API layer? 
 Analyze @src/app/api/ and propose an approach."
 ```
 
@@ -124,14 +125,18 @@ Covered in depth in the Plan Mode lesson. Key point: it prevents premature imple
 
 **Best for:** Anything you would sketch on a whiteboard first.
 
-## Research Mode
+## Research Mode (Claude.ai) / Web Search (Claude Code)
 
-What it is: Claude searches the web for current information and synthesizes findings.
+What it is: Research Mode is a Claude.ai feature that searches the web and synthesizes findings. In Claude Code, equivalent behavior comes from the built-in `WebSearch` and `WebFetch` tools (or an MCP server that exposes search).
 
 ```bash
-# Activate in claude.ai or with web search tools
+# In claude.ai chat with Research turned on:
 "Research the current state of WebAssembly support 
 in major browsers as of 2025"
+
+# In Claude Code (uses the WebSearch tool automatically):
+"Use web search to find the current WebAssembly support matrix
+across Chrome, Firefox, Safari, and Edge for 2025-2026."
 ```
 
 Covered in depth in the Research Mode lesson. Key point: use it for current information, not for working with your code.
@@ -242,8 +247,8 @@ What do I need to do?
 The gold standard for any non-trivial feature:
 
 ```bash
-# Phase 1: Plan
-/plan "Add a notification system. Users should get 
+# Phase 1: Plan — Shift+Tab to enter plan mode, then:
+"Add a notification system. Users should get 
 in-app notifications for: new comments, task assignments, 
 mentions. Need a notification center UI and a way to 
 mark notifications as read."
@@ -267,12 +272,12 @@ just in-app. Execute Phase 1."
 For implementing something you have not done before:
 
 ```bash
-# Step 1: Research (in research mode)
+# Step 1: Research (in research mode on claude.ai, or using WebSearch in Claude Code)
 "Research best practices for implementing WebSocket 
 connections in Next.js 15 with the App Router"
 
-# Step 2: Plan (in Claude Code)
-/plan "Based on the Socket.io approach, plan how to add 
+# Step 2: Plan (Claude Code, Shift+Tab for plan mode)
+"Based on the Socket.io approach, plan how to add 
 real-time notifications to our app. @src/app/ @src/lib/"
 
 # Step 3: Execute each phase headlessly
@@ -342,8 +347,8 @@ Show spinner when isLoading prop is true."
 claude "Migrate from MongoDB to PostgreSQL"
 # 45 minutes later: "actually, this approach doesn't work..."
 
-# GOOD: Plan first
-/plan "Migrate from MongoDB to PostgreSQL. Analyze all 
+# GOOD: Plan first — Shift+Tab to enter plan mode
+"Migrate from MongoDB to PostgreSQL. Analyze all 
 collections, map to relational tables, identify the 
 migration path."
 ```

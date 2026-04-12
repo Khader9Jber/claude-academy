@@ -8,6 +8,12 @@ import {
   Brain,
   BookOpen,
   ArrowRight,
+  Webhook,
+  GitBranch,
+  Plug,
+  Coins,
+  FlaskConical,
+  GitPullRequest,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -87,6 +93,72 @@ const GUIDES: Guide[] = [
     icon: <Brain className="h-5 w-5" />,
     color: "#5ec4c4",
     tags: ["models", "cost", "decision"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "hooks-cookbook",
+    title: "Claude Code Hooks: Complete Automation Cookbook",
+    description:
+      "Ten production-ready hooks that turn Claude Code into a self-correcting, self-auditing teammate. Auto-format, guardrails, notifications, audit logs, TDD enforcement — copy, paste, commit.",
+    readTime: "20 min",
+    icon: <Webhook className="h-5 w-5" />,
+    color: "#d65ea0",
+    tags: ["hooks", "automation", "production"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "parallel-development",
+    title: "Parallel Development: Worktrees and Sub-Agents",
+    description:
+      "Run three agents at once without them stomping on each other. The exact rules for when parallelism works, how to set up worktree isolation, and the pitfalls that kill your speedup.",
+    readTime: "15 min",
+    icon: <GitBranch className="h-5 w-5" />,
+    color: "#5cb870",
+    tags: ["agents", "worktrees", "parallel"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "mcp-gallery",
+    title: "MCP Server Gallery: 20+ Servers Worth Installing",
+    description:
+      "The Model Context Protocol servers that actually earn their keep. Install commands, use cases, and the five we install on every new machine.",
+    readTime: "18 min",
+    icon: <Plug className="h-5 w-5" />,
+    color: "#5e9ed6",
+    tags: ["mcp", "integration", "reference"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "prompt-caching",
+    title: "Prompt Caching: Cut Your Claude API Costs by 90%",
+    description:
+      "The exact pricing math, when caching saves money and when it doesn't, and the single rule that makes the difference — static first, dynamic last.",
+    readTime: "17 min",
+    icon: <Coins className="h-5 w-5" />,
+    color: "#d4a053",
+    tags: ["api", "cost", "optimization"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "tdd-with-claude",
+    title: "Test-Driven Development with Claude Code",
+    description:
+      "Claude wants to write implementation first. TDD requires the inverse. The exact prompts, the CLAUDE.md, and the hooks that keep the discipline from falling apart.",
+    readTime: "16 min",
+    icon: <FlaskConical className="h-5 w-5" />,
+    color: "#a07ed6",
+    tags: ["testing", "tdd", "discipline"],
+    date: "2026-04-11",
+  },
+  {
+    slug: "claude-in-cicd",
+    title: "Claude Code in CI/CD: The GitHub Actions Playbook",
+    description:
+      "Five production workflow recipes — PR reviewer, nightly dep audit, docs sync, test generator, commit enhancer. Plus the security rules and cost controls to keep it safe.",
+    readTime: "19 min",
+    icon: <GitPullRequest className="h-5 w-5" />,
+    color: "#e06c75",
+    tags: ["ci-cd", "github-actions", "automation"],
     date: "2026-04-11",
   },
 ];
